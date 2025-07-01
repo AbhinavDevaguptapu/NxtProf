@@ -1,0 +1,65 @@
+# === Environment & Secrets ===
+# Local env files (React, Functions, etc)
+.env
+.env.local
+.env.*.local
+
+# Firebase service account key—never commit this!
+serviceAccountKey.json
+
+# Local override files
+*.local
+
+# === Node.js Dependencies ===
+node_modules/
+functions/node_modules/
+
+# === Build Artifacts ===
+# React build output
+/dist
+/build
+/*.js.map
+/*.js
+
+# Cloud Functions compiled output
+functions/lib/
+functions/lib/**/*.js.map
+
+# TypeScript declaration files, if generated
+typings/
+functions/typings/
+
+# === Logs ===
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# === IDE & Editor ===
+# VSCode
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# === OS Temporary ===
+*.swp
+*~
+.project
+.cache/
+
+# === Misc ===
+# yarn
+yarn-error.log
+
+# lockfiles you don’t need to commit in the Functions folder
+functions/package-lock.json
