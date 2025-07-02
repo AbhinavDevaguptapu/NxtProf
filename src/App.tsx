@@ -35,6 +35,7 @@ import AdminHome from "./pages/AdminHome";
 import AdminEmployees from "./pages/AdminEmployees";
 import AdminEmployeeDetail from "./pages/AdminEmployeeDetail";
 import NotFound from "./pages/NotFound";
+import OnboardingVideoPage from "./pages/OnBoardingPage";
 
 const queryClient = new QueryClient();
 
@@ -127,6 +128,12 @@ const AppContent = () => {
           <ProtectedRoute>
             <Attendance />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/onboardingKit"
+        element={
+          <OnboardingVideoPage />
         }
       />
 

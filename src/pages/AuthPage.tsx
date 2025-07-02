@@ -293,7 +293,7 @@ export default function AuthPage() {
             Unlock Your Team’s Potential
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Join Standup-Sync to streamline feedback and supercharge your daily meetings.
+            Join NxtProf to streamline feedback and supercharge your daily meetings.
           </p>
         </motion.div>
       </div>

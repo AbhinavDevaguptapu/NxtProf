@@ -39,6 +39,7 @@ const userLinks = [
   { path: "/", label: "Home" },
   { path: "/standups", label: "Standups" },
   { path: "/attendance", label: "Attendance" },
+  { path: "/onboardingKit", label: "Onboarding Kit" },
 ];
 
 export default function AppNavbar() {
@@ -101,7 +102,7 @@ export default function AppNavbar() {
             {/* Logo / App Name */}
             <Link to="/" className="flex items-center gap-2 text-xl font-bold">
               <LayoutDashboard className="h-6 w-6" />
-              <span>Standup-Sync</span>
+              <span>NxtProf</span>
             </Link>
           </div>
 

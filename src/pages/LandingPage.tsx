@@ -60,7 +60,7 @@ export default function LandingPage() {
                                 AI-Powered Team Sync, Simplified.
                             </h1>
                             <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
-                                Welcome to Standup-Sync. Streamline team standups and get deep, AI-driven insights into employee feedback with a secure, scalable platform built on Firebase.
+                                Welcome to NxtProf. Streamline team standups and get deep, AI-driven insights into employee feedback with a secure, scalable platform built on Firebase.
                             </p>
                             <Button size="lg" className="mt-8" onClick={handleNavigateToAuth}>
                                 Get Started <ArrowRight className="ml-2 h-5 w-5" />
@@ -86,7 +86,7 @@ export default function LandingPage() {
                     className="bg-secondary/50 py-20 sm:py-24"
                 >
                     <div className="container mx-auto px-4">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-center">Core Features of Standup-Sync</h2>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-center">Core Features of NxtProf</h2>
                         <motion.div
                             initial="hidden"
                             whileInView="visible"
@@ -142,7 +142,7 @@ export default function LandingPage() {
                             transition={{ duration: 0.8, ease: "easeOut" }}
                             className="lg:order-first"
                         >
-                            <h2 className="text-3xl sm:text-4xl font-bold">The Standup-Sync Architecture</h2>
+                            <h2 className="text-3xl sm:text-4xl font-bold">The NxtProf Architecture</h2>
                             <p className="mt-4 text-muted-foreground">
                                 A secure and efficient architecture with a clear separation between the client (React) and the secure backend (Firebase Cloud Functions).
                             </p>
@@ -170,7 +170,7 @@ export default function LandingPage() {
 
             <footer className="py-8 border-t">
                 <div className="container mx-auto px-4 text-center text-muted-foreground">
-                    <p>&copy; {new Date().getFullYear()} Standup-Sync. All Rights Reserved.</p>
+                    <p>&copy; {new Date().getFullYear()} NxtProf. All Rights Reserved.</p>
                 </div>
             </footer>
         </div>
