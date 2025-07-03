@@ -36,6 +36,7 @@ import AdminEmployees from "./pages/AdminEmployees";
 import AdminEmployeeDetail from "./pages/AdminEmployeeDetail";
 import NotFound from "./pages/NotFound";
 import OnboardingVideoPage from "./pages/OnBoardingPage";
+import LearningHours from "./pages/LearningHours";
 
 const queryClient = new QueryClient();
 
@@ -127,6 +128,14 @@ const AppContent = () => {
         element={
           <ProtectedRoute>
             <Attendance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/learning-hours"
+        element={
+          <ProtectedRoute>
+            <LearningHours />
           </ProtectedRoute>
         }
       />

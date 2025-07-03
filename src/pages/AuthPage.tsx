@@ -135,7 +135,12 @@ export default function AuthPage() {
         }
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: name });
-        // await sendEmailVerification(cred.user); // Remove this line if you don't want to send verification email
+        await setDoc(doc(db, "employees", cred.user.uid), {
+          uid: cred.user.uid,
+          email: cred.user.email,
+          name,
+          hasCompletedSetup: false,
+        });
         await handleSuccessfulLogin(cred.user);
       }
     } catch (err: any) {

@@ -38,6 +38,7 @@ import ProfileEditor from "./ProfileEditor";
 const userLinks = [
   { path: "/", label: "Home" },
   { path: "/standups", label: "Standups" },
+  { path: "/learning-hours", label: "Learning Hours" },
   { path: "/attendance", label: "Attendance" },
   { path: "/onboardingKit", label: "Onboarding Kit" },
 ];
