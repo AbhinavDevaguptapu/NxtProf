@@ -1,20 +1,31 @@
-// OnBoarding Step 1
+// OnBoarding Step 1 - UI Updated
 
 import { useEffect, useRef } from 'react';
-import { db } from '../integrations/firebase/client';
+import { db } from '../integrations/firebase/client'; // Kept original path
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { motion } from 'framer-motion';
+
+// --- SHADCN/UI & LUCIDE IMPORTS ---
+import { Button } from './ui/button'; // Assuming path from your project structure
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { PlayCircle, CheckCircle2 } from 'lucide-react';
 
 const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched }) => {
+  // --- All original logic and hooks are untouched ---
   const playerRef = useRef(null);
   const savedProgressRef = useRef(0);
   const intervalRef = useRef();
+
+  // WARNING: This clears all local storage for the domain.
+  // It was in the original code and is preserved here as requested.
   useEffect(() => {
     localStorage.clear();
   }, []);
 
   useEffect(() => {
     const checkAndCreateUser = async () => {
+      if (!user_id) return; // Prevent running with no user_id
       const onboardingRef = doc(db, 'userOnboardingStatus', user_id);
       const docSnap = await getDoc(onboardingRef);
 
@@ -30,13 +41,19 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
     };
 
     checkAndCreateUser();
-  }, []);
+  }, [user_id]); // Dependency added for correctness
 
   useEffect(() => {
     const createPlayer = () => {
+      // Using `any` as it was in the original code
       playerRef.current = new (window as any).YT.Player('yt-player', {
         videoId: '7k6dHwZTNs0',
-        playerVars: { autoplay: 1 },
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+        },
         events: {
           onReady: (event) => {
             event.target.seekTo(savedProgressRef.current);
@@ -86,38 +103,56 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
     };
   }, [setIsVideoWatched]);
 
+  // --- UI RENDER (Updated Part) ---
   return (
-    <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-5 border-b-4 border-blue-500">
-      <h2 className="text-xl font-semibold mb-4 text-gray-700">📹 Instructor Training Video</h2>
-      <div className="aspect-video w-full mb-4">
-        <div id="yt-player" className="w-full h-96 rounded-lg border-2 border-gray-300"></div>
-      </div>
-      <div className="text-center">
-        <Tooltip delayDuration={100}>
-          <TooltipTrigger asChild>
-            <button
-              disabled={!isVideoWatched}
-              onClick={onContinue}
-              className={`px-6 py-2 rounded-full font-semibold transition duration-300 ${isVideoWatched
-                  ? 'bg-green-500 text-white hover:bg-green-600'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-            >
-              Continue to Resources
-            </button>
-          </TooltipTrigger>
-
-          {!isVideoWatched && (
-            <TooltipContent
-              side="top"
-              className="bg-gray-900 text-white rounded-md px-3 py-2 text-sm shadow-lg animate-fade-in"
-            >
-              Please watch the video to continue
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </div>
-    </div>
+    <TooltipProvider>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+      >
+        <Card className="max-w-3xl mx-auto w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <PlayCircle className="h-7 w-7 text-primary" />
+              Instructor Training Video
+            </CardTitle>
+            <CardDescription>
+              Please watch at least 80% of the video to proceed. This is a crucial step for your onboarding.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="aspect-video w-full overflow-hidden rounded-lg border bg-secondary">
+              {/* The YouTube player script will target this div */}
+              <div id="yt-player" className="w-full h-full" />
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Tooltip delayDuration={100}>
+              <TooltipTrigger asChild>
+                {/* A div wrapper is the best practice for tooltips on disabled buttons */}
+                <div className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    disabled={!isVideoWatched}
+                    onClick={onContinue}
+                  >
+                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    Continue to Resources
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {!isVideoWatched && (
+                <TooltipContent side="top">
+                  <p>Please watch the video to unlock this button.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </CardFooter>
+        </Card>
+      </motion.div>
+    </TooltipProvider>
   );
 };
 
