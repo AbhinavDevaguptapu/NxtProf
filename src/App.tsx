@@ -1,18 +1,5 @@
-/**
- * The main application component for Standup Sync.
- *
- * - Provides global context providers for React Query, tooltips, user and admin authentication.
- * - Handles global loading state while authentication contexts initialize.
- * - Sets up all application routes, including:
- *   - Public routes (auth, admin login)
- *   - Employee-protected routes (dashboard, setup, standups, attendance)
- *   - Admin-protected routes (admin dashboard, employee management)
- *   - Fallback for 404 Not Found
- * - Uses custom `ProtectedRoute` and `AdminProtectedRoute` components to guard sensitive routes.
- * - Integrates two different toaster notification systems (`Toaster` and `Sonner`).
- *
- * @component
- */
+// src/App.tsx
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,7 +10,10 @@ import { AdminAuthProvider, useAdminAuth } from "./context/AdminAuthContext";
 import { UserAuthProvider, useUserAuth } from "./context/UserAuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
+import ProfilePage from "./pages/ProfilePage";
 
+
+// Group page imports for cleanliness
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import AdminLogin from "./pages/AdminLogin";
@@ -37,10 +27,11 @@ import AdminEmployeeDetail from "./pages/AdminEmployeeDetail";
 import NotFound from "./pages/NotFound";
 import OnboardingVideoPage from "./pages/OnBoardingPage";
 import LearningHours from "./pages/LearningHours";
+import FeedbackPage from "./pages/FeedbackPage"; // <-- 1. IMPORT THE NEW PAGE
 
 const queryClient = new QueryClient();
 
-// Global loading spinner while auth contexts initialize
+// Global loading spinner (no changes here)
 const GlobalLoading = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-background">
     <div className="relative">
@@ -61,22 +52,22 @@ const GlobalLoading = () => (
   </div>
 );
 
+
 const AppContent = () => {
   const { user, initialized: userInitialized } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
 
-  // Wait until both contexts finish their initial checks
   if (!userInitialized || !adminInitialized) {
     return <GlobalLoading />;
   }
 
   return (
     <Routes>
-      {/* Public */}
+      {/* Public Routes */}
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* Root: landing or dashboard or admin */}
+      {/* Root Path Logic */}
       <Route
         path="/"
         element={
@@ -92,85 +83,42 @@ const AppContent = () => {
         }
       />
 
-      {/* Explicit index, same logic as "/" */}
       <Route
-        path="/index"
+        path="/profile"
         element={
-          admin ? (
-            <Navigate to="/admin" replace />
-          ) : (
-            <ProtectedRoute>
-              <Index />
-            </ProtectedRoute>
-          )
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/profile"
+        element={
+          <AdminProtectedRoute>
+            <ProfilePage />
+          </AdminProtectedRoute>
         }
       />
 
-      {/* Employee-only */}
+      {/* Employee-only Routes */}
+      <Route path="/setup" element={<ProtectedRoute><EmployeeSetup /></ProtectedRoute>} />
+      <Route path="/standups" element={<ProtectedRoute><Standups /></ProtectedRoute>} />
+      <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+      <Route path="/learning-hours" element={<ProtectedRoute><LearningHours /></ProtectedRoute>} />
+
+      {/* --- 2. ADD THE NEW FEEDBACK ROUTE HERE --- */}
       <Route
-        path="/setup"
-        element={
-          <ProtectedRoute>
-            <EmployeeSetup />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/standups"
-        element={
-          <ProtectedRoute>
-            <Standups />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/attendance"
-        element={
-          <ProtectedRoute>
-            <Attendance />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/learning-hours"
-        element={
-          <ProtectedRoute>
-            <LearningHours />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/onboardingKit"
-        element={
-          <OnboardingVideoPage />
-        }
+        path="/feedback"
+        element={<ProtectedRoute><FeedbackPage /></ProtectedRoute>}
       />
 
-      {/* Admin-only */}
-      <Route
-        path="/admin"
-        element={
-          <AdminProtectedRoute>
-            <AdminHome />
-          </AdminProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/employees"
-        element={
-          <AdminProtectedRoute>
-            <AdminEmployees />
-          </AdminProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/employees/:employeeId"
-        element={
-          <AdminProtectedRoute>
-            <AdminEmployeeDetail />
-          </AdminProtectedRoute>
-        }
-      />
+      {/* Onboarding Kit might be public or protected, adjust as needed */}
+      <Route path="/onboardingKit" element={<OnboardingVideoPage />} />
+
+      {/* Admin-only Routes */}
+      <Route path="/admin" element={<AdminProtectedRoute><AdminHome /></AdminProtectedRoute>} />
+      <Route path="/admin/employees" element={<AdminProtectedRoute><AdminEmployees /></AdminProtectedRoute>} />
+      <Route path="/admin/employees/:employeeId" element={<AdminProtectedRoute><AdminEmployeeDetail /></AdminProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<NotFound />} />

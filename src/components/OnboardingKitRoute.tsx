@@ -1,22 +1,23 @@
-// Main Onboarding Component - UI Updated
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../integrations/firebase/client';
 
 // --- CHILD COMPONENT IMPORTS ---
 import YouTubePlayer from './Youtube';
 import ResourceList from './ResourceList';
 import Checklist from './Checklist';
 import AssessmentModal from './AssessmentModel';
+import OnboardingSuccess from './OnBoardingSuccess';
 
-// --- LUCIDE ICONS FOR STEPPER ---
-import { Check, Circle, MousePointer, Link2, ListChecks } from 'lucide-react';
+// --- LUCIDE ICONS & UI ---
+import { Check, Circle, Loader2 } from 'lucide-react';
 
-// --- CONSTANTS (Data is unchanged) ---
+// --- CONSTANTS ---
 const resources = [
   { label: 'Learning Portal', url: 'https://learning.ccbp.in/', note: 'Login with Number: 9160909057 | OTP: 987654' },
   { label: 'Instructor Handbook', url: 'https://abhinavd.gitbook.io/niat-offline-instructor-handbook/' },
-  { label: 'Daily Schedule', url: 'https://docs.google.com/spreadsheets/d/1gNDLTXyDETmJGY4dlX2ZWUF4YTxjQ3DVzuWPmnhHFuk/edit?gid=162546809#gid=162546g' },
+  { label: 'Daily Schedule', url: 'https://docs.google.com/spreadsheets/d/1gNDLTXyDETmJGY4dlX2ZWUF4YTxjQ3DVzuWPmnhHFuk/edit?gid=162546809#gid=162546809' },
   { label: 'Instructor Worklog Sheet', url: 'https://docs.google.com/spreadsheets/d/1FzF9RaAL9LnAGTSHKRquntCU7zK-aNPzbSE-bOfJ19w/edit?pli=1&gid=495223418#gid=495223418' },
   { label: 'Session & Progress Tracker', url: 'https://docs.google.com/spreadsheets/d/1uhYNuDrvj0MWC2mfWQQPS2YYdiF_5u_3obyhuI983B8/edit?gid=826768177#gid=826768177' },
   { label: 'Learning Hours Sheet', url: 'https://docs.google.com/spreadsheets/d/1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA/edit?pli=1&gid=1475218293#gid=1475218293' },
@@ -26,7 +27,6 @@ const resources = [
   { label: 'Monthly Goal Planning Doc Template', url: 'https://docs.google.com/spreadsheets/d/1Imx7XMuIA-FPwZfX7r2rYnoCsDEpsPYaFNDB7bakFbg/edit?usp=sharing' }
 ];
 const checklistItems = [
-  'Watched Instructor Training Video',
   'Visited all documentation links',
   'Joined WhatsApp & Teams groups',
   'Reviewed daily & worklog sheets',
@@ -38,48 +38,29 @@ const mcqQuestions = [
   { question: 'How to ensure good session delivery?', options: ['Content & Explanation', 'Body language & Tonality', 'Speaker Tips', 'All of the above'], answer: 'All of the above' },
   { question: 'Choose the correct statement.', options: ['Maintain a fast pace', 'Summarize after every section', 'It is ok to pronounce the word in not so clear way', 'Make it sound complicated'], answer: 'Summarize after every section' }
 ];
-const onboardingSteps = [
-  { name: 'Training Video', icon: MousePointer },
-  { name: 'Resources', icon: Link2 },
-  { name: 'Final Checklist', icon: ListChecks }
-];
+const onboardingSteps = ['Training Video', 'Resources', 'Final Checklist'];
 
 // --- Stepper Component ---
 const OnboardingStepper = ({ currentStep }) => {
   return (
     <nav aria-label="Progress">
-      <ol role="list" className="flex items-center">
-        {onboardingSteps.map((stepInfo, stepIdx) => (
-          <li key={stepInfo.name} className={`relative ${stepIdx !== onboardingSteps.length - 1 ? 'pr-8 sm:pr-20' : ''}`}>
-            {stepIdx < currentStep - 1 ? ( // Completed step
-              <>
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="h-0.5 w-full bg-primary" />
-                </div>
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Check className="h-5 w-5" />
-                </div>
-              </>
-            ) : stepIdx === currentStep - 1 ? ( // Current step
-              <>
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="h-0.5 w-full bg-gray-200 dark:bg-gray-700" />
-                </div>
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary bg-background">
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-                </div>
-                <span className="absolute top-10 w-max text-center text-sm font-semibold text-primary">{stepInfo.name}</span>
-              </>
-            ) : ( // Upcoming step
-              <>
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="h-0.5 w-full bg-gray-200 dark:bg-gray-700" />
-                </div>
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-border bg-background">
-                  <Circle className="h-5 w-5 text-muted-foreground/50" />
-                </div>
-              </>
-            )}
+      <ol role="list" className="flex space-x-2">
+        {onboardingSteps.map((stepName, stepIdx) => (
+          <li key={stepName} className="flex-1">
+            <div className={`group flex w-full flex-col border-l-4 py-2 pl-4 transition-colors md:border-l-0 md:border-t-4 md:pl-0 md:pt-4 md:pb-0 
+              ${stepIdx < currentStep - 1 ? 'border-green-600' : ''}
+              ${stepIdx === currentStep - 1 ? 'border-primary' : ''}
+              ${stepIdx > currentStep - 1 ? 'border-border' : ''}
+            `}>
+              <span className={`text-sm font-medium transition-colors 
+                ${stepIdx < currentStep - 1 ? 'text-green-600' : ''}
+                ${stepIdx === currentStep - 1 ? 'text-primary' : ''}
+                ${stepIdx > currentStep - 1 ? 'text-muted-foreground' : ''}
+              `}>
+                Step {stepIdx + 1}
+              </span>
+              <span className="text-sm font-semibold">{stepName}</span>
+            </div>
           </li>
         ))}
       </ol>
@@ -90,7 +71,8 @@ const OnboardingStepper = ({ currentStep }) => {
 
 // --- Main Onboarding Component ---
 const InstructorOnboarding = ({ user_id }) => {
-  // --- All original state logic is untouched ---
+  // --- State logic ---
+  const [onboardingView, setOnboardingView] = useState('loading'); // 'loading', 'onboarding', 'resourcesOnly'
   const [step, setStep] = useState(1);
   const [isVideoWatched, setIsVideoWatched] = useState(false);
   const [clickedResources, setClickedResources] = useState({});
@@ -99,10 +81,31 @@ const InstructorOnboarding = ({ user_id }) => {
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const [score, setScore] = useState(0);
 
-  const allChecked = checklistItems.every(item =>
-    item === 'Watched Instructor Training Video' ? isVideoWatched && assessmentCompleted : checkedItems[item]
-  );
+  // --- Check user's onboarding status on load ---
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!user_id) {
+        setOnboardingView('onboarding'); // Default to onboarding if no user
+        return;
+      }
+      const userStatusRef = doc(db, 'userOnboardingStatus', user_id);
+      const docSnap = await getDoc(userStatusRef);
+
+      if (docSnap.exists() && docSnap.data().onboarding_status === 'COMPLETED') {
+        setOnboardingView('resourcesOnly');
+      } else {
+        setOnboardingView('onboarding');
+      }
+    };
+    checkStatus();
+  }, [user_id]);
+
+  // --- Logic to check if all conditions are met ---
   const allResourcesClicked = resources.every(res => clickedResources[res.url]);
+  const allStandardItemsChecked = checklistItems.every(item => !!checkedItems[item]);
+  const passedAssessment = isVideoWatched && assessmentCompleted && score >= 80;
+  const allChecked = allStandardItemsChecked && passedAssessment;
+
 
   const animationVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -110,25 +113,53 @@ const InstructorOnboarding = ({ user_id }) => {
     exit: { opacity: 0, y: -20 },
   };
 
+  // --- Conditional Rendering based on onboarding status ---
+
+  if (onboardingView === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (onboardingView === 'resourcesOnly') {
+    // Add the YouTube link to the top of the resources array for returning users
+    const resourcesWithVideo = [
+      { label: 'Revisit Training Video', url: 'https://www.youtube.com/watch?v=7k6dHwZTNs0', note: 'Watch the main training video again.' },
+      ...resources
+    ];
+
+    return (
+      <div className="min-h-screen bg-background text-foreground py-8 sm:py-12">
+        <div className="container max-w-5xl mx-auto px-4">
+          <h1 className="text-3xl text-center font-semibold tracking-tight mb-8">
+            Onboarding Resources
+          </h1>
+          {/* Render ResourceList in read-only mode, without navigation */}
+          <ResourceList
+            resources={resourcesWithVideo}
+            clickedResources={{}}
+            setClickedResources={() => { }}
+            isReadOnly={true} onBack={undefined} onContinue={undefined} allResourcesClicked={undefined} />
+        </div>
+      </div>
+    );
+  }
+
+  // --- Default: Full Onboarding Flow ---
   return (
     <div className="min-h-screen bg-background text-foreground py-8 sm:py-12">
       <div className="container max-w-5xl mx-auto px-4">
-        {/* --- HEADER --- */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold  tracking-tight">
-            Instructor Onboarding Kit
-          </h1>
-          <p className="mt-2 text-lg text-muted-foreground">
-            Follow the steps below to complete your setup.
-          </p>
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-semibold tracking-tight">Instructor Onboarding Kit</h1>
+          <p className="mt-2 text-lg text-muted-foreground">Follow the steps below to complete your setup.</p>
         </div>
 
-        {/* --- VISUAL STEPPER --- */}
-        <div className="flex justify-center mb-12">
+        <div className="mb-12">
           <OnboardingStepper currentStep={step} />
         </div>
 
-        {/* --- ANIMATED STEP CONTENT --- */}
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div key="step1" variants={animationVariants} initial="hidden" animate="visible" exit="exit">
@@ -140,7 +171,6 @@ const InstructorOnboarding = ({ user_id }) => {
               />
             </motion.div>
           )}
-
           {step === 2 && (
             <motion.div key="step2" variants={animationVariants} initial="hidden" animate="visible" exit="exit">
               <ResourceList
@@ -153,7 +183,6 @@ const InstructorOnboarding = ({ user_id }) => {
               />
             </motion.div>
           )}
-
           {step === 3 && (
             <motion.div key="step3" variants={animationVariants} initial="hidden" animate="visible" exit="exit">
               <Checklist
@@ -161,7 +190,7 @@ const InstructorOnboarding = ({ user_id }) => {
                 checklistItems={checklistItems}
                 checkedItems={checkedItems}
                 setCheckedItems={setCheckedItems}
-                isVideoWatched={isVideoWatched}
+                passedAssessment={passedAssessment}
                 assessmentCompleted={assessmentCompleted}
                 setShowAssessment={setShowAssessment}
                 allChecked={allChecked}
@@ -172,7 +201,6 @@ const InstructorOnboarding = ({ user_id }) => {
           )}
         </AnimatePresence>
 
-        {/* --- ASSESSMENT MODAL (rendered outside the flow) --- */}
         {showAssessment && (
           <AssessmentModal
             user_id={user_id}

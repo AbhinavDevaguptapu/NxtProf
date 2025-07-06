@@ -1,23 +1,16 @@
-/**
- * Attendance page component for managing and viewing employee attendance records.
- *
- * - Fetches employee and attendance data from Firestore.
- * - Allows admins to edit and save attendance for a selected date.
- * - Supports syncing attendance data to a Google Sheet via an external API.
- * - Displays attendance status for each employee and provides summary statistics.
- * - Integrates with custom UI components and context for authentication and notifications.
- *
- * @component
- * @returns {JSX.Element} The rendered Attendance management page.
- *
- * @remarks
- * - Only admins can edit or sync attendance.
- * - Attendance is tied to a specific standup date (one per day).
- * - Uses Firestore batch writes for efficient updates.
- */
-import React, { useEffect, useState, useCallback } from "react";
-// --- Firebase Imports ---
-
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  addMonths,
+  parseISO,
+  isSameMonth,
+  eachDayOfInterval,
+  isSunday,
+  startOfDay,
+} from "date-fns";
 import { db } from "@/integrations/firebase/client";
 import {
   collection,
@@ -29,414 +22,517 @@ import {
   doc,
   getDoc,
   setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
-// --- Component Imports ---
-import AppNavbar from "@/components/AppNavbar";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableCell,
-  TableHead,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+// Context and Auth Hooks
+import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
-import { Loader2, Calendar as CalendarIcon } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+// Component Imports
+import AppNavbar from "@/components/AppNavbar";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { Loader2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Users, BookOpen, CheckCircle, XCircle, AlertCircle, MinusCircle, CloudUpload } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/components/ui/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { StatCard } from "@/components/StatCard";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 
 // --- Type Definitions ---
 type Employee = { id: string; name: string; email: string; employeeId: string };
-// Updated to use the correct field name
-type Standup = { id: string; scheduledTime: Timestamp };
-type Attendance = { employee_id: string; status: string | null };
+type AttendanceStatus = "Present" | "Absent" | "Missed" | "Not Available";
+type AttendanceRecord = { employee_id: string; status: AttendanceStatus; reason?: string };
+type SessionType = "standups" | "learning_hours";
+type DailyCombinedStatus = { standup?: AttendanceStatus; learning?: AttendanceStatus };
 
+// --- Main Component ---
 export default function Attendance() {
-  const { admin } = useAdminAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, Attendance>>({});
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [editedAtt, setEditedAtt] = useState<Record<string, string>>({});
+  const { admin, loading: adminLoading } = useAdminAuth();
+  const { user, loading: userLoading } = useUserAuth();
+
+  // --- ROBUST LOADING LOGIC ---
+  // The page is only ready when BOTH authentication checks are complete.
+  const isLoading = adminLoading || userLoading;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <AppNavbar />
+      <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col">
+        {isLoading ? (
+          <div className="flex-grow flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : admin ? (
+          <AdminAttendanceView />
+        ) : user ? (
+          <UserAttendanceView userId={user.uid} />
+        ) : (
+          <div className="flex-grow flex items-center justify-center">
+            <Card className="p-6 text-center">
+              <CardHeader>
+                <CardTitle>Authentication Required</CardTitle>
+                <CardDescription>Please log in to view your attendance records.</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+// --- ADMIN VIEW ---
+const AdminAttendanceView = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
-  const fetchData = useCallback(
-    async (date: Date) => {
-      setLoading(true);
-      setEditing(false);
-      try {
-        // Load employee list once
-        if (employees.length === 0) {
-          const empSnap = await getDocs(collection(db, "employees"));
-          setEmployees(
-            empSnap.docs.map((d) => ({
-              id: d.id,
-              ...(d.data() as Omit<Employee, "id">),
-            }))
-          );
-        }
+  const handleSync = async (sessionType: SessionType) => {
+    setIsSyncing(true);
+    try {
+      const functions = getFunctions();
+      const syncAttendanceToSheet = httpsCallable(functions, 'syncAttendanceToSheet');
+      const date = format(selectedDate, "yyyy-MM-dd");
 
-        // Build today's standup ID
-        const standupId = format(date, "yyyy-MM-dd");
-        const standupRef = doc(db, "standups", standupId);
-        const standupSnap = await getDoc(standupRef);
+      toast({ title: "Sync Started", description: `Syncing ${sessionType} data for ${date}...` });
 
-        if (standupSnap.exists()) {
-          // Pull in the correct field
-          const standupDoc = {
-            id: standupSnap.id,
-            ...(standupSnap.data() as Omit<Standup, "id">),
-          };
-          const attSnap = await getDocs(
-            query(
-              collection(db, "attendance"),
-              where("standup_id", "==", standupDoc.id)
-            )
-          );
-          const map: Record<string, Attendance> = {};
-          attSnap.forEach((d) => {
-            const a = d.data() as Attendance;
-            map[a.employee_id] = a;
-          });
-          setAttendance(map);
-        } else {
-          setAttendance({});
-        }
+      const result = await syncAttendanceToSheet({ date, sessionType });
 
-        setEditedAtt({});
-      } catch (err) {
-        console.error("Failed to fetch attendance data:", err);
+      toast({ title: "Sync Successful", description: (result.data as any).message });
+    } catch (error: any) {
+      console.error("Sync failed:", error);
+      // --- SMART ERROR HANDLING ---
+      // This specifically helps the admin if their auth token is stale.
+      if (error.code === 'functions/permission-denied') {
         toast({
-          title: "Error",
-          description: "Could not fetch attendance data.",
+          title: "Permission Denied",
+          description: "Please try logging out and back in to refresh your admin permissions.",
           variant: "destructive",
+          duration: 10000,
         });
-      } finally {
-        setLoading(false);
+      } else {
+        toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
       }
-    },
-    [employees.length, toast]
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  return (
+    <motion.div className="space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <Card>
+        <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-3xl font-bold tracking-tight">Attendance Records</CardTitle>
+            <CardDescription>View, edit, and sync historical attendance records.</CardDescription>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button onClick={() => handleSync('standups')} disabled={isSyncing} className="w-full">
+              {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-2 h-4 w-4" />}
+              Sync Standups
+            </Button>
+            <Button onClick={() => handleSync('learning_hours')} disabled={isSyncing} className="w-full">
+              {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-2 h-4 w-4" />}
+              Sync Learning Hours
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AttendanceReport sessionType="standups" selectedDate={selectedDate} />
+        <AttendanceReport sessionType="learning_hours" selectedDate={selectedDate} />
+      </div>
+    </motion.div>
   );
+};
+
+// --- USER VIEW ---
+const UserAttendanceView = ({ userId }: { userId: string }) => {
+  const [month, setMonth] = useState(new Date());
+  const [allAttendance, setAllAttendance] = useState<Record<string, DailyCombinedStatus>>({});
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchAllData = useCallback(async () => {
+    setLoading(true);
+    const standupQuery = query(collection(db, "attendance"), where("employee_id", "==", userId));
+    const learningQuery = query(collection(db, "learning_hours_attendance"), where("employee_id", "==", userId));
+
+    try {
+      const [standupSnap, learningSnap] = await Promise.all([getDocs(standupQuery), getDocs(learningQuery)]);
+      const combinedData: Record<string, DailyCombinedStatus> = {};
+
+      standupSnap.forEach((doc) => {
+        const dateKey = doc.id.split("_")[0];
+        if (!combinedData[dateKey]) combinedData[dateKey] = {};
+        combinedData[dateKey].standup = doc.data().status as AttendanceStatus;
+      });
+      learningSnap.forEach((doc) => {
+        const dateKey = doc.id.split("_")[0];
+        if (!combinedData[dateKey]) combinedData[dateKey] = {};
+        combinedData[dateKey].learning = doc.data().status as AttendanceStatus;
+      });
+
+      setAllAttendance(combinedData);
+    } catch (error) {
+      console.error("Error fetching attendance data:", error);
+      toast({ title: "Failed to load your data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, toast]);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  const monthlyStats = useMemo(() => {
+    const daysInMonth = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
+    const totalWorkingDays = daysInMonth.filter((day) => !isSunday(day)).length;
+    let standupCount = 0;
+    let learningHourCount = 0;
+    Object.entries(allAttendance).forEach(([dateStr, statuses]) => {
+      const date = parseISO(dateStr);
+      if (isSameMonth(date, month)) {
+        if (statuses.standup === "Present") standupCount++;
+        if (statuses.learning === "Present") learningHourCount++;
+      }
+    });
+    return { standupCount, learningHourCount, totalWorkingDays };
+  }, [allAttendance, month]);
+
+  const DayContent = ({ date }: { date: Date }) => {
+    const dateKey = format(date, "yyyy-MM-dd");
+    const status = allAttendance[dateKey];
+
+    const getStatusClass = (s?: AttendanceStatus) => {
+      switch (s) {
+        case "Present": return "text-green-500";
+        case "Absent": return "text-yellow-500";
+        case "Missed": return "text-red-500";
+        case "Not Available": return "text-gray-500";
+        default: return "text-gray-300 dark:text-gray-700";
+      }
+    };
+
+    return (
+      <TooltipProvider delayDuration={100}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="relative h-full w-full flex flex-col items-center justify-center">
+              {format(date, "d")}
+              {!isSunday(date) && (
+                <div className="absolute -bottom-1 flex items-center justify-center gap-1 font-bold text-xs">
+                  <span className={getStatusClass(status?.standup)}>S</span>
+                  <span className={getStatusClass(status?.learning)}>L</span>
+                </div>
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="text-sm space-y-1 p-1">
+              <p>Standup: <span className="font-semibold">{status?.standup || "N/A"}</span></p>
+              <p>Learning: <span className="font-semibold">{status?.learning || "N/A"}</span></p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  if (loading) return (
+    <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  );
+
+  return (
+    <motion.div className="space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Monthly Attendance Summary</CardTitle>
+          <CardDescription>Your "Present" status for {format(month, "MMMM yyyy")}.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <StatCard title="Standups Attended" value={`${monthlyStats.standupCount} / ${monthlyStats.totalWorkingDays}`} icon={<Users />} />
+          <StatCard title="Learning Hours Attended" value={`${monthlyStats.learningHourCount} / ${monthlyStats.totalWorkingDays}`} icon={<BookOpen />} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Attendance Calendar</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={() => setMonth(subMonths(month, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="w-32 text-center font-semibold">{format(month, "MMMM yyyy")}</span>
+              <Button variant="outline" size="icon" onClick={() => setMonth(addMonths(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Calendar month={month} onMonthChange={setMonth} components={{ Day: DayContent }} className="p-0" />
+        </CardContent>
+        <CardFooter className="flex-col items-start gap-3 pt-4 border-t">
+          <div className="flex items-center gap-x-4 gap-y-2 flex-wrap text-sm text-muted-foreground">
+            <div className="flex items-center gap-1"><span className="font-bold text-green-500">S/L</span>: Present</div>
+            <div className="flex items-center gap-1"><span className="font-bold text-yellow-500">S/L</span>: Absent</div>
+            <div className="flex items-center gap-1"><span className="font-bold text-red-500">S/L</span>: Missed</div>
+            <div className="flex items-center gap-1"><span className="font-bold text-gray-500">S/L</span>: N/A</div>
+            <div className="flex items-center gap-1"><span className="font-bold text-gray-300">S/L</span>: Not Marked</div>
+          </div>
+        </CardFooter>
+      </Card>
+    </motion.div>
+  );
+};
+
+// --- SHARED ADMIN REPORT COMPONENT ---
+const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionType, selectedDate: Date }) => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendance, setAttendance] = useState<Record<string, AttendanceRecord>>({});
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editedAtt, setEditedAtt] = useState<Record<string, AttendanceStatus>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+
+  const [editingReasonFor, setEditingReasonFor] = useState<Employee | null>(null);
+  const [editedReasons, setEditedReasons] = useState<Record<string, string>>({});
+
+  const fetchData = useCallback(async (date: Date) => {
+    setLoading(true);
+    try {
+      if (employees.length === 0) {
+        const empSnap = await getDocs(collection(db, "employees"));
+        setEmployees(empSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Employee)).sort((a, b) => a.name.localeCompare(b.name)));
+      }
+      const sessionId = format(date, "yyyy-MM-dd");
+      const collectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
+      const idField = sessionType === "standups" ? "standup_id" : "learning_hour_id";
+      const q = query(collection(db, collectionName), where(idField, "==", sessionId));
+      const attSnap = await getDocs(q);
+      const map: Record<string, AttendanceRecord> = {};
+      const reasons: Record<string, string> = {};
+      attSnap.forEach((d) => {
+        const a = d.data() as AttendanceRecord;
+        map[a.employee_id] = a;
+        if (a.status === 'Not Available' && a.reason) {
+          reasons[a.employee_id] = a.reason;
+        }
+      });
+      setAttendance(map);
+      setEditedReasons(reasons);
+    } catch (err) {
+      console.error(`Failed to fetch ${sessionType} data:`, err);
+      toast({ title: "Error fetching data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [employees.length, toast, sessionType]);
 
   useEffect(() => {
     fetchData(selectedDate);
   }, [selectedDate, fetchData]);
 
   const handleEdit = () => {
-    setEditedAtt(
-      Object.fromEntries(
-        employees.map((emp) => [
-          emp.id,
-          attendance[emp.id]?.status || "Missed",
-        ])
-      )
-    );
+    const initialEdits: Record<string, AttendanceStatus> = {};
+    employees.forEach((emp) => {
+      initialEdits[emp.id] = attendance[emp.id]?.status || "Missed";
+    });
+    setEditedAtt(initialEdits);
     setEditing(true);
   };
 
-  const handleChange = (empId: string, val: string) => {
-    setEditedAtt((prev) => ({ ...prev, [empId]: val }));
-  };
-
-  const getOrCreateStandupForDate = async (date: Date): Promise<Standup> => {
-    const standupId = format(date, "yyyy-MM-dd");
-    const standupRef = doc(db, "standups", standupId);
-    const standupSnap = await getDoc(standupRef);
-    const now = Timestamp.now();
-
-    if (standupSnap.exists()) {
-      const data = standupSnap.data();
-      // If the document exists but missing the field, patch it
-      if (!("scheduledTime" in data)) {
-        await setDoc(standupRef, { scheduledTime: now }, { merge: true });
-        return { id: standupSnap.id, scheduledTime: now };
-      }
-      return {
-        id: standupSnap.id,
-        ...(data as Omit<Standup, "id">),
-      };
-    }
-
-    // Otherwise create fresh
-    await setDoc(standupRef, { scheduledTime: now });
-    return { id: standupId, scheduledTime: now };
-  };
-
   const handleSave = async () => {
-    setLoading(true);
+    setIsSaving(true);
+    const sessionId = format(selectedDate, "yyyy-MM-dd");
+    const sessionRef = doc(db, sessionType, sessionId);
+    const attendanceCollectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
+    const idField = sessionType === "standups" ? "standup_id" : "learning_hour_id";
+
     try {
-      const standup = await getOrCreateStandupForDate(selectedDate);
-      const markedAt = Timestamp.now();
+      const sessionSnap = await getDoc(sessionRef);
+      if (!sessionSnap.exists()) {
+        await setDoc(sessionRef, { scheduledTime: Timestamp.fromDate(selectedDate), status: "ended", scheduledBy: 'Admin (Manual Edit)' });
+      }
+
       const batch = writeBatch(db);
-
       employees.forEach((emp) => {
-        const ref = doc(db, "attendance", `${standup.id}_${emp.id}`);
-        batch.set(
-          ref,
-          {
-            standup_id: standup.id,
-            employee_id: emp.id,
-            status: editedAtt[emp.id] || "Missed",
-            // write back to the correct field
-            scheduledTime: standup.scheduledTime,
-            markedAt,
-          },
-          { merge: true }
-        );
-      });
-
-      await batch.commit();
-      await fetchData(selectedDate);
-      setEditing(false);
-      toast({ title: "Success", description: "Attendance saved." });
-    } catch (err) {
-      console.error("Failed to save attendance:", err);
-      toast({
-        title: "Error",
-        description: "Could not save attendance.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSyncSheet = async () => {
-    setLoading(true);
-    try {
-      const standup = await getOrCreateStandupForDate(selectedDate);
-      const payload = employees.map((emp) => ({
-        standup_id: standup.id,
-        standup_time: standup.scheduledTime.toDate().toLocaleString(),
-        employee_id: emp.employeeId,
-        employee_name: emp.name,
-        employee_email: emp.email,
-        status: attendance[emp.id]?.status || "Missed",
-      }));
-      await fetch(
-        "https://script.google.com/macros/s/AKfycbzaRO0VUstPMLRbDPNQEHhpbrChn37aNVhfhS6mt0SJ_QCQ-wK78Un-LwETZiI1PqWdjw/exec",
-        {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ records: payload }),
+        const attRef = doc(db, attendanceCollectionName, `${sessionId}_${emp.id}`);
+        const status = editedAtt[emp.id];
+        const record: any = {
+          [idField]: sessionId,
+          employee_id: emp.id,
+          employee_name: emp.name,
+          employeeId: emp.employeeId,
+          employee_email: emp.email,
+          status: status,
+          scheduled_at: Timestamp.fromDate(startOfDay(selectedDate)),
+          markedAt: serverTimestamp(),
+        };
+        if (status === 'Not Available') {
+          record.reason = editedReasons[emp.id] || "No reason provided";
         }
-      );
-      toast({ title: "Sync complete", description: "Sent to Google Sheet." });
-    } catch (err: any) {
-      toast({
-        title: "Sync failed",
-        description: err.message || "Unknown error",
-        variant: "destructive",
+        batch.set(attRef, record, { merge: true });
       });
+      await batch.commit();
+      toast({ title: "Attendance saved successfully." });
+      setEditing(false);
+      fetchData(selectedDate);
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Failed to save attendance.", variant: "destructive" });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  const totalEmployees = employees.length;
-  const presentCount = employees.filter((emp) =>
-    (editing ? editedAtt[emp.id] : attendance[emp.id]?.status) === "Present"
-  ).length;
+  const handleSaveReason = (employeeId: string, reason: string) => {
+    setEditedReasons(p => ({ ...p, [employeeId]: reason }));
+    setEditedAtt(p => ({ ...p, [employeeId]: 'Not Available' }));
+    setEditingReasonFor(null);
+  };
+
+  const getBadgeStyle = (status?: AttendanceStatus) => {
+    switch (status) {
+      case "Present": return "bg-green-100 text-green-800 border-green-300";
+      case "Absent": return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "Missed": return "bg-red-100 text-red-800 border-red-300";
+      case "Not Available": return "bg-gray-200 text-gray-900 border-gray-300";
+      default: return "bg-gray-100 text-gray-500 border-gray-200";
+    }
+  };
+
+  const dailyStats = useMemo(() => {
+    const data = editing ? editedAtt : Object.fromEntries(Object.entries(attendance).map(([k, v]) => [k, v.status]));
+    const values = Object.values(data);
+    return {
+      present: values.filter(s => s === 'Present').length,
+      absent: values.filter(s => s === 'Absent').length,
+      missed: values.filter(s => s === 'Missed').length,
+      notAvailable: values.filter(s => s === 'Not Available').length,
+    }
+  }, [attendance, editing, editedAtt]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <AppNavbar />
-      <main className="flex-1 flex items-center justify-center p-3 md:p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-4xl"
-        >
-          <Card className="p-4 md:p-6 shadow-lg">
-            <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center pb-3 md:pb-4 gap-3 md:gap-0">
-              <CardTitle className="text-2xl md:text-3xl font-bold">
-                Attendance
-              </CardTitle>
-              {admin && (
-                <Button
-                  onClick={handleSyncSheet}
-                  disabled={loading}
-                  variant="outline"
-                  className="w-full md:w-auto"
-                >
-                  Resync to Google Sheet
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center items-center p-6 md:p-8">
-                  <Loader2 className="h-6 w-6 md:h-8 md:w-8 animate-spin text-primary" />
-                  <span className="ml-2 md:ml-3 text-base md:text-lg text-muted-foreground">
-                    Loading attendance...
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 pt-2 gap-4 md:gap-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full md:w-auto">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full sm:w-[280px] justify-start text-left font-normal",
-                              !selectedDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {selectedDate
-                              ? format(selectedDate, "PPP")
-                              : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(d) => d && setSelectedDate(d)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <div className="font-semibold text-base md:text-lg text-foreground">
-                        <span className="text-green-700 font-extrabold">
-                          Present: {presentCount} / {totalEmployees}
-                        </span>
-                      </div>
-                    </div>
-                    {admin &&
-                      (editing ? (
-                        <div className="flex gap-2 w-full md:w-auto">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditing(false);
-                              setEditedAtt({});
-                            }}
-                            className="flex-1 md:flex-none"
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleSave}
-                            className="flex-1 md:flex-none"
-                          >
-                            Save
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleEdit}
-                          className="w-full md:w-auto"
-                        >
-                          Edit
-                        </Button>
-                      ))}
-                  </div>
-                  <div className="overflow-auto rounded-md border max-h-[50vh] md:max-h-[60vh]">
-                    <Table className="min-w-[500px] md:min-w-0">
-                      <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm z-10">
-                        <TableRow>
-                          <TableHead className="w-1/2 text-sm md:text-base">
-                            Name
-                          </TableHead>
-                          <TableHead className="w-1/2 text-sm md:text-base">
-                            Status
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {employees.length === 0 ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={2}
-                              className="h-24 text-center text-muted-foreground"
+    <>
+      <ReasonModal
+        isOpen={!!editingReasonFor}
+        employee={editingReasonFor}
+        onClose={() => setEditingReasonFor(null)}
+        onSave={handleSaveReason}
+      />
+      <Card className="flex flex-col">
+        <CardHeader className="flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-xl">{sessionType === "standups" ? "Standup Report" : "Learning Session Report"}</CardTitle>
+          </div>
+          <div className="flex gap-2 items-center">
+            {editing ? (
+              <>
+                <Button variant="ghost" onClick={() => setEditing(false)} disabled={isSaving}>Cancel</Button>
+                <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save"}</Button>
+              </>
+            ) : (
+              <Button onClick={handleEdit} disabled={isSaving}>Edit</Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Present</p><p className="text-2xl font-bold">{dailyStats.present}</p></Card>
+                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Absent</p><p className="text-2xl font-bold">{dailyStats.absent}</p></Card>
+                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Missed</p><p className="text-2xl font-bold">{dailyStats.missed}</p></Card>
+                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Unavailable</p><p className="text-2xl font-bold">{dailyStats.notAvailable}</p></Card>
+              </div>
+              <div className="overflow-auto rounded-md border max-h-[50vh]">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background/95 backdrop-blur z-10">
+                    <TableRow>
+                      <TableHead className="w-[200px]">Name</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employees.map((emp) => (
+                      <TableRow key={emp.id}>
+                        <TableCell className="font-medium">{emp.name}</TableCell>
+                        <TableCell>
+                          {editing ? (
+                            <Select
+                              value={editedAtt[emp.id] || 'Missed'}
+                              onValueChange={(v) => {
+                                const newStatus = v as AttendanceStatus;
+                                if (newStatus === 'Not Available') {
+                                  setEditingReasonFor(emp);
+                                } else {
+                                  setEditedAtt((p) => ({ ...p, [emp.id]: newStatus }));
+                                }
+                              }}
                             >
-                              No employees found.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          employees.map((emp) => (
-                            <TableRow key={emp.id}>
-                              <TableCell className="font-medium text-sm md:text-base">
-                                {emp.name}
-                              </TableCell>
-                              <TableCell>
-                                {editing && admin ? (
-                                  <Select
-                                    value={editedAtt[emp.id]}
-                                    onValueChange={(v) => handleChange(emp.id, v)}
-                                  >
-                                    <SelectTrigger
-                                      className={cn(
-                                        "w-full text-xs md:text-sm",
-                                        editedAtt[emp.id] === "Present"
-                                          ? "text-green-600"
-                                          : "text-orange-600"
-                                      )}
-                                    >
-                                      <SelectValue placeholder="Set status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Present">Present</SelectItem>
-                                      <SelectItem value="Missed">Missed</SelectItem>
-                                      <SelectItem value="Absent">Absent</SelectItem>
-                                      <SelectItem value="Not Available">
-                                        Not Available
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <span
-                                    className={cn(
-                                      "text-xs md:text-sm",
-                                      attendance[emp.id]?.status === "Present"
-                                        ? "text-green-600 font-semibold"
-                                        : "text-orange-600 font-semibold"
-                                    )}
-                                  >
-                                    {attendance[emp.id]?.status || "Missed"}
-                                  </span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </main>
-    </div>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Present">Present</SelectItem>
+                                <SelectItem value="Absent">Absent</SelectItem>
+                                <SelectItem value="Missed">Missed</SelectItem>
+                                <SelectItem value="Not Available">Not Available</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="outline" className={cn("text-sm", getBadgeStyle(attendance[emp.id]?.status))}>
+                              {attendance[emp.id]?.status || "Not Marked"}
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
-}
+};
+
+// --- Reusable Modal for Reasons ---
+const ReasonModal = ({ employee, isOpen, onClose, onSave }: { employee: Employee | null, isOpen: boolean, onClose: () => void, onSave: (id: string, r: string) => void }) => {
+  const [reason, setReason] = useState("");
+  useEffect(() => { if (isOpen) setReason(""); }, [isOpen]);
+  if (!isOpen || !employee) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reason for Unavailability: {employee.name}</DialogTitle>
+          <DialogDescription>Provide a brief reason why this member is unavailable.</DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Label htmlFor="absence-reason" className="sr-only">Reason</Label>
+          <Textarea id="absence-reason" placeholder="e.g., On leave, sick day, client meeting..." value={reason} onChange={(e) => setReason(e.target.value)} rows={4} />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => onSave(employee.id, reason)}>Save Reason</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};

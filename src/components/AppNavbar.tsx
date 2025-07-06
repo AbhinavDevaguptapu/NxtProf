@@ -1,23 +1,14 @@
-/**
- * AppNavbar component renders the main navigation bar for the Standup-Sync application.
- *
- * Features:
- * - Responsive navigation bar with a mobile dropdown menu and desktop navigation links.
- * - Displays the application logo and name.
- * - Shows navigation links for users (Home, Standups, Attendance).
- * - Displays user/admin profile avatar with a dropdown menu for profile actions.
- * - Allows users to edit their profile or log out.
- * - Provides access to the admin dashboard for admin users.
- * - Handles authentication state and navigation.
- *
- * Dependencies:
- * - React Router for navigation.
- * - Firebase for authentication.
- * - Custom hooks for user and admin authentication context.
- * - UI components for dropdown menus and profile editing.
- *
- * @component
- */
+// src/components/AppNavbar.tsx
+
+import { useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "@/integrations/firebase/client";
+
+// UI Components
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,28 +16,42 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Context & Hooks
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { auth } from "@/integrations/firebase/client";
-import { cn } from "@/lib/utils";
-import { signOut } from "firebase/auth";
-import { LayoutDashboard, LogOut, UserCircle, Menu } from "lucide-react"; // Added Menu icon
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import ProfileEditor from "./ProfileEditor";
 
-const userLinks = [
-  { path: "/", label: "Home" },
-  { path: "/standups", label: "Standups" },
-  { path: "/learning-hours", label: "Learning Hours" },
-  { path: "/attendance", label: "Attendance" },
-  { path: "/onboardingKit", label: "Onboarding Kit" },
+// Icons
+import {
+  Home,
+  LayoutDashboard,
+  LogOut,
+  UserCircle,
+  Search,
+  MessageSquareQuote,
+  Users,
+  GraduationCap,
+  Box,
+  CalendarCheck
+} from "lucide-react";
+
+// The commands list remains unchanged
+const navCommands = [
+  { path: "/feedback", label: "AI Feedback", icon: <MessageSquareQuote className="mr-2 h-4 w-4" /> },
+  { path: "/standups", label: "Standups", icon: <Users className="mr-2 h-4 w-4" /> },
+  { path: "/learning-hours", label: "Learning Hours", icon: <GraduationCap className="mr-2 h-4 w-4" /> },
+  { path: "/onboardingKit", label: "Onboarding Kit", icon: <Box className="mr-2 h-4 w-4" /> },
+  { path: "/attendance", label: "Attendance", icon: <CalendarCheck className="mr-2 h-4 w-4" /> },
 ];
 
 export default function AppNavbar() {
-  const { pathname } = useLocation();
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
+
+  // State for the search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { user, loading } = useUserAuth();
   const { admin } = useAdminAuth();
@@ -55,6 +60,14 @@ export default function AppNavbar() {
   const displayName = user?.displayName || admin?.email || "User";
   const displayAvatar = user?.photoURL || undefined;
   const isAdmin = !!admin;
+
+  // Filter commands based on the search query
+  const filteredCommands = useMemo(() => {
+    if (!searchQuery) return navCommands;
+    return navCommands.filter(command =>
+      command.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, navCommands]);
 
   const handleLogout = async () => {
     try {
@@ -65,77 +78,107 @@ export default function AppNavbar() {
     }
   };
 
+  const runCommand = (path: string) => {
+    setIsSearchOpen(false); // Close the popover
+    setSearchQuery("");     // Clear the search bar
+    navigate(path);
+  };
+
+  // When the popover closes, clear the search query
+  const handleOpenChange = (open: boolean) => {
+    setIsSearchOpen(open);
+    if (!open) {
+      setSearchQuery("");
+    }
+  };
+
   return (
     <header className="w-full bg-background border-b sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Left section: Mobile menu + Logo */}
-          <div className="flex items-center gap-4">
-            {/* Mobile menu button (hidden on desktop) */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="p-2 rounded-md text-foreground hover:bg-muted"
-                    aria-label="Open navigation menu"
-                  >
-                    <Menu className="h-6 w-6" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="mt-2 w-48">
-                  {userLinks.map(({ path, label }) => (
-                    <DropdownMenuItem key={path} asChild>
-                      <Link
-                        to={path}
-                        className={cn(
-                          "w-full",
-                          pathname === path && "font-semibold"
-                        )}
-                      >
-                        {label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+        <div className="flex items-center justify-between h-16 gap-4">
 
-            {/* Logo / App Name */}
+          <div className="flex items-center gap-2 md:gap-4">
             <Link to="/" className="flex items-center gap-2 text-xl font-bold">
               <LayoutDashboard className="h-6 w-6" />
-              <span>NxtProf</span>
+              <span className="hidden sm:inline">NxtProf</span>
             </Link>
           </div>
 
-          {/* Navigation Links (hidden on mobile) */}
-          <nav className="hidden md:flex items-center gap-2">
-            {userLinks.map(({ path, label }) => (
-              <Link
-                key={path}
-                to={path}
-                className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md text-muted-foreground transition-colors hover:text-foreground",
-                  pathname === path && "text-foreground"
-                )}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
 
-          {/* Profile Dropdown */}
-          <div className="flex items-center">
+          {/* Center section: The YouTube-style Search */}
+          <div className="flex-1 flex justify-center">
+            <div className="flex items-center gap-3 w-full max-w-lg px-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to="/">
+                      <Home className="h-5 w-5" />
+                      <span className="sr-only">Home</span>
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Home</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Popover open={isSearchOpen} onOpenChange={handleOpenChange}>
+                <PopoverTrigger asChild>
+                  <div
+                    className="relative flex-1 cursor-text"
+                    onClick={() =>
+                      document.getElementById("navbar-search-input")?.focus()
+                    }
+                  >
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="navbar-search-input"
+                      type="text"
+                      placeholder="Search features..."
+                      className="pl-9 w-full"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[--radix-popover-trigger-width] mt-1 p-0"
+                  align="start"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <div className="flex flex-col space-y-1 p-1">
+                    {filteredCommands.length > 0 ? (
+                      filteredCommands.map((command) => (
+                        <Button
+                          key={command.path}
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => runCommand(command.path)}
+                        >
+                          {command.icon}
+                          <span>{command.label}</span>
+                        </Button>
+                      ))
+                    ) : (
+                      <p className="p-4 text-sm text-center text-muted-foreground">
+                        No results found.
+                      </p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Right section: Profile Dropdown */}
+          <div className="flex items-center gap-2">
             {!loading && isLoggedIn && (
               <>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 rounded-full p-1 hover:bg-muted/50 transition-colors">
                       {displayAvatar ? (
-                        <img
-                          src={displayAvatar}
-                          alt={displayName}
-                          className="w-9 h-9 rounded-full object-cover"
-                        />
+                        <img src={displayAvatar} alt={displayName} className="w-9 h-9 rounded-full object-cover" />
                       ) : (
                         <span className="w-9 h-9 flex items-center justify-center rounded-full bg-secondary text-secondary-foreground font-semibold">
                           {displayName?.slice(0, 1).toUpperCase() ?? "U"}
@@ -144,30 +187,13 @@ export default function AppNavbar() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem disabled>
-                      <div className="font-medium">{displayName}</div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {isAdmin && (
-                      <DropdownMenuItem onClick={() => navigate('/admin/employees')}>
-                        <UserCircle className="mr-2 h-4 w-4" />
-                        <span>Admin Dashboard</span>
-                      </DropdownMenuItem>
-                    )}
-                    {user && (
-                      <DropdownMenuItem onClick={() => setShowProfile(true)}>
-                        <UserCircle className="mr-2 h-4 w-4" />
-                        <span>Edit Profile</span>
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
+                    <DropdownMenuItem disabled><div className="font-medium">{displayName}</div></DropdownMenuItem>
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Logout</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <ProfileEditor open={showProfile} onOpenChange={setShowProfile} />
               </>
             )}
           </div>

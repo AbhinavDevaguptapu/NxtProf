@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFeedbackSummary = exports.deleteEmployee = exports.addAdminRole = void 0;
+exports.getEmployeesWithAdminStatus = exports.removeAdminRole = exports.syncAttendanceToSheet = exports.getFeedbackSummary = exports.deleteEmployee = exports.addAdminRole = void 0;
 /**
  * Cloud Function to retrieve and summarize feedback data for a specific employee from a Google Sheet.
  *
@@ -68,6 +68,7 @@ const google_auth_library_1 = require("google-auth-library");
 const googleapis_1 = require("googleapis");
 const generative_ai_1 = require("@google/generative-ai");
 const https_1 = require("firebase-functions/v2/https");
+const functions = __importStar(require("firebase-functions"));
 const date_fns_1 = require("date-fns");
 admin.initializeApp();
 function getGeminiKey() {
@@ -401,5 +402,193 @@ exports.getFeedbackSummary = (0, https_1.onCall)({
         graphData,
         graphTimeseries,
     };
+});
+// --- Find the syncAttendanceToSheet function and REPLACE it with this entire block ---
+exports.syncAttendanceToSheet = (0, https_1.onCall)({
+    timeoutSeconds: 120,
+    memory: "256MiB",
+    secrets: ["SHEETS_SA_KEY"],
+}, async (request) => {
+    var _a, _b;
+    // 1. Authentication & Authorization (Unchanged)
+    const callerUid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!callerUid) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
+    }
+    try {
+        const userRecord = await admin.auth().getUser(callerUid);
+        if (((_b = userRecord.customClaims) === null || _b === void 0 ? void 0 : _b.isAdmin) !== true) {
+            throw new https_1.HttpsError("permission-denied", "Must be an admin to run this operation.");
+        }
+    }
+    catch (error) {
+        console.error("Admin check failed:", error);
+        throw new https_1.HttpsError("internal", "Could not verify user permissions.");
+    }
+    // 2. Validate Input (Unchanged)
+    const { date, sessionType } = request.data;
+    if (!date || !sessionType) {
+        throw new https_1.HttpsError("invalid-argument", "Missing 'date' or 'sessionType'.");
+    }
+    // --- Configuration ---
+    const SPREADSHEET_ID = "1mMTTdmpGNwqJy9co4tcExdj6FZ0nvEZOhLLhW8yMNn4";
+    const db = admin.firestore();
+    // 3. Fetch Data from Firestore (Unchanged)
+    const collectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
+    const idField = sessionType === "standups" ? "standup_id" : "learning_hour_id";
+    const q = db.collection(collectionName).where(idField, "==", date);
+    const snapshot = await q.get();
+    if (snapshot.empty) {
+        return { success: true, message: `No Firestore records found for ${date}. Sheet was not modified.` };
+    }
+    const recordsToSync = snapshot.docs.map(doc => {
+        const data = doc.data();
+        // --- REPLACE WITH THIS BLOCK ---
+        const options = {
+            hour12: true,
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: 'Asia/Kolkata' // Explicitly set the timezone to IST
+        };
+        const scheduledTime = data.scheduled_at ? new Date(data.scheduled_at.toMillis()).toLocaleTimeString('en-US', options) : "N/A";
+        return [
+            data.standup_id || data.learning_hour_id,
+            scheduledTime,
+            sessionType,
+            data.employeeId || "",
+            data.employee_name || "",
+            data.employee_email || "",
+            data.status,
+            data.reason || "",
+        ];
+    });
+    // --- Find and Delete Existing Rows by Sheet Index ---
+    try {
+        // 4. Authenticate with Google Sheets
+        const saRaw = process.env.SHEETS_SA_KEY;
+        const sa = JSON.parse(saRaw);
+        const jwt = new google_auth_library_1.JWT({
+            email: sa.client_email,
+            key: sa.private_key,
+            scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+        });
+        const sheets = googleapis_1.google.sheets({ version: "v4", auth: jwt });
+        // 5. Get Sheet Info by Index
+        const spreadsheetMeta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+        const allSheets = spreadsheetMeta.data.sheets;
+        if (!allSheets || allSheets.length < 2) {
+            throw new https_1.HttpsError("not-found", "The spreadsheet must contain at least two sheets.");
+        }
+        const targetSheetIndex = sessionType === "standups" ? 0 : 1;
+        const targetSheet = allSheets[targetSheetIndex];
+        // 1) make sure we actually got a sheet at that index
+        if (!targetSheet) {
+            throw new https_1.HttpsError("not-found", `No sheet found at index ${targetSheetIndex}.`);
+        }
+        // 2) pull off its properties
+        const props = targetSheet.properties || {};
+        // 3) explicitly check for missing (null or undefined)
+        //    this won’t mistake 0 for “missing”
+        if (props.sheetId == null || props.title == null) {
+            throw new https_1.HttpsError("not-found", `Sheet at index ${targetSheetIndex} is missing an ID or title.`);
+        }
+        // 4) now safely extract them
+        const sheetId = props.sheetId; // could be 0, but that’s fine
+        const sheetName = props.title;
+        // 6. Find and Delete Existing Rows
+        const rangeToRead = `${sheetName}!A2:A`;
+        const existingData = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: rangeToRead });
+        const rowsToDelete = [];
+        if (existingData.data.values) {
+            existingData.data.values.forEach((row, index) => {
+                if (row[0] === date) {
+                    rowsToDelete.push({
+                        deleteDimension: {
+                            range: { sheetId, dimension: "ROWS", startIndex: index + 1, endIndex: index + 2 },
+                        },
+                    });
+                }
+            });
+        }
+        if (rowsToDelete.length > 0) {
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId: SPREADSHEET_ID,
+                requestBody: { requests: rowsToDelete.reverse() },
+            });
+            functions.logger.info(`Deleted ${rowsToDelete.length} old rows for date ${date}.`);
+        }
+        // 7. Append Fresh Data
+        if (recordsToSync.length > 0) {
+            await sheets.spreadsheets.values.append({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${sheetName}!A:H`,
+                valueInputOption: "USER_ENTERED",
+                requestBody: { values: recordsToSync },
+            });
+            return { success: true, message: `Successfully synced ${recordsToSync.length} records.` };
+        }
+        else {
+            return { success: true, message: `No Firestore records found for ${date}. Existing sheet data was cleared.` };
+        }
+    }
+    catch (err) {
+        functions.logger.error("Error during Google Sheets operation:", err);
+        throw new https_1.HttpsError("internal", "An error occurred while syncing to the sheet. " + err.message);
+    }
+});
+// Add this new function alongside your existing addAdminRole function
+exports.removeAdminRole = (0, https_1.onCall)(async (request) => {
+    var _a, _b;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin)) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can modify roles.");
+    }
+    const email = (_b = request.data.email) === null || _b === void 0 ? void 0 : _b.trim();
+    if (!email) {
+        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
+    }
+    try {
+        const user = await admin.auth().getUserByEmail(email);
+        // Set custom claims, ensuring other claims are merged if they exist
+        await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isAdmin: false }));
+        return { message: `Admin role removed for ${email}.` };
+    }
+    catch (err) {
+        if (err.code === "auth/user-not-found") {
+            throw new https_1.HttpsError("not-found", "User not found.");
+        }
+        console.error("removeAdminRole error:", err);
+        throw new https_1.HttpsError("internal", "Could not remove admin role.");
+    }
+});
+// Add this function to securely get the list of employees with their admin status
+exports.getEmployeesWithAdminStatus = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin)) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can view the employee list.");
+    }
+    try {
+        // Get all users from Firebase Auth to check their custom claims
+        const listUsersResult = await admin.auth().listUsers(1000);
+        const adminUids = new Set();
+        listUsersResult.users.forEach(userRecord => {
+            var _a;
+            if (((_a = userRecord.customClaims) === null || _a === void 0 ? void 0 : _a.isAdmin) === true) {
+                adminUids.add(userRecord.uid);
+            }
+        });
+        // Get all employee profiles from Firestore
+        const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
+        // Merge the two data sources
+        const employeesWithStatus = employeesSnapshot.docs.map(doc => {
+            const employeeData = doc.data();
+            return Object.assign(Object.assign({ id: doc.id }, employeeData), { isAdmin: adminUids.has(doc.id) // Add the isAdmin flag
+             });
+        });
+        return employeesWithStatus;
+    }
+    catch (error) {
+        console.error("Error fetching employees with admin status:", error);
+        throw new https_1.HttpsError("internal", "Failed to fetch employee data.");
+    }
 });
 //# sourceMappingURL=index.js.map
