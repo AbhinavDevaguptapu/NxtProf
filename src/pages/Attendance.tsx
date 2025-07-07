@@ -33,18 +33,66 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 // Component Imports
 import AppNavbar from "@/components/AppNavbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
-import { Loader2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Users, BookOpen, CheckCircle, XCircle, AlertCircle, MinusCircle, CloudUpload } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import {
+  Loader2,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  BookOpen,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  MinusCircle,
+  CloudUpload,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableHead,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -52,9 +100,16 @@ import { cn } from "@/lib/utils";
 // --- Type Definitions ---
 type Employee = { id: string; name: string; email: string; employeeId: string };
 type AttendanceStatus = "Present" | "Absent" | "Missed" | "Not Available";
-type AttendanceRecord = { employee_id: string; status: AttendanceStatus; reason?: string };
+type AttendanceRecord = {
+  employee_id: string;
+  status: AttendanceStatus;
+  reason?: string;
+};
 type SessionType = "standups" | "learning_hours";
-type DailyCombinedStatus = { standup?: AttendanceStatus; learning?: AttendanceStatus };
+type DailyCombinedStatus = {
+  standup?: AttendanceStatus;
+  learning?: AttendanceStatus;
+};
 
 // --- Main Component ---
 export default function Attendance() {
@@ -82,7 +137,9 @@ export default function Attendance() {
             <Card className="p-6 text-center">
               <CardHeader>
                 <CardTitle>Authentication Required</CardTitle>
-                <CardDescription>Please log in to view your attendance records.</CardDescription>
+                <CardDescription>
+                  Please log in to view your attendance records.
+                </CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -102,27 +159,41 @@ const AdminAttendanceView = () => {
     setIsSyncing(true);
     try {
       const functions = getFunctions();
-      const syncAttendanceToSheet = httpsCallable(functions, 'syncAttendanceToSheet');
+      const syncAttendanceToSheet = httpsCallable(
+        functions,
+        "syncAttendanceToSheet"
+      );
       const date = format(selectedDate, "yyyy-MM-dd");
 
-      toast({ title: "Sync Started", description: `Syncing ${sessionType} data for ${date}...` });
+      toast({
+        title: "Sync Started",
+        description: `Syncing ${sessionType} data for ${date}...`,
+      });
 
       const result = await syncAttendanceToSheet({ date, sessionType });
 
-      toast({ title: "Sync Successful", description: (result.data as any).message });
+      toast({
+        title: "Sync Successful",
+        description: (result.data as any).message,
+      });
     } catch (error: any) {
       console.error("Sync failed:", error);
       // --- SMART ERROR HANDLING ---
       // This specifically helps the admin if their auth token is stale.
-      if (error.code === 'functions/permission-denied') {
+      if (error.code === "functions/permission-denied") {
         toast({
           title: "Permission Denied",
-          description: "Please try logging out and back in to refresh your admin permissions.",
+          description:
+            "Please try logging out and back in to refresh your admin permissions.",
           variant: "destructive",
           duration: 10000,
         });
       } else {
-        toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+        toast({
+          title: "Sync Failed",
+          description: error.message,
+          variant: "destructive",
+        });
       }
     } finally {
       setIsSyncing(false);
@@ -130,20 +201,45 @@ const AdminAttendanceView = () => {
   };
 
   return (
-    <motion.div className="space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <Card>
         <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-3xl font-bold tracking-tight">Attendance Records</CardTitle>
-            <CardDescription>View, edit, and sync historical attendance records.</CardDescription>
+            <CardTitle className="text-3xl font-bold tracking-tight">
+              Attendance Records
+            </CardTitle>
+            <CardDescription>
+              View, edit, and sync historical attendance records.
+            </CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button onClick={() => handleSync('standups')} disabled={isSyncing} className="w-full">
-              {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-2 h-4 w-4" />}
+            <Button
+              onClick={() => handleSync("standups")}
+              disabled={isSyncing}
+              className="w-full"
+            >
+              {isSyncing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CloudUpload className="mr-2 h-4 w-4" />
+              )}
               Sync Standups
             </Button>
-            <Button onClick={() => handleSync('learning_hours')} disabled={isSyncing} className="w-full">
-              {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-2 h-4 w-4" />}
+            <Button
+              onClick={() => handleSync("learning_hours")}
+              disabled={isSyncing}
+              className="w-full"
+            >
+              {isSyncing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CloudUpload className="mr-2 h-4 w-4" />
+              )}
               Sync Learning Hours
             </Button>
           </div>
@@ -151,7 +247,10 @@ const AdminAttendanceView = () => {
       </Card>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AttendanceReport sessionType="standups" selectedDate={selectedDate} />
-        <AttendanceReport sessionType="learning_hours" selectedDate={selectedDate} />
+        <AttendanceReport
+          sessionType="learning_hours"
+          selectedDate={selectedDate}
+        />
       </div>
     </motion.div>
   );
@@ -160,17 +259,28 @@ const AdminAttendanceView = () => {
 // --- USER VIEW ---
 const UserAttendanceView = ({ userId }: { userId: string }) => {
   const [month, setMonth] = useState(new Date());
-  const [allAttendance, setAllAttendance] = useState<Record<string, DailyCombinedStatus>>({});
+  const [allAttendance, setAllAttendance] = useState<
+    Record<string, DailyCombinedStatus>
+  >({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
-    const standupQuery = query(collection(db, "attendance"), where("employee_id", "==", userId));
-    const learningQuery = query(collection(db, "learning_hours_attendance"), where("employee_id", "==", userId));
+    const standupQuery = query(
+      collection(db, "attendance"),
+      where("employee_id", "==", userId)
+    );
+    const learningQuery = query(
+      collection(db, "learning_hours_attendance"),
+      where("employee_id", "==", userId)
+    );
 
     try {
-      const [standupSnap, learningSnap] = await Promise.all([getDocs(standupQuery), getDocs(learningQuery)]);
+      const [standupSnap, learningSnap] = await Promise.all([
+        getDocs(standupQuery),
+        getDocs(learningQuery),
+      ]);
       const combinedData: Record<string, DailyCombinedStatus> = {};
 
       standupSnap.forEach((doc) => {
@@ -198,7 +308,10 @@ const UserAttendanceView = ({ userId }: { userId: string }) => {
   }, [fetchAllData]);
 
   const monthlyStats = useMemo(() => {
-    const daysInMonth = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
+    const daysInMonth = eachDayOfInterval({
+      start: startOfMonth(month),
+      end: endOfMonth(month),
+    });
     const totalWorkingDays = daysInMonth.filter((day) => !isSunday(day)).length;
     let standupCount = 0;
     let learningHourCount = 0;
@@ -218,11 +331,16 @@ const UserAttendanceView = ({ userId }: { userId: string }) => {
 
     const getStatusClass = (s?: AttendanceStatus) => {
       switch (s) {
-        case "Present": return "text-green-500";
-        case "Absent": return "text-yellow-500";
-        case "Missed": return "text-red-500";
-        case "Not Available": return "text-gray-500";
-        default: return "text-gray-300 dark:text-gray-700";
+        case "Present":
+          return "text-green-500";
+        case "Absent":
+          return "text-yellow-500";
+        case "Missed":
+          return "text-red-500";
+        case "Not Available":
+          return "text-gray-500";
+        default:
+          return "text-gray-300 dark:text-gray-700";
       }
     };
 
@@ -242,8 +360,18 @@ const UserAttendanceView = ({ userId }: { userId: string }) => {
           </TooltipTrigger>
           <TooltipContent>
             <div className="text-sm space-y-1 p-1">
-              <p>Standup: <span className="font-semibold">{status?.standup || "N/A"}</span></p>
-              <p>Learning: <span className="font-semibold">{status?.learning || "N/A"}</span></p>
+              <p>
+                Standup:{" "}
+                <span className="font-semibold">
+                  {status?.standup === "Not Available" ? "N/A" : status?.standup || "N/A"}
+                </span>
+              </p>
+              <p>
+                Learning:{" "}
+                <span className="font-semibold">
+                  {status?.learning === "Not Available" ? "N/A" : status?.learning || "N/A"}
+                </span>
+              </p>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -251,20 +379,38 @@ const UserAttendanceView = ({ userId }: { userId: string }) => {
     );
   };
 
-  if (loading) return (
-    <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
-  );
+  if (loading)
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
 
   return (
-    <motion.div className="space-y-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Monthly Attendance Summary</CardTitle>
-          <CardDescription>Your "Present" status for {format(month, "MMMM yyyy")}.</CardDescription>
+          <CardDescription>
+            Your "Present" status for {format(month, "MMMM yyyy")}.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <StatCard title="Standups Attended" value={`${monthlyStats.standupCount} / ${monthlyStats.totalWorkingDays}`} icon={<Users />} />
-          <StatCard title="Learning Hours Attended" value={`${monthlyStats.learningHourCount} / ${monthlyStats.totalWorkingDays}`} icon={<BookOpen />} />
+          <StatCard
+            title="Standups Attended"
+            value={`${monthlyStats.standupCount} / ${monthlyStats.totalWorkingDays}`}
+            icon={<Users />}
+          />
+          <StatCard
+            title="Learning Hours Attended"
+            value={`${monthlyStats.learningHourCount} / ${monthlyStats.totalWorkingDays}`}
+            icon={<BookOpen />}
+          />
         </CardContent>
       </Card>
 
@@ -272,23 +418,46 @@ const UserAttendanceView = ({ userId }: { userId: string }) => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Attendance Calendar</CardTitle>
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={() => setMonth(subMonths(month, 1))}><ChevronLeft className="h-4 w-4" /></Button>
-              <span className="w-32 text-center font-semibold">{format(month, "MMMM yyyy")}</span>
-              <Button variant="outline" size="icon" onClick={() => setMonth(addMonths(month, 1))}><ChevronRight className="h-4 w-4" /></Button>
-            </div>
+              <span className="w-32 text-center font-semibold">
+                {format(month, "MMMM yyyy")}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setMonth(addMonths(month, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div> */}
           </div>
         </CardHeader>
         <CardContent className="flex justify-center">
-          <Calendar month={month} onMonthChange={setMonth} components={{ Day: DayContent }} className="p-0" />
+          <Calendar
+            month={month}
+            onMonthChange={setMonth}
+            components={{ Day: DayContent }}
+            className="p-0"
+          />
         </CardContent>
         <CardFooter className="flex-col items-start gap-3 pt-4 border-t">
           <div className="flex items-center gap-x-4 gap-y-2 flex-wrap text-sm text-muted-foreground">
-            <div className="flex items-center gap-1"><span className="font-bold text-green-500">S/L</span>: Present</div>
-            <div className="flex items-center gap-1"><span className="font-bold text-yellow-500">S/L</span>: Absent</div>
-            <div className="flex items-center gap-1"><span className="font-bold text-red-500">S/L</span>: Missed</div>
-            <div className="flex items-center gap-1"><span className="font-bold text-gray-500">S/L</span>: N/A</div>
-            <div className="flex items-center gap-1"><span className="font-bold text-gray-300">S/L</span>: Not Marked</div>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-green-500">S/L</span>: Present
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-yellow-500">S/L</span>: Absent
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-red-500">S/L</span>: Missed
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-gray-500">S/L</span>: N/A
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-gray-300">S/L</span>: Not Marked
+            </div>
           </div>
         </CardFooter>
       </Card>
@@ -297,48 +466,76 @@ const UserAttendanceView = ({ userId }: { userId: string }) => {
 };
 
 // --- SHARED ADMIN REPORT COMPONENT ---
-const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionType, selectedDate: Date }) => {
+const AttendanceReport = ({
+  sessionType,
+  selectedDate,
+}: {
+  sessionType: SessionType;
+  selectedDate: Date;
+}) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, AttendanceRecord>>({});
+  const [attendance, setAttendance] = useState<
+    Record<string, AttendanceRecord>
+  >({});
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editedAtt, setEditedAtt] = useState<Record<string, AttendanceStatus>>({});
+  const [editedAtt, setEditedAtt] = useState<Record<string, AttendanceStatus>>(
+    {}
+  );
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  const [editingReasonFor, setEditingReasonFor] = useState<Employee | null>(null);
-  const [editedReasons, setEditedReasons] = useState<Record<string, string>>({});
+  const [editingReasonFor, setEditingReasonFor] = useState<Employee | null>(
+    null
+  );
+  const [editedReasons, setEditedReasons] = useState<Record<string, string>>(
+    {}
+  );
 
-  const fetchData = useCallback(async (date: Date) => {
-    setLoading(true);
-    try {
-      if (employees.length === 0) {
-        const empSnap = await getDocs(collection(db, "employees"));
-        setEmployees(empSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Employee)).sort((a, b) => a.name.localeCompare(b.name)));
-      }
-      const sessionId = format(date, "yyyy-MM-dd");
-      const collectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
-      const idField = sessionType === "standups" ? "standup_id" : "learning_hour_id";
-      const q = query(collection(db, collectionName), where(idField, "==", sessionId));
-      const attSnap = await getDocs(q);
-      const map: Record<string, AttendanceRecord> = {};
-      const reasons: Record<string, string> = {};
-      attSnap.forEach((d) => {
-        const a = d.data() as AttendanceRecord;
-        map[a.employee_id] = a;
-        if (a.status === 'Not Available' && a.reason) {
-          reasons[a.employee_id] = a.reason;
+  const fetchData = useCallback(
+    async (date: Date) => {
+      setLoading(true);
+      try {
+        if (employees.length === 0) {
+          const empSnap = await getDocs(collection(db, "employees"));
+          setEmployees(
+            empSnap.docs
+              .map((d) => ({ id: d.id, ...d.data() } as Employee))
+              .sort((a, b) => a.name.localeCompare(b.name))
+          );
         }
-      });
-      setAttendance(map);
-      setEditedReasons(reasons);
-    } catch (err) {
-      console.error(`Failed to fetch ${sessionType} data:`, err);
-      toast({ title: "Error fetching data", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [employees.length, toast, sessionType]);
+        const sessionId = format(date, "yyyy-MM-dd");
+        const collectionName =
+          sessionType === "standups"
+            ? "attendance"
+            : "learning_hours_attendance";
+        const idField =
+          sessionType === "standups" ? "standup_id" : "learning_hour_id";
+        const q = query(
+          collection(db, collectionName),
+          where(idField, "==", sessionId)
+        );
+        const attSnap = await getDocs(q);
+        const map: Record<string, AttendanceRecord> = {};
+        const reasons: Record<string, string> = {};
+        attSnap.forEach((d) => {
+          const a = d.data() as AttendanceRecord;
+          map[a.employee_id] = a;
+          if (a.status === "Not Available" && a.reason) {
+            reasons[a.employee_id] = a.reason;
+          }
+        });
+        setAttendance(map);
+        setEditedReasons(reasons);
+      } catch (err) {
+        console.error(`Failed to fetch ${sessionType} data:`, err);
+        toast({ title: "Error fetching data", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [employees.length, toast, sessionType]
+  );
 
   useEffect(() => {
     fetchData(selectedDate);
@@ -357,18 +554,28 @@ const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionT
     setIsSaving(true);
     const sessionId = format(selectedDate, "yyyy-MM-dd");
     const sessionRef = doc(db, sessionType, sessionId);
-    const attendanceCollectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
-    const idField = sessionType === "standups" ? "standup_id" : "learning_hour_id";
+    const attendanceCollectionName =
+      sessionType === "standups" ? "attendance" : "learning_hours_attendance";
+    const idField =
+      sessionType === "standups" ? "standup_id" : "learning_hour_id";
 
     try {
       const sessionSnap = await getDoc(sessionRef);
       if (!sessionSnap.exists()) {
-        await setDoc(sessionRef, { scheduledTime: Timestamp.fromDate(selectedDate), status: "ended", scheduledBy: 'Admin (Manual Edit)' });
+        await setDoc(sessionRef, {
+          scheduledTime: Timestamp.fromDate(selectedDate),
+          status: "ended",
+          scheduledBy: "Admin (Manual Edit)",
+        });
       }
 
       const batch = writeBatch(db);
       employees.forEach((emp) => {
-        const attRef = doc(db, attendanceCollectionName, `${sessionId}_${emp.id}`);
+        const attRef = doc(
+          db,
+          attendanceCollectionName,
+          `${sessionId}_${emp.id}`
+        );
         const status = editedAtt[emp.id];
         const record: any = {
           [idField]: sessionId,
@@ -380,7 +587,7 @@ const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionT
           scheduled_at: Timestamp.fromDate(startOfDay(selectedDate)),
           markedAt: serverTimestamp(),
         };
-        if (status === 'Not Available') {
+        if (status === "Not Available") {
           record.reason = editedReasons[emp.id] || "No reason provided";
         }
         batch.set(attRef, record, { merge: true });
@@ -398,30 +605,39 @@ const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionT
   };
 
   const handleSaveReason = (employeeId: string, reason: string) => {
-    setEditedReasons(p => ({ ...p, [employeeId]: reason }));
-    setEditedAtt(p => ({ ...p, [employeeId]: 'Not Available' }));
+    setEditedReasons((p) => ({ ...p, [employeeId]: reason }));
+    setEditedAtt((p) => ({ ...p, [employeeId]: "Not Available" }));
     setEditingReasonFor(null);
   };
 
   const getBadgeStyle = (status?: AttendanceStatus) => {
     switch (status) {
-      case "Present": return "bg-green-100 text-green-800 border-green-300";
-      case "Absent": return "bg-yellow-100 text-yellow-800 border-yellow-300";
-      case "Missed": return "bg-red-100 text-red-800 border-red-300";
-      case "Not Available": return "bg-gray-200 text-gray-900 border-gray-300";
-      default: return "bg-gray-100 text-gray-500 border-gray-200";
+      case "Present":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "Absent":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "Missed":
+        return "bg-red-100 text-red-800 border-red-300";
+      case "Not Available":
+        return "bg-gray-200 text-gray-900 border-gray-300";
+      default:
+        return "bg-gray-100 text-gray-500 border-gray-200";
     }
   };
 
   const dailyStats = useMemo(() => {
-    const data = editing ? editedAtt : Object.fromEntries(Object.entries(attendance).map(([k, v]) => [k, v.status]));
+    const data = editing
+      ? editedAtt
+      : Object.fromEntries(
+          Object.entries(attendance).map(([k, v]) => [k, v.status])
+        );
     const values = Object.values(data);
     return {
-      present: values.filter(s => s === 'Present').length,
-      absent: values.filter(s => s === 'Absent').length,
-      missed: values.filter(s => s === 'Missed').length,
-      notAvailable: values.filter(s => s === 'Not Available').length,
-    }
+      present: values.filter((s) => s === "Present").length,
+      absent: values.filter((s) => s === "Absent").length,
+      missed: values.filter((s) => s === "Missed").length,
+      notAvailable: values.filter((s) => s === "Not Available").length,
+    };
   }, [attendance, editing, editedAtt]);
 
   return (
@@ -435,29 +651,71 @@ const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionT
       <Card className="flex flex-col">
         <CardHeader className="flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-xl">{sessionType === "standups" ? "Standup Report" : "Learning Session Report"}</CardTitle>
+            <CardTitle className="text-xl">
+              {sessionType === "standups"
+                ? "Standup Report"
+                : "Learning Session Report"}
+            </CardTitle>
           </div>
           <div className="flex gap-2 items-center">
             {editing ? (
               <>
-                <Button variant="ghost" onClick={() => setEditing(false)} disabled={isSaving}>Cancel</Button>
-                <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save"}</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setEditing(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
               </>
             ) : (
-              <Button onClick={handleEdit} disabled={isSaving}>Edit</Button>
+              <Button onClick={handleEdit} disabled={isSaving}>
+                Edit
+              </Button>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {loading ? (
-            <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Present</p><p className="text-2xl font-bold">{dailyStats.present}</p></Card>
-                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Absent</p><p className="text-2xl font-bold">{dailyStats.absent}</p></Card>
-                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Missed</p><p className="text-2xl font-bold">{dailyStats.missed}</p></Card>
-                <Card className="p-3"><p className="text-sm font-medium text-muted-foreground">Unavailable</p><p className="text-2xl font-bold">{dailyStats.notAvailable}</p></Card>
+                <Card className="p-3">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Present
+                  </p>
+                  <p className="text-2xl font-bold">{dailyStats.present}</p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Absent
+                  </p>
+                  <p className="text-2xl font-bold">{dailyStats.absent}</p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Missed
+                  </p>
+                  <p className="text-2xl font-bold">{dailyStats.missed}</p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Unavailable
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {dailyStats.notAvailable}
+                  </p>
+                </Card>
               </div>
               <div className="overflow-auto rounded-md border max-h-[50vh]">
                 <Table>
@@ -470,31 +728,48 @@ const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionT
                   <TableBody>
                     {employees.map((emp) => (
                       <TableRow key={emp.id}>
-                        <TableCell className="font-medium">{emp.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {emp.name}
+                        </TableCell>
                         <TableCell>
                           {editing ? (
                             <Select
-                              value={editedAtt[emp.id] || 'Missed'}
+                              value={editedAtt[emp.id] || "Missed"}
                               onValueChange={(v) => {
                                 const newStatus = v as AttendanceStatus;
-                                if (newStatus === 'Not Available') {
+                                if (newStatus === "Not Available") {
                                   setEditingReasonFor(emp);
                                 } else {
-                                  setEditedAtt((p) => ({ ...p, [emp.id]: newStatus }));
+                                  setEditedAtt((p) => ({
+                                    ...p,
+                                    [emp.id]: newStatus,
+                                  }));
                                 }
                               }}
                             >
-                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Present">Present</SelectItem>
                                 <SelectItem value="Absent">Absent</SelectItem>
                                 <SelectItem value="Missed">Missed</SelectItem>
-                                <SelectItem value="Not Available">Not Available</SelectItem>
+                                <SelectItem value="Not Available">
+                                  Not Available
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
-                            <Badge variant="outline" className={cn("text-sm", getBadgeStyle(attendance[emp.id]?.status))}>
-                              {attendance[emp.id]?.status || "Not Marked"}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-sm",
+                                getBadgeStyle(attendance[emp.id]?.status)
+                              )}
+                            >
+                              {attendance[emp.id]?.status === "Not Available"
+                                ? "N/A"
+                                : attendance[emp.id]?.status || "Not Marked"}
                             </Badge>
                           )}
                         </TableCell>
@@ -512,9 +787,21 @@ const AttendanceReport = ({ sessionType, selectedDate }: { sessionType: SessionT
 };
 
 // --- Reusable Modal for Reasons ---
-const ReasonModal = ({ employee, isOpen, onClose, onSave }: { employee: Employee | null, isOpen: boolean, onClose: () => void, onSave: (id: string, r: string) => void }) => {
+const ReasonModal = ({
+  employee,
+  isOpen,
+  onClose,
+  onSave,
+}: {
+  employee: Employee | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (id: string, r: string) => void;
+}) => {
   const [reason, setReason] = useState("");
-  useEffect(() => { if (isOpen) setReason(""); }, [isOpen]);
+  useEffect(() => {
+    if (isOpen) setReason("");
+  }, [isOpen]);
   if (!isOpen || !employee) return null;
 
   return (
@@ -522,15 +809,29 @@ const ReasonModal = ({ employee, isOpen, onClose, onSave }: { employee: Employee
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Reason for Unavailability: {employee.name}</DialogTitle>
-          <DialogDescription>Provide a brief reason why this member is unavailable.</DialogDescription>
+          <DialogDescription>
+            Provide a brief reason why this member is unavailable.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <Label htmlFor="absence-reason" className="sr-only">Reason</Label>
-          <Textarea id="absence-reason" placeholder="e.g., On leave, sick day, client meeting..." value={reason} onChange={(e) => setReason(e.target.value)} rows={4} />
+          <Label htmlFor="absence-reason" className="sr-only">
+            Reason
+          </Label>
+          <Textarea
+            id="absence-reason"
+            placeholder="e.g., On leave, sick day, client meeting..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={4}
+          />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => onSave(employee.id, reason)}>Save Reason</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => onSave(employee.id, reason)}>
+            Save Reason
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

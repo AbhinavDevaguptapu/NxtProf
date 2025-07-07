@@ -461,7 +461,9 @@ const AttendanceCard = ({ employee, status, reason, onSetStatus, onMarkUnavailab
                     <CardTitle className="text-base font-semibold">{employee.name}</CardTitle>
                     <CardDescription className="text-xs">{employee.email}</CardDescription>
                 </div>
-                <Badge className={cn("border-transparent", getBadgeStyle())}>{status}</Badge>
+                <Badge className={cn("border-transparent", getBadgeStyle())}>
+                    {status === "Not Available" ? "N/A" : status}
+                </Badge>
             </CardHeader>
             <CardContent className="pt-2 flex-grow flex flex-col">
                 {status === "Not Available" && reason && (
