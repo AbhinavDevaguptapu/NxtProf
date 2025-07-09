@@ -31,8 +31,9 @@ import {
   MessageSquare,
   Quote,
   Lightbulb,
+  AlertCircle,
 } from "lucide-react";
-import { format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { motion } from "framer-motion";
@@ -66,32 +67,34 @@ ChartJS.register(
 
 // --- TYPE DEFINITIONS ---
 type EmployeeData = { name: string; employeeId: string };
-type SummaryGraphData = {
+
+type ChartData = {
   totalFeedbacks: number;
-  avgUnderstanding: number;
-  avgInstructor: number;
+  graphData: {
+    totalFeedbacks: number;
+    avgUnderstanding: number;
+    avgInstructor: number;
+  } | null;
+  graphTimeseries: {
+    labels: string[];
+    understanding: (number | null)[];
+    instructor: (number | null)[];
+  } | null;
 };
-type TimeseriesGraphData = {
-  labels: string[];
-  understanding: (number | null)[];
-  instructor: (number | null)[];
+
+type AiSummaryData = {
+  positiveFeedback: { quote: string; keywords: string[] }[];
+  improvementAreas: { theme: string; suggestion: string }[];
 };
-type PositiveFeedback = { quote: string; keywords: string[] };
-type ImprovementArea = { theme: string; suggestion: string };
-type FeedbackSummary = {
-  totalFeedbacks: number;
-  positiveFeedback: PositiveFeedback[];
-  improvementAreas: ImprovementArea[];
-  graphData: SummaryGraphData | null;
-  graphTimeseries: TimeseriesGraphData | null;
-};
+
 type ActiveFilter = {
   mode: "daily" | "monthly" | "specific" | "range" | "full";
   date?: Date;
   dateRange?: DateRange;
 };
 
-// --- FILTER COMPONENT ---
+// --- CHILD COMPONENTS ---
+
 const FeedbackFilters = ({
   onFilterChange,
   isFiltering,
@@ -114,10 +117,7 @@ const FeedbackFilters = ({
     DateRange | undefined
   >(undefined);
 
-  const isRangeInvalid =
-    !selectedDateRange?.from ||
-    !selectedDateRange?.to ||
-    isSameDay(selectedDateRange.from, selectedDateRange.to);
+  const isRangeInvalid = !selectedDateRange?.from || !selectedDateRange?.to;
 
   const handleFilterClick = (filter: ActiveFilter) => {
     setActiveButton(filter.mode);
@@ -191,7 +191,10 @@ const FeedbackFilters = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[2025, 2024, 2023].map((y) => (
+              {[
+                new Date().getFullYear(),
+                ...[2024, 2023].filter((y) => y !== new Date().getFullYear()),
+              ].map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
@@ -216,7 +219,7 @@ const FeedbackFilters = ({
           <Popover>
             <PopoverTrigger asChild>
               <Button
-                variant={"outline"}
+                variant={activeButton === "range" ? "default" : "outline"}
                 className={cn(
                   "w-full sm:w-[260px] justify-start text-left font-normal",
                   !selectedDateRange && "text-muted-foreground"
@@ -242,7 +245,6 @@ const FeedbackFilters = ({
               <Calendar
                 initialFocus
                 mode="range"
-                min={2}
                 selected={selectedDateRange}
                 onSelect={setSelectedDateRange}
                 disabled={{ after: new Date() }}
@@ -273,11 +275,271 @@ const FeedbackFilters = ({
   );
 };
 
+const QuantitativeFeedback = ({
+  chartData,
+}: {
+  chartData: ChartData | null;
+}) => {
+  if (!chartData) {
+    return (
+      <p className="text-muted-foreground text-center pt-8">
+        No chart data available for this view.
+      </p>
+    );
+  }
+
+  if (chartData.graphTimeseries) {
+    const lineChartData = {
+      labels: chartData.graphTimeseries.labels,
+      datasets: [
+        {
+          label: "Understanding",
+          data: chartData.graphTimeseries.understanding,
+          borderColor: "rgb(54, 162, 235)",
+          backgroundColor: "rgba(54, 162, 235, 0.5)",
+          tension: 0.3,
+          datalabels: { display: false },
+        },
+        {
+          label: "Instructor",
+          data: chartData.graphTimeseries.instructor,
+          tension: 0.3,
+          borderColor: "rgb(255, 99, 132)",
+          backgroundColor: "rgba(255, 99, 132, 0.5)",
+          datalabels: {
+            display: true,
+            align: "top" as const,
+            anchor: "end" as const,
+            formatter: (value: number) => (value > 0 ? value.toFixed(1) : ""),
+          },
+        },
+      ],
+    };
+    const lineChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top" as const },
+        title: {
+          display: true,
+          text: "Daily Average Ratings",
+          font: { size: 16 },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 5,
+          title: { display: true, text: "Rating (out of 5)" },
+        },
+      },
+    };
+    return <Line options={lineChartOptions} data={lineChartData} />;
+  }
+
+  if (chartData.graphData) {
+    const barChartData = {
+      labels: ["Understanding", "Instructor"],
+      datasets: [
+        {
+          label: "Average Rating",
+          data: [
+            chartData.graphData.avgUnderstanding,
+            chartData.graphData.avgInstructor,
+          ],
+          borderWidth: 1,
+          backgroundColor: [
+            "rgba(54, 162, 235, 0.6)",
+            "rgba(75, 192, 192, 0.6)",
+          ],
+          borderColor: ["rgba(54, 162, 235, 1)", "rgba(75, 192, 192, 1)"],
+        },
+      ],
+    };
+    const barChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: "Average Ratings", font: { size: 16 } },
+        datalabels: {
+          display: true,
+          anchor: "end" as const,
+          align: "top" as const,
+          formatter: (value: number) => value.toFixed(2),
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          min: 0,
+          max: 5,
+          title: { display: true, text: "Rating (out of 5)" },
+        },
+      },
+    };
+    return <Bar options={barChartOptions} data={barChartData} />;
+  }
+
+  return (
+    <p className="text-muted-foreground text-center pt-8">
+      No chart data available for this view.
+    </p>
+  );
+};
+
+const QualitativeFeedbackCard = ({
+  title,
+  icon,
+  feedback,
+  type,
+  isLoading,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  feedback: any[] | undefined;
+  type: "positive" | "improvement";
+  isLoading: boolean;
+}) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        {icon} {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4 min-h-[100px]">
+      {isLoading ? (
+        <div className="flex items-center justify-center h-full pt-4">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : feedback?.length ? (
+        feedback.map((item, i) => (
+          <div key={i} className="p-3 bg-secondary rounded-lg border">
+            {type === "positive" ? (
+              <>
+                <p className="italic flex gap-2">
+                  <Quote className="h-4 w-4 shrink-0" />
+                  {item.quote}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {item.keywords?.map((kw: string) => (
+                    <Badge key={kw} variant="secondary">
+                      {kw}
+                    </Badge>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">{item.theme}</p>
+                <p className="text-sm text-muted-foreground">
+                  {item.suggestion}
+                </p>
+              </>
+            )}
+          </div>
+        ))
+      ) : (
+        <p className="text-muted-foreground">
+          {type === "positive"
+            ? "No positive comments found for this period."
+            : "No specific improvement areas found."}
+        </p>
+      )}
+    </CardContent>
+  </Card>
+);
+
+const DashboardContent = ({
+  isChartLoading,
+  isAiLoading,
+  chartData,
+  aiSummary,
+  chartError,
+  aiError,
+}: {
+  isChartLoading: boolean;
+  isAiLoading: boolean;
+  chartData: ChartData | null;
+  aiSummary: AiSummaryData | null;
+  chartError: string | null;
+  aiError: string | null;
+}) => {
+  if (isChartLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <span className="ml-4 text-muted-foreground">
+          Loading Feedback Data...
+        </span>
+      </div>
+    );
+  }
+
+  if (chartError) {
+    return <div className="text-center text-red-500 py-10">{chartError}</div>;
+  }
+
+  if (!chartData || chartData.totalFeedbacks === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-10">
+        No feedback data found for this period.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare /> Quantitative Feedback
+          </CardTitle>
+          <CardDescription>
+            Total Feedbacks Given: {chartData.totalFeedbacks ?? 0}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[400px] w-full">
+          <QuantitativeFeedback chartData={chartData} />
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <QualitativeFeedbackCard
+          title="AI Summary: Positive Feedback"
+          icon={<Sparkles />}
+          feedback={aiSummary?.positiveFeedback}
+          type="positive"
+          isLoading={isAiLoading}
+        />
+        <QualitativeFeedbackCard
+          title="AI Summary: Areas for Improvement"
+          icon={<Lightbulb />}
+          feedback={aiSummary?.improvementAreas}
+          type="improvement"
+          isLoading={isAiLoading}
+        />
+      </div>
+
+      {aiError && (
+        <div className="flex items-center justify-center text-sm text-yellow-600 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          Could not load AI summary at this time. Chart data is displayed.
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- MAIN PAGE COMPONENT ---
 export default function AdminEmployeeDetail() {
   const { employeeId } = useParams<{ employeeId: string }>();
-  const [summary, setSummary] = useState<FeedbackSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isChartLoading, setIsChartLoading] = useState(true);
+  const [isAiLoading, setIsAiLoading] = useState(true);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [aiSummary, setAiSummary] = useState<AiSummaryData | null>(null);
+  const [chartError, setChartError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
 
   // Fetch employee's static details once
@@ -293,52 +555,79 @@ export default function AdminEmployeeDetail() {
           employeeId: data.employeeId || "N/A",
         });
       } else {
-        setError("Could not find employee details.");
+        setChartError("Could not find employee details.");
       }
     };
     fetchEmployeeDetails();
   }, [employeeId]);
 
   // Main data fetching function
-  const fetchSummary = useCallback(
+  const fetchFeedbackData = useCallback(
     async (filter: ActiveFilter) => {
       if (!employeeId) return;
-      setLoading(true);
-      setError(null);
+
+      setIsChartLoading(true);
+      setIsAiLoading(true);
+      setChartError(null);
+      setAiError(null);
+
+      const functions = getFunctions();
+      const getChartDataCallable = httpsCallable<any, ChartData>(
+        functions,
+        "getFeedbackChartData"
+      );
+      const getAiSummaryCallable = httpsCallable<any, AiSummaryData>(
+        functions,
+        "getFeedbackAiSummary"
+      );
+
+      const params: any = {
+        employeeId: employeeId,
+        timeFrame: filter.mode,
+      };
+
+      if (
+        (filter.mode === "daily" ||
+          filter.mode === "specific" ||
+          filter.mode === "monthly") &&
+        filter.date
+      ) {
+        params.date = format(filter.date, "yyyy-MM-dd");
+      } else if (
+        filter.mode === "range" &&
+        filter.dateRange?.from &&
+        filter.dateRange?.to
+      ) {
+        params.startDate = format(filter.dateRange.from, "yyyy-MM-dd");
+        params.endDate = format(filter.dateRange.to, "yyyy-MM-dd");
+      }
+
+      // We call both functions and handle their success/failure independently
+      const chartPromise = getChartDataCallable(params);
+      const aiPromise = getAiSummaryCallable(params);
+
       try {
-        const functions = getFunctions();
-        const getFeedbackSummary = httpsCallable(
-          functions,
-          "getFeedbackSummary"
-        );
-        const params: any = { employeeId, timeFrame: filter.mode };
-
-        if (filter.mode === "monthly" && filter.date) {
-          params.date = new Date(
-            Date.UTC(filter.date.getFullYear(), filter.date.getMonth(), 1)
-          ).toISOString();
-        } else if (filter.mode === "daily" || filter.mode === "specific") {
-          // Format as YYYY-MM-DD to avoid timezone-related date shifts.
-          // The backend's parseISO correctly handles this format.
-          if (filter.date)
-            params.date = format(filter.date, "yyyy-MM-dd");
-        } else if (
-          filter.mode === "range" &&
-          filter.dateRange?.from &&
-          filter.dateRange?.to
-        ) {
-          params.startDate = format(filter.dateRange.from, "yyyy-MM-dd");
-          params.endDate = format(filter.dateRange.to, "yyyy-MM-dd");
-        }
-
-        const result = await getFeedbackSummary(params);
-        setSummary(result.data as FeedbackSummary);
-      } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load feedback data."
+        const chartResult = await chartPromise;
+        setChartData(chartResult.data);
+      } catch (err) {
+        console.error("Error fetching chart data:", err);
+        setChartError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load your feedback charts. Please try refreshing."
         );
       } finally {
-        setLoading(false);
+        setIsChartLoading(false);
+      }
+
+      try {
+        const aiResult = await aiPromise;
+        setAiSummary(aiResult.data);
+      } catch (err) {
+        console.error("Error fetching AI summary:", err);
+        setAiError("Could not generate AI analysis.");
+      } finally {
+        setIsAiLoading(false);
       }
     },
     [employeeId]
@@ -346,212 +635,10 @@ export default function AdminEmployeeDetail() {
 
   // Initial fetch for "Today"
   useEffect(() => {
-    fetchSummary({ mode: "daily", date: new Date() });
-  }, [fetchSummary]);
-
-  // --- RENDER LOGIC ---
-
-  const renderChart = () => {
-    if (!summary) return null;
-
-    // Render LINE chart for range/full history
-    if (summary.graphTimeseries) {
-      const lineChartData = {
-        labels: summary.graphTimeseries.labels,
-        datasets: [
-          {
-            label: "Understanding",
-            data: summary.graphTimeseries.understanding,
-            borderColor: "rgb(54, 162, 235)",
-            backgroundColor: "rgba(54, 162, 235, 0.5)",
-            tension: 0.3,
-            datalabels: {
-              display: false,
-            },
-          },
-          {
-            label: "Instructor",
-            data: summary.graphTimeseries.instructor,
-            borderColor: "rgb(255, 99, 132)",
-            backgroundColor: "rgba(255, 99, 132, 0.5)",
-            tension: 0.3,
-            datalabels: {
-              display: true,
-              align: "top" as const,
-              anchor: "end" as const,
-              color: "#555",
-              font: { weight: "bold" as const, size: 10 },
-              formatter: (value: number) => (value > 0 ? value.toFixed(1) : ""),
-            },
-          },
-        ],
-      };
-      const lineChartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "top" as const },
-          title: {
-            display: true,
-            text: `Daily Average Ratings`,
-            font: { size: 16 },
-          },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 5,
-            title: { display: true, text: "Rating (out of 5)" },
-          },
-        },
-      };
-      return <Line options={lineChartOptions} data={lineChartData} />;
+    if (employeeId) {
+      fetchFeedbackData({ mode: "daily", date: new Date() });
     }
-
-    // Render BAR chart for daily/monthly/specific summaries
-    if (summary.graphData) {
-      const barChartData = {
-        labels: ["Understanding", "Instructor"],
-        datasets: [
-          {
-            label: "Average Rating",
-            data: [
-              summary.graphData.avgUnderstanding,
-              summary.graphData.avgInstructor,
-            ],
-            backgroundColor: [
-              "rgba(54, 162, 235, 0.6)",
-              "rgba(75, 192, 192, 0.6)",
-            ],
-            borderColor: ["rgba(54, 162, 235, 1)", "rgba(75, 192, 192, 1)"],
-            borderWidth: 1,
-          },
-        ],
-      };
-      const barChartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: `Average Ratings`, font: { size: 16 } },
-          datalabels: {
-            display: true,
-            anchor: "end" as const,
-            align: "top" as const,
-            color: "#333",
-            font: { weight: "bold" as const },
-            formatter: (value: number) => value.toFixed(2),
-          },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            min: 0,
-            max: 5,
-            title: { display: true, text: "Rating (out of 5)" },
-          },
-        },
-      };
-      return <Bar options={barChartOptions} data={barChartData} />;
-    }
-
-    return (
-      <p className="text-muted-foreground">
-        No chart data available for this view.
-      </p>
-    );
-  };
-
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
-    }
-
-    if (error) {
-      return <div className="text-center text-red-500 py-10">{error}</div>;
-    }
-
-    if (!summary || summary.totalFeedbacks === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-10">
-          No feedback data found for this period.
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare /> Quantitative Feedback
-            </CardTitle>
-            <CardDescription>
-              Total Feedbacks Given: {summary.totalFeedbacks ?? 0}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-[400px] w-full">
-            {renderChart()}
-          </CardContent>
-        </Card>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles /> AI Summary: Positive Feedback
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {summary.positiveFeedback?.length ? (
-                summary.positiveFeedback.map((fb, i) => (
-                  <div key={i} className="p-3 bg-secondary rounded-lg border">
-                    <p className="italic flex gap-2">
-                      <Quote className="h-4 w-4 shrink-0" />
-                      {fb.quote}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {fb.keywords?.map((kw) => (
-                        <Badge key={kw} variant="secondary">
-                          {kw}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>No positive comments found.</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb /> AI Summary: Areas for Improvement
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {summary.improvementAreas?.length ? (
-                summary.improvementAreas.map((item, i) => (
-                  <div key={i} className="p-3 bg-secondary rounded-lg border">
-                    <p className="font-semibold">{item.theme}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.suggestion}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p>No specific improvement areas found.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  };
+  }, [employeeId, fetchFeedbackData]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -577,8 +664,8 @@ export default function AdminEmployeeDetail() {
               )}
             </div>
             <FeedbackFilters
-              onFilterChange={fetchSummary}
-              isFiltering={loading}
+              onFilterChange={fetchFeedbackData}
+              isFiltering={isChartLoading || isAiLoading}
             />
           </motion.div>
           <motion.div
@@ -586,7 +673,14 @@ export default function AdminEmployeeDetail() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {renderContent()}
+            <DashboardContent
+              isChartLoading={isChartLoading}
+              isAiLoading={isAiLoading}
+              chartData={chartData}
+              aiSummary={aiSummary}
+              chartError={chartError}
+              aiError={aiError}
+            />
           </motion.div>
         </div>
       </main>

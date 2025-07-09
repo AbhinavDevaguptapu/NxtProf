@@ -1,20 +1,3 @@
-/**
- * @file FeedbackPage.tsx
- * @description This file contains the main feedback dashboard page for non-admin users.
- * It handles fetching and displaying user-specific feedback data, including quantitative charts
- * and qualitative AI-generated summaries. The user can filter the data by various timeframes.
- *
- * @requires react
- * @requires react-router-dom
- * @requires firebase
- * @requires chart.js
- * @requires date-fns
- * @requires lucide-react
- * @requires framer-motion
- * @requires @/components/ui/* - ShadCN UI components
- * @requires @/context/* - Authentication contexts
- */
-
 import { useState, useEffect, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -54,12 +37,13 @@ import {
   Quote,
   Lightbulb,
   Calendar as CalendarIcon,
+  AlertCircle,
 } from "lucide-react";
 
 // Animation & Utilities
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 // Charting Libraries
@@ -92,28 +76,29 @@ ChartJS.register(
 // --- TYPE DEFINITIONS ---
 type EmployeeData = {
   name: string;
-  firebaseUid: string;
+  firebaseUid: string; // This is the Firestore Document ID
   customEmployeeId: string;
 };
-type SummaryGraphData = {
+
+type ChartData = {
   totalFeedbacks: number;
-  avgUnderstanding: number;
-  avgInstructor: number;
+  graphData: {
+    totalFeedbacks: number;
+    avgUnderstanding: number;
+    avgInstructor: number;
+  } | null;
+  graphTimeseries: {
+    labels: string[];
+    understanding: (number | null)[];
+    instructor: (number | null)[];
+  } | null;
 };
-type TimeseriesGraphData = {
-  labels: string[];
-  understanding: (number | null)[];
-  instructor: (number | null)[];
+
+type AiSummaryData = {
+  positiveFeedback: { quote: string; keywords: string[] }[];
+  improvementAreas: { theme: string; suggestion: string }[];
 };
-type PositiveFeedback = { quote: string; keywords: string[] };
-type ImprovementArea = { theme: string; suggestion: string };
-type FeedbackSummary = {
-  totalFeedbacks: number;
-  positiveFeedback: PositiveFeedback[];
-  improvementAreas: ImprovementArea[];
-  graphData: SummaryGraphData | null;
-  graphTimeseries: TimeseriesGraphData | null;
-};
+
 export type ActiveFilter = {
   mode: "daily" | "monthly" | "specific" | "range" | "full";
   date?: Date;
@@ -122,12 +107,6 @@ export type ActiveFilter = {
 
 // --- CHILD COMPONENTS ---
 
-/**
- * Renders the filter controls for the feedback dashboard.
- * @param {object} props - The component props.
- * @param {(filter: ActiveFilter) => void} props.onFilterChange - Callback function when a filter is applied.
- * @param {boolean} props.isFiltering - Indicates if data is currently being fetched.
- */
 const FeedbackFilters = ({
   onFilterChange,
   isFiltering,
@@ -150,10 +129,9 @@ const FeedbackFilters = ({
     DateRange | undefined
   >(undefined);
 
-  const isRangeInvalid =
-    !selectedDateRange?.from ||
-    !selectedDateRange?.to ||
-    isSameDay(selectedDateRange.from, selectedDateRange.to);
+  // FIX: Simplified range validation. A range is invalid only if a start or end date is missing.
+  // This allows selecting a single day in the range picker.
+  const isRangeInvalid = !selectedDateRange?.from || !selectedDateRange?.to;
 
   const handleFilterClick = (filter: ActiveFilter) => {
     setActiveButton(filter.mode);
@@ -227,7 +205,7 @@ const FeedbackFilters = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[2025, 2024, 2023].map((y) => (
+              {[new Date().getFullYear(), ...[2024, 2023].filter(y => y !== new Date().getFullYear())].map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
@@ -251,8 +229,9 @@ const FeedbackFilters = ({
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <Popover>
             <PopoverTrigger asChild>
+              {/* FIX: The trigger button now also gets the "default" variant when its filter is active for UI consistency. */}
               <Button
-                variant={"outline"}
+                variant={activeButton === "range" ? "default" : "outline"}
                 className={cn(
                   "w-full sm:w-[260px] justify-start text-left font-normal",
                   !selectedDateRange && "text-muted-foreground"
@@ -278,7 +257,7 @@ const FeedbackFilters = ({
               <Calendar
                 initialFocus
                 mode="range"
-                min={2}
+                // FIX: Removed invalid 'min={2}' prop. Disabling the "Apply" button is the correct approach.
                 selected={selectedDateRange}
                 onSelect={setSelectedDateRange}
                 disabled={{ after: new Date() }}
@@ -309,30 +288,26 @@ const FeedbackFilters = ({
   );
 };
 
-/**
- * Renders the quantitative feedback charts.
- * @param {{ summary: FeedbackSummary | null }} props
- */
 const QuantitativeFeedback = ({
-  summary,
+  chartData,
 }: {
-  summary: FeedbackSummary | null;
+  chartData: ChartData | null;
 }) => {
-  if (!summary)
+  if (!chartData) {
     return (
       <p className="text-muted-foreground text-center pt-8">
         No chart data available for this view.
       </p>
     );
+  }
 
-  // Line Chart for Timeseries Data
-  if (summary.graphTimeseries) {
+  if (chartData.graphTimeseries) {
     const lineChartData = {
-      labels: summary.graphTimeseries.labels,
+      labels: chartData.graphTimeseries.labels,
       datasets: [
         {
           label: "Understanding",
-          data: summary.graphTimeseries.understanding,
+          data: chartData.graphTimeseries.understanding,
           borderColor: "rgb(54, 162, 235)",
           backgroundColor: "rgba(54, 162, 235, 0.5)",
           tension: 0.3,
@@ -340,7 +315,7 @@ const QuantitativeFeedback = ({
         },
         {
           label: "Instructor",
-          data: summary.graphTimeseries.instructor,
+          data: chartData.graphTimeseries.instructor,
           tension: 0.3,
           borderColor: "rgb(255, 99, 132)",
           backgroundColor: "rgba(255, 99, 132, 0.5)",
@@ -375,16 +350,15 @@ const QuantitativeFeedback = ({
     return <Line options={lineChartOptions} data={lineChartData} />;
   }
 
-  // Bar Chart for Summary Data
-  if (summary.graphData) {
+  if (chartData.graphData) {
     const barChartData = {
       labels: ["Understanding", "Instructor"],
       datasets: [
         {
           label: "Average Rating",
           data: [
-            summary.graphData.avgUnderstanding,
-            summary.graphData.avgInstructor,
+            chartData.graphData.avgUnderstanding,
+            chartData.graphData.avgInstructor,
           ],
           borderWidth: 1,
           backgroundColor: [
@@ -427,20 +401,18 @@ const QuantitativeFeedback = ({
   );
 };
 
-/**
- * Renders a card for qualitative feedback (Positive or Improvement).
- * @param {{ title: string, icon: React.ReactNode, feedback: (PositiveFeedback[] | ImprovementArea[]), type: 'positive' | 'improvement' }} props
- */
 const QualitativeFeedbackCard = ({
   title,
   icon,
   feedback,
   type,
+  isLoading,
 }: {
   title: string;
   icon: React.ReactNode;
   feedback: any[] | undefined;
   type: "positive" | "improvement";
+  isLoading: boolean;
 }) => (
   <Card>
     <CardHeader>
@@ -448,14 +420,19 @@ const QualitativeFeedbackCard = ({
         {icon} {title}
       </CardTitle>
     </CardHeader>
-    <CardContent className="space-y-4">
-      {feedback?.length ? (
+    <CardContent className="space-y-4 min-h-[100px]">
+      {isLoading ? (
+        <div className="flex items-center justify-center h-full pt-4">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : feedback?.length ? (
         feedback.map((item, i) => (
           <div key={i} className="p-3 bg-secondary rounded-lg border">
             {type === "positive" ? (
               <>
                 <p className="italic flex gap-2">
-                  <Quote className="h-4 w-4 shrink-0" /> {item.quote}
+                  <Quote className="h-4 w-4 shrink-0" />
+                  {item.quote}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {item.keywords?.map((kw: string) => (
@@ -478,7 +455,7 @@ const QualitativeFeedbackCard = ({
       ) : (
         <p className="text-muted-foreground">
           {type === "positive"
-            ? "No positive comments found."
+            ? "No positive comments found for this period."
             : "No specific improvement areas found."}
         </p>
       )}
@@ -486,32 +463,37 @@ const QualitativeFeedbackCard = ({
   </Card>
 );
 
-/**
- * Renders the main content of the dashboard, handling loading, error, and data states.
- * @param {{ isLoading: boolean, error: string | null, summary: FeedbackSummary | null }} props
- */
 const DashboardContent = ({
-  isLoading,
-  error,
-  summary,
+  isChartLoading,
+  isAiLoading,
+  chartData,
+  aiSummary,
+  chartError,
+  aiError,
 }: {
-  isLoading: boolean;
-  error: string | null;
-  summary: FeedbackSummary | null;
+  isChartLoading: boolean;
+  isAiLoading: boolean;
+  chartData: ChartData | null;
+  aiSummary: AiSummaryData | null;
+  chartError: string | null;
+  aiError: string | null;
 }) => {
-  if (isLoading) {
+  if (isChartLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <span className="ml-4 text-muted-foreground">
+          Loading Feedback Data...
+        </span>
       </div>
     );
   }
 
-  if (error) {
-    return <div className="text-center text-red-500 py-10">{error}</div>;
+  if (chartError) {
+    return <div className="text-center text-red-500 py-10">{chartError}</div>;
   }
 
-  if (!summary || summary.totalFeedbacks === 0) {
+  if (!chartData || chartData.totalFeedbacks === 0) {
     return (
       <div className="text-center text-muted-foreground py-10">
         No feedback data found for this period.
@@ -527,27 +509,37 @@ const DashboardContent = ({
             <MessageSquare /> Quantitative Feedback
           </CardTitle>
           <CardDescription>
-            Total Feedbacks Given: {summary.totalFeedbacks ?? 0}
+            Total Feedbacks Given: {chartData.totalFeedbacks ?? 0}
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[400px] w-full">
-          <QuantitativeFeedback summary={summary} />
+          <QuantitativeFeedback chartData={chartData} />
         </CardContent>
       </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <QualitativeFeedbackCard
           title="AI Summary: Positive Feedback"
           icon={<Sparkles />}
-          feedback={summary.positiveFeedback}
+          feedback={aiSummary?.positiveFeedback}
           type="positive"
+          isLoading={isAiLoading}
         />
         <QualitativeFeedbackCard
           title="AI Summary: Areas for Improvement"
           icon={<Lightbulb />}
-          feedback={summary.improvementAreas}
+          feedback={aiSummary?.improvementAreas}
           type="improvement"
+          isLoading={isAiLoading}
         />
       </div>
+
+      {aiError && (
+        <div className="flex items-center justify-center text-sm text-yellow-600 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          Could not load AI summary at this time. Chart data is displayed.
+        </div>
+      )}
     </div>
   );
 };
@@ -557,15 +549,16 @@ export default function FeedbackPage() {
   const { user, loading: userAuthLoading } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
 
-  const [pageError, setPageError] = useState<string | null>(null);
-  const [isFeedbackLoading, setIsFeedbackLoading] = useState(true);
-  const [summary, setSummary] = useState<FeedbackSummary | null>(null);
+  const [isChartLoading, setIsChartLoading] = useState(true);
+  const [isAiLoading, setIsAiLoading] = useState(true);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [aiSummary, setAiSummary] = useState<AiSummaryData | null>(null);
+  const [chartError, setChartError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
 
-  // Redirect admin users away from this page
   if (adminInitialized && admin) return <Navigate to="/admin" replace />;
 
-  // Fetch the logged-in user's employee profile
   useEffect(() => {
     if (userAuthLoading || !user?.uid) return;
     const fetchEmployeeProfile = async () => {
@@ -579,86 +572,105 @@ export default function FeedbackPage() {
           const doc = querySnapshot.docs[0];
           setEmployeeData({
             name: doc.data().name,
-            firebaseUid: doc.id,
+            firebaseUid: doc.id, // This is the Document ID
             customEmployeeId: doc.data().employeeId,
           });
         } else {
-          setPageError("Could not find your employee profile.");
+          setChartError("Could not find your employee profile.");
         }
       } catch (error) {
         console.error("Error fetching employee profile:", error);
-        setPageError("An error occurred while fetching your profile.");
+        setChartError("An error occurred while fetching your profile.");
       }
     };
     fetchEmployeeProfile();
   }, [user, userAuthLoading]);
 
-  // Main data fetching function, memoized with useCallback
-  const fetchFeedbackSummary = useCallback(
+  const fetchFeedbackData = useCallback(
     async (filter: ActiveFilter) => {
       if (!employeeData?.firebaseUid) return;
 
-      setIsFeedbackLoading(true);
-      setPageError(null);
+      setIsChartLoading(true);
+      setIsAiLoading(true);
+      setChartError(null);
+      setAiError(null);
+
+      const functions = getFunctions();
+      const getChartDataCallable = httpsCallable<any, ChartData>(
+        functions,
+        "getFeedbackChartData"
+      );
+      const getAiSummaryCallable = httpsCallable<any, AiSummaryData>(
+        functions,
+        "getFeedbackAiSummary"
+      );
+
+      const params: any = {
+        employeeId: employeeData.firebaseUid,
+        timeFrame: filter.mode,
+      };
+
+      // FIX: Standardized all date formats to 'yyyy-MM-dd' for consistency and to avoid timezone issues.
+      // This simplifies the logic required in the backend Cloud Function.
+      if (
+        (filter.mode === "daily" ||
+          filter.mode === "specific" ||
+          filter.mode === "monthly") &&
+        filter.date
+      ) {
+        params.date = format(filter.date, "yyyy-MM-dd");
+      } else if (
+        filter.mode === "range" &&
+        filter.dateRange?.from &&
+        filter.dateRange?.to
+      ) {
+        params.startDate = format(filter.dateRange.from, "yyyy-MM-dd");
+        params.endDate = format(filter.dateRange.to, "yyyy-MM-dd");
+      }
+
+      // We call both functions and handle their success/failure independently
+      const chartPromise = getChartDataCallable(params);
+      const aiPromise = getAiSummaryCallable(params);
 
       try {
-        const functions = getFunctions();
-        const getFeedbackSummaryCallable = httpsCallable(
-          functions,
-          "getFeedbackSummary"
-        );
-        const params: any = {
-          employeeId: employeeData.firebaseUid,
-          timeFrame: filter.mode,
-        };
-
-        if (
-          (filter.mode === "daily" || filter.mode === "specific") &&
-          filter.date
-        ) {
-          // Format as YYYY-MM-DD to avoid timezone-related date shifts.
-          // The backend's parseISO correctly handles this format.
-          params.date = format(filter.date, "yyyy-MM-dd");
-        } else if (filter.mode === "monthly" && filter.date) {
-          params.date = new Date(
-            Date.UTC(filter.date.getFullYear(), filter.date.getMonth(), 1)
-          ).toISOString();
-        } else if (
-          filter.mode === "range" &&
-          filter.dateRange?.from &&
-          filter.dateRange?.to
-        ) {
-          params.startDate = format(filter.dateRange.from, "yyyy-MM-dd");
-          params.endDate = format(filter.dateRange.to, "yyyy-MM-dd");
-        }
-
-        const result = await getFeedbackSummaryCallable(params);
-        setSummary(result.data as FeedbackSummary);
+        const chartResult = await chartPromise;
+        setChartData(chartResult.data);
       } catch (err) {
-        console.error("Error fetching feedback summary:", err);
-        setPageError(
-          "Failed to load your feedback summary. Please try again later."
+        console.error("Error fetching chart data:", err);
+        setChartError(
+          "Failed to load your feedback charts. Please try refreshing."
         );
       } finally {
-        setIsFeedbackLoading(false);
+        setIsChartLoading(false);
+      }
+
+      try {
+        const aiResult = await aiPromise;
+        setAiSummary(aiResult.data);
+      } catch (err) {
+        console.error("Error fetching AI summary:", err);
+        setAiError("Could not generate AI analysis.");
+      } finally {
+        setIsAiLoading(false);
       }
     },
-    [employeeData]
+    [employeeData] // Dependency array is correct
   );
 
-  // Initial data fetch for today's feedback once employee data is available
+  // Effect for initial data fetch
   useEffect(() => {
+    // FIX: Only fetch data if the employee profile has been successfully loaded.
     if (employeeData) {
-      fetchFeedbackSummary({ mode: "daily", date: new Date() });
+      fetchFeedbackData({ mode: "daily", date: new Date() });
     }
-  }, [employeeData, fetchFeedbackSummary]);
+  }, [employeeData, fetchFeedbackData]);
 
-  // Top-level loading state until authentication and initial profile fetch are complete
-  if (userAuthLoading || (!employeeData && !pageError)) {
+  // Initial loading screen for auth and profile fetching
+  if (userAuthLoading || (!employeeData && !chartError)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Loading your dashboard...</p>
+        <p className="ml-4 text-muted-foreground">Loading Your Dashboard...</p>
       </div>
     );
   }
@@ -682,8 +694,8 @@ export default function FeedbackPage() {
               </p>
             </div>
             <FeedbackFilters
-              onFilterChange={fetchFeedbackSummary}
-              isFiltering={isFeedbackLoading}
+              onFilterChange={fetchFeedbackData}
+              isFiltering={isChartLoading || isAiLoading}
             />
           </motion.div>
           <motion.div
@@ -692,9 +704,12 @@ export default function FeedbackPage() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <DashboardContent
-              isLoading={isFeedbackLoading}
-              error={pageError}
-              summary={summary}
+              isChartLoading={isChartLoading}
+              isAiLoading={isAiLoading}
+              chartData={chartData}
+              aiSummary={aiSummary}
+              chartError={chartError}
+              aiError={aiError}
             />
           </motion.div>
         </div>
