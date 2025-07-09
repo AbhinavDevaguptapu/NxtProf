@@ -616,7 +616,9 @@ export default function FeedbackPage() {
           (filter.mode === "daily" || filter.mode === "specific") &&
           filter.date
         ) {
-          params.date = filter.date.toISOString();
+          // Format as YYYY-MM-DD to avoid timezone-related date shifts.
+          // The backend's parseISO correctly handles this format.
+          params.date = format(filter.date, "yyyy-MM-dd");
         } else if (filter.mode === "monthly" && filter.date) {
           params.date = new Date(
             Date.UTC(filter.date.getFullYear(), filter.date.getMonth(), 1)

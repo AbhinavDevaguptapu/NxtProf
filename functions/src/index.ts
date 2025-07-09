@@ -316,10 +316,7 @@ export const getFeedbackSummary = onCall<GetFeedbackSummaryData>(
         // 5) Apply filter
         const today0 = startOfDay(new Date());
         let filtered = dataRows;
-        if (request.data.timeFrame === "daily") {
-            filtered = dataRows.filter(x => isSameDay(x.date, today0));
-        }
-        else if (request.data.timeFrame === "specific" && request.data.date) {
+        if ((request.data.timeFrame === "daily" || request.data.timeFrame === "specific") && request.data.date) {
             const tgt = startOfDay(parseISO(request.data.date));
             filtered = dataRows.filter(x => isSameDay(x.date, tgt));
         }

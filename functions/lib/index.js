@@ -272,10 +272,7 @@ exports.getFeedbackSummary = (0, https_1.onCall)({
     // 5) Apply filter
     const today0 = (0, date_fns_1.startOfDay)(new Date());
     let filtered = dataRows;
-    if (request.data.timeFrame === "daily") {
-        filtered = dataRows.filter(x => (0, date_fns_1.isSameDay)(x.date, today0));
-    }
-    else if (request.data.timeFrame === "specific" && request.data.date) {
+    if ((request.data.timeFrame === "daily" || request.data.timeFrame === "specific") && request.data.date) {
         const tgt = (0, date_fns_1.startOfDay)((0, date_fns_1.parseISO)(request.data.date));
         filtered = dataRows.filter(x => (0, date_fns_1.isSameDay)(x.date, tgt));
     }
