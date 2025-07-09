@@ -457,6 +457,7 @@ const DashboardContent = ({
   aiSummary,
   chartError,
   aiError,
+  hasSearched,
 }: {
   isChartLoading: boolean;
   isAiLoading: boolean;
@@ -464,7 +465,18 @@ const DashboardContent = ({
   aiSummary: AiSummaryData | null;
   chartError: string | null;
   aiError: string | null;
+  hasSearched: boolean;
 }) => {
+  if (!hasSearched) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <p className="text-muted-foreground">
+          Please select a filter to view feedback data.
+        </p>
+      </div>
+    );
+  }
+
   if (isChartLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -534,13 +546,14 @@ const DashboardContent = ({
 // --- MAIN PAGE COMPONENT ---
 export default function AdminEmployeeDetail() {
   const { employeeId } = useParams<{ employeeId: string }>();
-  const [isChartLoading, setIsChartLoading] = useState(true);
-  const [isAiLoading, setIsAiLoading] = useState(true);
+  const [isChartLoading, setIsChartLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [aiSummary, setAiSummary] = useState<AiSummaryData | null>(null);
   const [chartError, setChartError] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Fetch employee's static details once
   useEffect(() => {
@@ -566,6 +579,7 @@ export default function AdminEmployeeDetail() {
     async (filter: ActiveFilter) => {
       if (!employeeId) return;
 
+      setHasSearched(true);
       setIsChartLoading(true);
       setIsAiLoading(true);
       setChartError(null);
@@ -633,13 +647,6 @@ export default function AdminEmployeeDetail() {
     [employeeId]
   );
 
-  // Initial fetch for "Today"
-  useEffect(() => {
-    if (employeeId) {
-      fetchFeedbackData({ mode: "daily", date: new Date() });
-    }
-  }, [employeeId, fetchFeedbackData]);
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AppNavbar />
@@ -674,6 +681,7 @@ export default function AdminEmployeeDetail() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <DashboardContent
+              hasSearched={hasSearched}
               isChartLoading={isChartLoading}
               isAiLoading={isAiLoading}
               chartData={chartData}

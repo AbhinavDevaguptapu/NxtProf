@@ -447,8 +447,8 @@ const AttendanceCard = ({ employee, status, reason, onSetStatus, onMarkUnavailab
     const getBadgeStyle = () => {
         switch (status) {
             case "Present": return "bg-green-600 text-white";
-            case "Absent": return "bg-yellow-500 text-white";
-            case "Missed": return "bg-red-600 text-white";
+            case "Absent": return "bg-red-600 text-white";
+            case "Missed": return "bg-yellow-500 text-white";
             case "Not Available": return "bg-gray-500 text-white";
             default: return "bg-gray-200 text-gray-800";
         }
@@ -475,8 +475,8 @@ const AttendanceCard = ({ employee, status, reason, onSetStatus, onMarkUnavailab
                 {isInteractive && (
                     <div className="grid grid-cols-2 gap-2 mt-auto">
                         <Button size="sm" variant={status === "Present" ? "default" : "outline"} onClick={() => onSetStatus(employee.id, "Present")}><CheckCircle2 className="h-4 w-4 mr-1" />Present</Button>
-                        <Button size="sm" variant={status === "Absent" ? "secondary" : "outline"} className={cn(status === 'Absent' && "bg-yellow-500 hover:bg-yellow-600 text-white")} onClick={() => onSetStatus(employee.id, "Absent")}><UserMinus className="h-4 w-4 mr-1" />Absent</Button>
-                        <Button size="sm" variant={status === "Missed" ? "destructive" : "outline"} onClick={() => onSetStatus(employee.id, "Missed")}><UserX className="h-4 w-4 mr-1" />Missed</Button>
+                        <Button size="sm" variant={status === "Absent" ? "destructive" : "outline"} onClick={() => onSetStatus(employee.id, "Absent")}><UserMinus className="h-4 w-4 mr-1" />Absent</Button>
+                        <Button size="sm" variant={status === "Missed" ? "secondary" : "outline"} className={cn(status === 'Missed' && "bg-yellow-500 hover:bg-yellow-600 text-white")} onClick={() => onSetStatus(employee.id, "Missed")}><UserX className="h-4 w-4 mr-1" />Missed</Button>
                         <Button size="sm" variant="outline" onClick={() => onMarkUnavailable(employee)}>N/A</Button>
                     </div>
                 )}

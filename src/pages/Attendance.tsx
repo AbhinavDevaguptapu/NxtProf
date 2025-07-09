@@ -217,6 +217,34 @@ const AdminAttendanceView = () => {
               View, edit, and sync historical attendance records.
             </CardDescription>
           </div>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[280px] justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? (
+                    format(selectedDate, "PPP")
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               onClick={() => handleSync("standups")}

@@ -470,6 +470,7 @@ const DashboardContent = ({
   aiSummary,
   chartError,
   aiError,
+  hasSearched,
 }: {
   isChartLoading: boolean;
   isAiLoading: boolean;
@@ -477,7 +478,18 @@ const DashboardContent = ({
   aiSummary: AiSummaryData | null;
   chartError: string | null;
   aiError: string | null;
+  hasSearched: boolean;
 }) => {
+  if (!hasSearched) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <p className="text-muted-foreground">
+          Please select a filter to view feedback data.
+        </p>
+      </div>
+    );
+  }
+
   if (isChartLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -549,13 +561,14 @@ export default function FeedbackPage() {
   const { user, loading: userAuthLoading } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
 
-  const [isChartLoading, setIsChartLoading] = useState(true);
-  const [isAiLoading, setIsAiLoading] = useState(true);
+  const [isChartLoading, setIsChartLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [aiSummary, setAiSummary] = useState<AiSummaryData | null>(null);
   const [chartError, setChartError] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   if (adminInitialized && admin) return <Navigate to="/admin" replace />;
 
@@ -590,6 +603,7 @@ export default function FeedbackPage() {
     async (filter: ActiveFilter) => {
       if (!employeeData?.firebaseUid) return;
 
+      setHasSearched(true);
       setIsChartLoading(true);
       setIsAiLoading(true);
       setChartError(null);
@@ -657,14 +671,6 @@ export default function FeedbackPage() {
     [employeeData] // Dependency array is correct
   );
 
-  // Effect for initial data fetch
-  useEffect(() => {
-    // FIX: Only fetch data if the employee profile has been successfully loaded.
-    if (employeeData) {
-      fetchFeedbackData({ mode: "daily", date: new Date() });
-    }
-  }, [employeeData, fetchFeedbackData]);
-
   // Initial loading screen for auth and profile fetching
   if (userAuthLoading || (!employeeData && !chartError)) {
     return (
@@ -704,6 +710,7 @@ export default function FeedbackPage() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <DashboardContent
+              hasSearched={hasSearched}
               isChartLoading={isChartLoading}
               isAiLoading={isAiLoading}
               chartData={chartData}
