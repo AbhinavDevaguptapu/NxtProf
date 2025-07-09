@@ -86,6 +86,8 @@ export default function AuthPage() {
           email: u.email,
           name: u.displayName,
           hasCompletedSetup: false,
+          employeeId: "",
+          feedbackSheetUrl: "",
         });
       }
       navigate("/setup", { replace: true });
@@ -140,6 +142,8 @@ export default function AuthPage() {
           email: cred.user.email,
           name,
           hasCompletedSetup: false,
+          employeeId: "",
+          feedbackSheetUrl: "",
         });
         await handleSuccessfulLogin(cred.user);
       }
