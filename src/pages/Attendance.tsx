@@ -561,9 +561,15 @@ const AttendanceReport = ({
 
     try {
       const sessionSnap = await getDoc(sessionRef);
-      if (!sessionSnap.exists()) {
+      let sessionTimestamp: Timestamp;
+
+      if (sessionSnap.exists()) {
+        sessionTimestamp = sessionSnap.data().scheduledTime as Timestamp;
+      } else {
+        // For a new retroactive entry, default the time to the start of the day.
+        sessionTimestamp = Timestamp.fromDate(startOfDay(selectedDate));
         await setDoc(sessionRef, {
-          scheduledTime: Timestamp.fromDate(selectedDate),
+          scheduledTime: sessionTimestamp,
           status: "ended",
           scheduledBy: "Admin (Manual Edit)",
         });
@@ -584,7 +590,7 @@ const AttendanceReport = ({
           employeeId: emp.employeeId,
           employee_email: emp.email,
           status: status,
-          scheduled_at: Timestamp.fromDate(startOfDay(selectedDate)),
+          scheduled_at: sessionTimestamp, // <-- Use the correct session timestamp
           markedAt: serverTimestamp(),
         };
         if (status === "Not Available") {
