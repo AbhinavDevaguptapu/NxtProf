@@ -318,7 +318,10 @@ export default function AdminEmployeeDetail() {
             Date.UTC(filter.date.getFullYear(), filter.date.getMonth(), 1)
           ).toISOString();
         } else if (filter.mode === "daily" || filter.mode === "specific") {
-          params.date = filter.date?.toISOString();
+          // Format as YYYY-MM-DD to avoid timezone-related date shifts.
+          // The backend's parseISO correctly handles this format.
+          if (filter.date)
+            params.date = format(filter.date, "yyyy-MM-dd");
         } else if (
           filter.mode === "range" &&
           filter.dateRange?.from &&
