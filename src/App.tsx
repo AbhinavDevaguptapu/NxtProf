@@ -6,28 +6,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import { AdminAuthProvider, useAdminAuth } from "./context/AdminAuthContext";
-import { UserAuthProvider, useUserAuth } from "./context/UserAuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import AdminProtectedRoute from "./components/AdminProtectedRoute";
-import ProfilePage from "./pages/ProfilePage";
+import { AdminAuthProvider, useAdminAuth } from "@/context/AdminAuthContext";
+import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
+import ProtectedRoute from "@/components/routes/ProtectedRoute";
+import AdminProtectedRoute from "@/components/routes/AdminProtectedRoute";
 
-
-// Group page imports for cleanliness
-import LandingPage from "./pages/LandingPage";
-import AuthPage from "./pages/AuthPage";
-import AdminLogin from "./pages/AdminLogin";
-import Index from "./pages/Index";
-import EmployeeSetup from "./pages/EmployeeSetup";
-import Standups from "./pages/Standups";
-import Attendance from "./pages/Attendance";
-import AdminHome from "./pages/AdminHome";
-import AdminEmployees from "./pages/AdminEmployees";
-import AdminEmployeeDetail from "./pages/AdminEmployeeDetail";
-import NotFound from "./pages/NotFound";
-import OnboardingVideoPage from "./pages/OnBoardingPage";
-import LearningHours from "./pages/LearningHours";
-import FeedbackPage from "./pages/FeedbackPage"; // <-- 1. IMPORT THE NEW PAGE
+// --- Feature-based Page Imports ---
+import AdminHome from "@/features/admin/pages/AdminHome";
+import AdminEmployees from "@/features/admin/pages/AdminEmployees";
+import AdminEmployeeDetail from "@/features/admin/pages/AdminEmployeeDetail";
+import AuthPage from "@/features/auth/pages/AuthPage";
+import AdminLogin from "@/features/auth/pages/AdminLogin";
+import EmployeeSetup from "@/features/auth/pages/EmployeeSetup";
+import Attendance from "@/features/attendance/pages/Attendance";
+import FeedbackPage from "@/features/feedback/pages/FeedbackPage";
+import Index from "@/features/home/pages/Index";
+import LandingPage from "@/features/home/pages/LandingPage";
+import LearningHours from "@/features/learning-hours/pages/LearningHours";
+import OnboardingVideoPage from "@/features/onboarding/pages/OnBoardingPage";
+import ProfilePage from "@/features/profile/pages/ProfilePage";
+import Standups from "@/features/standups/pages/Standups";
+import NotFound from "@/features/not-found/pages/NotFound";
 
 const queryClient = new QueryClient();
 

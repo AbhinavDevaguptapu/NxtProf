@@ -33,12 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
+exports.endLearningSessionAndLockPoints = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file contains all the backend serverless logic, including user management,
  * data synchronization with Google Sheets, and AI-powered feedback analysis.
  */
+const learningSessions_1 = require("./learningSessions");
+Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
 const admin = __importStar(require("firebase-admin"));
 const google_auth_library_1 = require("google-auth-library");
 const googleapis_1 = require("googleapis");
@@ -46,7 +48,7 @@ const generative_ai_1 = require("@google/generative-ai");
 const https_1 = require("firebase-functions/v2/https");
 const functions = __importStar(require("firebase-functions"));
 const date_fns_1 = require("date-fns");
-admin.initializeApp();
+// admin.initializeApp();
 // Helper function to securely get the Gemini API Key
 function getGeminiKey() {
     const key = process.env.GEMINI_KEY;
@@ -449,57 +451,4 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
         throw new https_1.HttpsError("internal", "An error occurred while syncing to the sheet. " + err.message);
     }
 });
-// // Add this new function alongside your existing addAdminRole function
-// export const removeAdminRole = onCall<RoleManagementData>(async (request) => {
-//     if (!request.auth?.token.isAdmin) {
-//         throw new HttpsError("permission-denied", "Only admins can modify roles.");
-//     }
-//     const email = request.data.email?.trim();
-//     if (!email) {
-//         throw new HttpsError("invalid-argument", "Provide a valid email.");
-//     }
-//     try {
-//         const user = await admin.auth().getUserByEmail(email);
-//         // Set custom claims, ensuring other claims are merged if they exist
-//         await admin.auth().setCustomUserClaims(user.uid, { ...user.customClaims, isAdmin: false });
-//         return { message: `Admin role removed for ${email}.` };
-//     } catch (err: any) {
-//         if (err.code === "auth/user-not-found") {
-//             throw new HttpsError("not-found", "User not found.");
-//         }
-//         console.error("removeAdminRole error:", err);
-//         throw new HttpsError("internal", "Could not remove admin role.");
-//     }
-// });
-// // Add this function to securely get the list of employees with their admin status
-// export const getEmployeesWithAdminStatus = onCall(async (request) => {
-//     if (!request.auth?.token.isAdmin) {
-//         throw new HttpsError("permission-denied", "Only admins can view the employee list.");
-//     }
-//     try {
-//         // Get all users from Firebase Auth to check their custom claims
-//         const listUsersResult = await admin.auth().listUsers(1000);
-//         const adminUids = new Set();
-//         listUsersResult.users.forEach(userRecord => {
-//             if (userRecord.customClaims?.isAdmin === true) {
-//                 adminUids.add(userRecord.uid);
-//             }
-//         });
-//         // Get all employee profiles from Firestore
-//         const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
-//         // Merge the two data sources
-//         const employeesWithStatus = employeesSnapshot.docs.map(doc => {
-//             const employeeData = doc.data();
-//             return {
-//                 id: doc.id,
-//                 ...employeeData,
-//                 isAdmin: adminUids.has(doc.id) // Add the isAdmin flag
-//             };
-//         });
-//         return employeesWithStatus;
-//     } catch (error: any) {
-//         console.error("Error fetching employees with admin status:", error);
-//         throw new HttpsError("internal", "Failed to fetch employee data.");
-//     }
-// });
 //# sourceMappingURL=index.js.map
