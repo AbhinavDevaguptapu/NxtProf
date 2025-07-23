@@ -1,19 +1,18 @@
 // src/components/NavigationCard.tsx
 
-import { Link } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 interface NavigationCardProps {
-    to: string;
+    onClick: () => void;
     icon: React.ReactNode;
     title: string;
     description: string;
     className?: string;
 }
 
-export function NavigationCard({ to, icon, title, description, className }: NavigationCardProps) {
+export function NavigationCard({ onClick, icon, title, description, className }: NavigationCardProps) {
     const cardVariants = {
         hover: {
             y: -5,
@@ -23,7 +22,12 @@ export function NavigationCard({ to, icon, title, description, className }: Navi
 
     return (
         <motion.div whileHover="hover" variants={cardVariants} className="h-full">
-            <Link to={to} className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg block h-full">
+            <div
+                onClick={onClick}
+                className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg block h-full cursor-pointer"
+                tabIndex={0} // Make it focusable
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+            >
                 <Card className={cn(
                     "h-full transition-colors duration-200 ease-in-out bg-card hover:bg-accent",
                     className
@@ -36,7 +40,7 @@ export function NavigationCard({ to, icon, title, description, className }: Navi
                         <CardDescription className="text-sm">{description}</CardDescription>
                     </CardHeader>
                 </Card>
-            </Link>
+            </div>
         </motion.div>
     );
 }

@@ -15,9 +15,10 @@ import { cn } from "@/lib/utils";
 type ScheduleLearningHourFormProps = {
     todayDocId: string;
     adminName: string;
+    onSuccess?: () => void;
 };
 
-export const ScheduleLearningHourForm = ({ todayDocId, adminName }: ScheduleLearningHourFormProps) => {
+export const ScheduleLearningHourForm = ({ todayDocId, adminName, onSuccess }: ScheduleLearningHourFormProps) => {
     const { toast } = useToast();
     const [isScheduling, setIsScheduling] = useState(false);
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
@@ -48,6 +49,7 @@ export const ScheduleLearningHourForm = ({ todayDocId, adminName }: ScheduleLear
                 scheduledBy: adminName,
             });
             toast({ title: "Success", description: `Session scheduled for ${format(finalDateTime, 'p')}.` });
+            if (onSuccess) onSuccess();
         } catch (error) {
             console.error(error);
             toast({ title: "Scheduling Failed", description: "An unexpected error occurred.", variant: "destructive" });

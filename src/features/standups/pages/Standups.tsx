@@ -29,7 +29,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 // Component Imports
-import AppNavbar from "@/components/common/AppNavbar";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -132,8 +132,14 @@ const pageAnimationProps: {
   exit: "exit",
 };
 
+import { ViewState, ViewType } from "@/layout/AppShell";
+
 // --- MAIN PAGE COMPONENT ---
-export default function Standups() {
+interface StandupsPageProps {
+  setActiveView: (view: ViewState) => void;
+}
+
+export default function StandupsPage({ setActiveView }: StandupsPageProps) {
   const { user } = useUserAuth();
   const { admin } = useAdminAuth();
   const { toast } = useToast();
@@ -334,6 +340,8 @@ export default function Standups() {
     };
   }, [tempAttendance, employees]);
 
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   // --- RENDER LOGIC ---
   const renderContent = () => {
     if (isLoadingPage) {
@@ -348,7 +356,7 @@ export default function Standups() {
       );
     }
 
-    if (!standup) {
+    if (!standup || isRescheduling) {
       if (admin) {
         return (
           <motion.div
@@ -359,6 +367,7 @@ export default function Standups() {
             <ScheduleStandupForm
               todayDocId={todayDocId}
               adminName={user?.displayName || "Admin"}
+              onSuccess={() => setIsRescheduling(false)}
             />
           </motion.div>
         );
@@ -403,7 +412,16 @@ export default function Standups() {
                 today.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-2">
+              {admin && (
+                <Button
+                  size="lg"
+                  onClick={() => setIsRescheduling(true)}
+                  variant="outline"
+                >
+                  Reschedule
+                </Button>
+              )}
               {admin ? (
                 <Button
                   size="lg"
@@ -727,7 +745,7 @@ export default function Standups() {
                 </div>
                 <motion.div
                   key={finalFilter}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -791,18 +809,19 @@ export default function Standups() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <AppNavbar />
-      <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col">
-        <AnimatePresence mode="wait">{renderContent()}</AnimatePresence>
-      </main>
+    <>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Standups</h1>
+        <p className="text-muted-foreground">Manage and view daily standup sessions.</p>
+      </div>
+      <AnimatePresence mode="wait">{renderContent()}</AnimatePresence>
       <AbsenceReasonModal
         isOpen={!!editingAbsence}
         employee={editingAbsence}
         onClose={() => setEditingAbsence(null)}
         onSave={handleSaveAbsenceReason}
       />
-    </div>
+    </>
   );
 }
 
@@ -989,9 +1008,11 @@ const AbsenceReasonModal = ({
 const ScheduleStandupForm = ({
   todayDocId,
   adminName,
+  onSuccess,
 }: {
   todayDocId: string;
   adminName: string;
+  onSuccess?: () => void;
 }) => {
   const { toast } = useToast();
   const [isScheduling, setIsScheduling] = useState(false);
@@ -1033,6 +1054,7 @@ const ScheduleStandupForm = ({
         title: "Success",
         description: `Standup scheduled for ${format(finalDateTime, "p")}.`,
       });
+      if (onSuccess) onSuccess();
     } catch (error) {
       console.error(error);
       toast({

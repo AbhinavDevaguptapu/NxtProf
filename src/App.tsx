@@ -1,38 +1,20 @@
-// src/App.tsx
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
 import { AdminAuthProvider, useAdminAuth } from "@/context/AdminAuthContext";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import ProtectedRoute from "@/components/routes/ProtectedRoute";
-import AdminProtectedRoute from "@/components/routes/AdminProtectedRoute";
-
-// --- Feature-based Page Imports ---
-import AdminHome from "@/features/admin/pages/AdminHome";
-import AdminEmployees from "@/features/admin/pages/AdminEmployees";
-import AdminEmployeeDetail from "@/features/admin/pages/AdminEmployeeDetail";
 import AuthPage from "@/features/auth/pages/AuthPage";
 import AdminLogin from "@/features/auth/pages/AdminLogin";
 import EmployeeSetup from "@/features/auth/pages/EmployeeSetup";
-import Attendance from "@/features/attendance/pages/Attendance";
-import FeedbackPage from "@/features/feedback/pages/FeedbackPage";
-import Index from "@/features/home/pages/Index";
 import LandingPage from "@/features/home/pages/LandingPage";
-import LearningHours from "@/features/learning-hours/pages/LearningHours";
-import OnboardingVideoPage from "@/features/onboarding/pages/OnBoardingPage";
-import ProfilePage from "@/features/profile/pages/ProfilePage";
-import Standups from "@/features/standups/pages/Standups";
-import TaskAnalyzerPage from "@/features/task-analyzer/pages/TaskAnalyzerPage";
-
+import AppShell from "@/layout/AppShell";
 import NotFound from "@/features/not-found/pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Global loading spinner (no changes here)
 const GlobalLoading = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-background">
     <div className="relative">
@@ -53,7 +35,6 @@ const GlobalLoading = () => (
   </div>
 );
 
-
 const AppContent = () => {
   const { user, initialized: userInitialized } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
@@ -64,67 +45,22 @@ const AppContent = () => {
 
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
-
-      {/* Root Path Logic */}
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/auth" element={!user ? <AuthPage /> : <Navigate to="/" />} />
+      <Route path="/admin/login" element={!user ? <AdminLogin /> : <Navigate to="/" />} />
+      <Route path="/setup" element={<ProtectedRoute><EmployeeSetup /></ProtectedRoute>} />
       <Route
-        path="/"
+        path="/*"
         element={
-          !user ? (
-            <LandingPage />
-          ) : admin ? (
-            <Navigate to="/admin" replace />
-          ) : (
+          user ? (
             <ProtectedRoute>
-              <Index />
+              <AppShell />
             </ProtectedRoute>
+          ) : (
+            <Navigate to="/landing" replace />
           )
         }
       />
-
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/profile"
-        element={
-          <AdminProtectedRoute>
-            <ProfilePage />
-          </AdminProtectedRoute>
-        }
-      />
-
-      {/* Employee-only Routes */}
-      <Route path="/setup" element={<ProtectedRoute><EmployeeSetup /></ProtectedRoute>} />
-      <Route path="/standups" element={<ProtectedRoute><Standups /></ProtectedRoute>} />
-      <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-      <Route path="/learning-hours" element={<ProtectedRoute><LearningHours /></ProtectedRoute>} />
-      
-
-      {/* --- 2. ADD THE NEW FEEDBACK ROUTE HERE --- */}
-      <Route
-        path="/feedback"
-        element={<ProtectedRoute><FeedbackPage /></ProtectedRoute>}
-      />
-
-      {/* Onboarding Kit might be public or protected, adjust as needed */}
-      <Route path="/onboardingKit" element={<OnboardingVideoPage />} />
-
-      {/* Admin-only Routes */}
-      <Route path="/admin" element={<AdminProtectedRoute><AdminHome /></AdminProtectedRoute>} />
-      <Route path="/admin/employees" element={<AdminProtectedRoute><AdminEmployees /></AdminProtectedRoute>} />
-      <Route path="/admin/employees/:employeeId" element={<AdminProtectedRoute><AdminEmployeeDetail /></AdminProtectedRoute>} />
-      <Route path="/admin/task-analyzer" element={<AdminProtectedRoute><TaskAnalyzerPage /></AdminProtectedRoute>} />
-      <Route path="/task-analyzer" element={<ProtectedRoute><TaskAnalyzerPage /></ProtectedRoute>} />
-
-      {/* Fallback */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

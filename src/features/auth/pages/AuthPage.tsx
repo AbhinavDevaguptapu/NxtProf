@@ -16,7 +16,7 @@
  * - Uses contexts: `useUserAuth` and `useAdminAuth` for authentication state.
  * - Integrates with Firestore to store and check employee setup status.
  */
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,

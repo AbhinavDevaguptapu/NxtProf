@@ -20,7 +20,7 @@
  */
 // src/pages/EmployeeSetup.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';

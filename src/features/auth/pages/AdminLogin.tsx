@@ -13,7 +13,7 @@
 // src/pages/AdminLogin.tsx
 
 import React, { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import AppNavbar from "@/components/common/AppNavbar";

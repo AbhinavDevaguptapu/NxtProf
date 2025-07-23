@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import AnalysisPage from '../components/AnalysisPage';
-import AppNavbar from '@/components/common/AppNavbar';
 import { useAdminAuth } from "@/context/AdminAuthContext";
-import { useNavigate } from "react-router-dom";
 import { Loader2, Users } from 'lucide-react';
 import { Employee } from '../types';
 import { getSubsheetNames } from '../services/sheetService';
 import { Card, CardContent } from '@/components/ui/card';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { ViewState, ViewType } from '@/layout/AppShell';
 
-const TaskAnalyzerPage: React.FC = () => {
+interface TaskAnalyzerPageProps {
+  setActiveView: (view: ViewState) => void;
+}
+
+const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) => {
   const { admin } = useAdminAuth();
-  const navigate = useNavigate();
 
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [employeeSheets, setEmployeeSheets] = useState<Employee[]>([]);
@@ -44,52 +46,45 @@ const TaskAnalyzerPage: React.FC = () => {
     setSelectedEmployee(employee);
   };
 
-  const renderContent = () => {
-    if (isLoading) {
-      return <div className="flex items-center justify-center h-full"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
-    }
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Fetching employee data...</p>
+      </div>
+    );
+  }
 
-    if (error) {
-      return <ErrorDisplay message={error} onRetry={() => window.location.reload()} />;
-    }
+  if (error) {
+    return <ErrorDisplay message={error} onRetry={() => window.location.reload()} />;
+  }
 
-    if (admin) {
-      return (
-        <AnalysisPage
-          isAdminView
-          employees={employeeSheets}
-          selectedEmployee={selectedEmployee}
-          onEmployeeSelect={handleEmployeeSelect}
-          onBack={() => navigate('/')}
-        />
-      );
-    }
+  if (admin) {
+    return (
+      <AnalysisPage
+        isAdminView
+        employees={employeeSheets}
+        selectedEmployee={selectedEmployee}
+        onEmployeeSelect={handleEmployeeSelect}
+      />
+    );
+  }
 
-    if (!selectedEmployee) {
-      return (
-        <Card className="h-full flex items-center justify-center border-2 border-dashed">
-          <CardContent className="text-center py-10">
-            <div className="mx-auto bg-secondary rounded-full h-16 w-16 flex items-center justify-center">
-              <Users className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mt-4">No Analysis Available</h2>
-            <p className="text-muted-foreground mt-1">An analysis sheet has not been assigned to your account.</p>
-          </CardContent>
-        </Card>
-      );
-    }
+  if (!selectedEmployee) {
+    return (
+      <Card className="h-full flex items-center justify-center border-2 border-dashed">
+        <CardContent className="text-center py-10">
+          <div className="mx-auto bg-secondary rounded-full h-16 w-16 flex items-center justify-center">
+            <Users className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mt-4">No Analysis Available</h2>
+          <p className="text-muted-foreground mt-1">An analysis sheet has not been assigned to your account.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-    return <AnalysisPage selectedEmployee={selectedEmployee} onBack={() => navigate('/')} />;
-  };
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <AppNavbar />
-      <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col">
-        {renderContent()}
-      </main>
-    </div>
-  );
+  return <AnalysisPage selectedEmployee={selectedEmployee} />;
 };
 
 export default TaskAnalyzerPage;

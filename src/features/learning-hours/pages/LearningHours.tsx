@@ -2,14 +2,14 @@ import React, { useState, useMemo } from "react";
 import { format, formatDistanceStrict } from "date-fns";
 import { AnimatePresence, motion, Variants } from "framer-motion";
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Link } from "react-router-dom";
+
 
 // Auth Hooks
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 // UI Components
-import AppNavbar from "@/components/common/AppNavbar";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -37,8 +37,14 @@ const pageVariants: Variants = {
 const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const itemVariants: Variants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
+import { ViewState, ViewType } from "@/layout/AppShell";
+
 // --- MAIN PAGE COMPONENT ---
-export default function LearningHours() {
+interface LearningHoursPageProps {
+  setActiveView: (view: ViewState) => void;
+}
+
+export default function LearningHours({ setActiveView }: LearningHoursPageProps) {
     const { user } = useUserAuth();
     const { admin } = useAdminAuth();
     const { toast } = useToast();
@@ -81,6 +87,8 @@ export default function LearningHours() {
         }
     };
 
+    const [isRescheduling, setIsRescheduling] = useState(false);
+
     const handleAddPoint = (data: any) => {
         addLearningPoint(data, todayDocId);
     };
@@ -94,66 +102,12 @@ export default function LearningHours() {
             );
         }
 
-        if (!learningHour) {
-            if (admin) {
-                return (
-                    <motion.div key="schedule" className="flex-grow flex items-center justify-center p-4" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                        <ScheduleLearningHourForm todayDocId={todayDocId} adminName={user?.displayName || "Admin"} />
-                    </motion.div>
-                );
-            }
-            return (
-                <motion.div key="no-session" className="flex-grow flex items-center justify-center p-4" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                    <Alert className="max-w-md border-gray-400 text-destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>No Learning Session Scheduled</AlertTitle>
-                        <AlertDescription>There is no session scheduled for today. Please check back later.</AlertDescription>
-                    </Alert>
-                </motion.div>
-            );
-        }
-
         // --- USER VIEW ---
         if (!admin) {
             return (
                 <motion.div key="user-view" variants={pageVariants} initial="initial" animate="animate" exit="exit">
                     <SessionStatusBanner learningHour={learningHour} />
                     
-                    {learningHour?.status === 'ended' && (
-                        <>
-                            <motion.div key="summary-view-container" className="w-full space-y-8" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                                <div className="p-6 rounded-lg border border-gray-200">
-                                    <div className="flex flex-wrap gap-4 justify-between items-center">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-full bg-gray-100 text-black flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-7 h-7" /></div>
-                                            <div>
-                                                <h1 className="text-3xl font-bold tracking-tight">Learning Session Completed</h1>
-                                                <p className="text-muted-foreground">{`Concluded at ${learningHour.endedAt ? format(learningHour.endedAt.toDate(), 'p') : 'N/A'}.`}</p>
-                                            </div>
-                                        </div>
-                                        {learningHour.startedAt && learningHour.endedAt && (
-                                            <div className="text-right">
-                                                <p className="text-2xl font-semibold text-gray-800">{formatDistanceStrict(learningHour.endedAt.toDate(), learningHour.startedAt.toDate())}</p>
-                                                <p className="text-xs text-muted-foreground">TOTAL DURATION</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <h2 className="text-2xl font-bold mb-4 tracking-tight">Final Summary</h2>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                                        <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Present</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Present').length}</p></Card>
-                                        <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Absent</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Absent').length}</p></Card>
-                                        <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Missed</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Missed').length}</p></Card>
-                                        <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Unavailable</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Not Available').length}</p></Card>
-                                        <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Total Team</p><p className="text-3xl font-bold">{employees.length}</p></Card>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </>
-                    )}
-
                     <LearningPointsList
                         points={learningPoints}
                         isLoading={isLoadingPoints}
@@ -178,7 +132,7 @@ export default function LearningHours() {
                                     <Button size="sm" variant={finalFilter === 'Not Available' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Not Available')}>N/A</Button>
                                 </div>
                             </div>
-                            <motion.div key={finalFilter} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+                            <motion.div key={finalFilter} className="grid grid-cols-1 md:grid-cols-2 gap-6" variants={containerVariants} initial="hidden" animate="visible">
                                 {finalFilteredEmployees.length > 0 ? (
                                     finalFilteredEmployees.map((emp) => (
                                         <motion.div key={emp.id} variants={itemVariants}>
@@ -200,6 +154,18 @@ export default function LearningHours() {
         }
 
         // --- ADMIN VIEW ---
+        if (!learningHour || isRescheduling) {
+            return (
+                <motion.div key="schedule" className="flex-grow flex items-center justify-center p-4" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                    <ScheduleLearningHourForm
+                        todayDocId={todayDocId}
+                        adminName={user?.displayName || "Admin"}
+                        onSuccess={() => setIsRescheduling(false)}
+                    />
+                </motion.div>
+            );
+        }
+
         if (learningHour.status === "scheduled") {
             return (
                 <motion.div key="scheduled" className="flex-grow flex items-center justify-center p-4" variants={pageVariants} initial="initial" animate="animate" exit="exit">
@@ -213,7 +179,14 @@ export default function LearningHours() {
                                 Scheduled for <span className="font-semibold text-black-700">{format(learningHour.scheduledTime.toDate(), 'p')}</span> today.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="flex flex-col gap-2">
+                            <Button
+                                size="lg"
+                                onClick={() => setIsRescheduling(true)}
+                                variant="outline"
+                            >
+                                Reschedule
+                            </Button>
                             <Button size="lg" onClick={handleStartSession} disabled={isUpdating} className="w-full bg-black hover:bg-gray-700 text-white font-bold py-3 text-lg">
                                 {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <PlayCircle className="mr-2 h-6 w-6" />}
                                 {isUpdating ? 'Starting...' : 'Start Session Now'}
@@ -329,7 +302,7 @@ export default function LearningHours() {
                                 <Button size="sm" variant={finalFilter === 'Not Available' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Not Available')}>N/A</Button>
                             </div>
                         </div>
-                        <motion.div key={finalFilter} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+                        <motion.div key={finalFilter} className="grid grid-cols-1 md:grid-cols-2 gap-6" variants={containerVariants} initial="hidden" animate="visible">
                             {finalFilteredEmployees.length > 0 ? (
                                 finalFilteredEmployees.map((emp) => (
                                     <motion.div key={emp.id} variants={itemVariants}>
@@ -353,23 +326,18 @@ export default function LearningHours() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col bg-background">
-            <AppNavbar />
-            <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col">
-                <div className="flex items-center justify-between mb-6">
+        <>
+            <div className="flex items-center justify-between mb-6">
                     <h1 className="text-3xl font-bold tracking-tight">Learning Hours</h1>
-                    <Link to={admin ? "/admin/task-analyzer" : "/task-analyzer"}>
-                        <Button variant="outline">
-                            <Bot className="mr-2 h-4 w-4" />
-                            AI Task Analysis
-                        </Button>
-                    </Link>
+                    <Button variant="outline" onClick={() => setActiveView({ view: 'task-analyzer' })}>
+                        <Bot className="mr-2 h-4 w-4" />
+                        AI Task Analysis
+                    </Button>
                 </div>
-                <AnimatePresence mode="wait">
-                    {renderContent()}
-                </AnimatePresence>
-            </main>
+            <AnimatePresence mode="wait">
+                {renderContent()}
+            </AnimatePresence>
             <AbsenceReasonModal isOpen={!!editingAbsence} employee={editingAbsence} onClose={() => setEditingAbsence(null)} onSave={saveAbsenceReason} />
-        </div>
+        </>
     );
 }

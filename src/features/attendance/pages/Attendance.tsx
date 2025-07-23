@@ -31,7 +31,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 // Component Imports
-import AppNavbar from "@/components/common/AppNavbar";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -111,8 +111,14 @@ type DailyCombinedStatus = {
   learning?: AttendanceStatus;
 };
 
+import { ViewState } from "@/layout/AppShell";
+
 // --- Main Component ---
-export default function Attendance() {
+interface AttendancePageProps {
+  setActiveView: (view: ViewState) => void;
+}
+
+export default function Attendance({ setActiveView }: AttendancePageProps) {
   const { admin, loading: adminLoading } = useAdminAuth();
   const { user, loading: userLoading } = useUserAuth();
 
@@ -121,31 +127,28 @@ export default function Attendance() {
   const isLoading = adminLoading || userLoading;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <AppNavbar />
-      <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col">
-        {isLoading ? (
-          <div className="flex-grow flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : admin ? (
-          <AdminAttendanceView />
-        ) : user ? (
-          <UserAttendanceView userId={user.uid} />
-        ) : (
-          <div className="flex-grow flex items-center justify-center">
-            <Card className="p-6 text-center">
-              <CardHeader>
-                <CardTitle>Authentication Required</CardTitle>
-                <CardDescription>
-                  Please log in to view your attendance records.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        )}
-      </main>
-    </div>
+    <>
+      {isLoading ? (
+        <div className="flex-grow flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : admin ? (
+        <AdminAttendanceView />
+      ) : user ? (
+        <UserAttendanceView userId={user.uid} />
+      ) : (
+        <div className="flex-grow flex items-center justify-center">
+          <Card className="p-6 text-center">
+            <CardHeader>
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>
+                Please log in to view your attendance records.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      )}
+    </>
   );
 }
 

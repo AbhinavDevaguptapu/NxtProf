@@ -16,7 +16,6 @@ interface AnalysisPageProps {
   employees?: Employee[];
   selectedEmployee: Employee | null;
   onEmployeeSelect?: (employee: Employee) => void;
-  onBack: () => void;
 }
 
 const AnalysisPage: React.FC<AnalysisPageProps> = ({
@@ -24,7 +23,6 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
   employees = [],
   selectedEmployee,
   onEmployeeSelect,
-  onBack,
 }) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [analyzedTasks, setAnalyzedTasks] = useState<Task[]>([]);
@@ -143,10 +141,6 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
         <div>
-          <Button onClick={onBack} variant="ghost" className="mb-2 -ml-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
           <h1 className="text-2xl font-bold">Task Analysis {isAdminView && selectedEmployee ? `for ${employeeName}` : ''}</h1>
           <p className="text-muted-foreground">{isAdminView ? 'Select an employee and date to view their analysis.' : 'Select a date to view your analysis.'}</p>
         </div>

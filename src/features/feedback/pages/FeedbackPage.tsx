@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Navigate } from "react-router-dom";
+
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { db } from "@/integrations/firebase/client";
@@ -7,7 +7,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 // UI Components & Icons
-import AppNavbar from "@/components/common/AppNavbar";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -556,8 +556,14 @@ const DashboardContent = ({
   );
 };
 
+import { ViewState, ViewType } from "@/layout/AppShell";
+
 // --- MAIN PAGE COMPONENT ---
-export default function FeedbackPage() {
+interface FeedbackPageProps {
+  setActiveView: (view: ViewState) => void;
+}
+
+export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
   const { user, loading: userAuthLoading } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
 
@@ -570,7 +576,7 @@ export default function FeedbackPage() {
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  if (adminInitialized && admin) return <Navigate to="/admin" replace />;
+  // The admin check is now handled by AppShell, so the Navigate component is removed.
 
   useEffect(() => {
     if (userAuthLoading || !user?.uid) return;
@@ -682,45 +688,40 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <AppNavbar />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
-        <div className="w-full max-w-6xl mx-auto space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold">Your Feedback Dashboard</h1>
-              <p className="text-muted-foreground">
-                Welcome back,{" "}
-                <strong>{employeeData?.name || "Employee"}</strong>! Here's your
-                latest performance summary.
-              </p>
-            </div>
-            <FeedbackFilters
-              onFilterChange={fetchFeedbackData}
-              isFiltering={isChartLoading || isAiLoading}
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <DashboardContent
-              hasSearched={hasSearched}
-              isChartLoading={isChartLoading}
-              isAiLoading={isAiLoading}
-              chartData={chartData}
-              aiSummary={aiSummary}
-              chartError={chartError}
-              aiError={aiError}
-            />
-          </motion.div>
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Your Feedback Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back,{" "}
+            <strong>{employeeData?.name || "Employee"}</strong>! Here's your
+            latest performance summary.
+          </p>
         </div>
-      </main>
+        <FeedbackFilters
+          onFilterChange={fetchFeedbackData}
+          isFiltering={isChartLoading || isAiLoading}
+        />
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <DashboardContent
+          hasSearched={hasSearched}
+          isChartLoading={isChartLoading}
+          isAiLoading={isAiLoading}
+          chartData={chartData}
+          aiSummary={aiSummary}
+          chartError={chartError}
+          aiError={aiError}
+        />
+      </motion.div>
     </div>
   );
 }
