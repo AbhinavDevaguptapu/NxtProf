@@ -36,16 +36,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.endLearningSessionAndLockPoints = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
-// Initialize the admin SDK if it hasn't been already
-if (admin.apps.length === 0) {
-    admin.initializeApp();
-}
-const db = admin.firestore();
 /**
  * Ends a learning session and locks all associated learning points.
  * This function is callable only by an admin.
- */
+*/
 exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) => {
+    const db = admin.firestore();
     // 1. Authentication & Authorization Check
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");

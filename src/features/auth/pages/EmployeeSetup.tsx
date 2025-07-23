@@ -22,9 +22,11 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/integrations/firebase/client';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '@/integrations/firebase/client';
 import { useUserAuth } from '@/context/UserAuthContext';
+import { signOut } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +55,7 @@ const fieldVariants: Variants = {
 };
 
 export default function EmployeeSetup() {
+    const functions = getFunctions();
     const { user } = useUserAuth();
     const navigate = useNavigate();
 
@@ -60,6 +63,7 @@ export default function EmployeeSetup() {
     const [sheetLink, setSheetLink] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [exitLoading, setExitLoading] = useState(false);
 
     const isEmployeeIdValid = (id: string) => /^NW\d{7}$/.test(id);
     const isSheetLinkValid = (link: string) => {
@@ -78,6 +82,24 @@ export default function EmployeeSetup() {
         setEmployeeId(e.target.value.toUpperCase());
     };
 
+    const handleExit = async () => {
+        if (!user) return;
+
+        setExitLoading(true);
+        setError(null);
+
+        try {
+            const deleteEmployee = httpsCallable(functions, 'deleteEmployee');
+            await deleteEmployee({ uid: user.uid });
+            await signOut(auth);
+            navigate('/auth');
+        } catch (err) {
+            console.error(err);
+            setError('Failed to delete account. Please try again.');
+            setExitLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isFormValid || !user) {
@@ -89,6 +111,25 @@ export default function EmployeeSetup() {
         setError(null);
 
         try {
+            const employeesRef = collection(db, 'employees');
+
+            // Check for duplicate employeeId
+            const idQuery = query(employeesRef, where('employeeId', '==', employeeId));
+            const idQuerySnapshot = await getDocs(idQuery);
+            if (!idQuerySnapshot.empty) {
+                setError('This Employee ID is already in use.');
+                setLoading(false);
+                return;
+            }
+
+            // Check for duplicate feedbackSheetUrl
+            const urlQuery = query(employeesRef, where('feedbackSheetUrl', '==', cleanedSheetLink));
+            const urlQuerySnapshot = await getDocs(urlQuery);
+            if (!urlQuerySnapshot.empty) {
+                setError('This Feedback Sheet URL is already associated with another account.');
+                setLoading(false);
+                return;
+            }
             const ref = doc(db, 'employees', user.uid);
             await updateDoc(ref, {
                 employeeId,
@@ -117,7 +158,7 @@ export default function EmployeeSetup() {
             >
                 <Card className="w-full max-w-md">
                     <CardHeader>
-                        <CardTitle className="text-2xl">Complete Your Setup</CardTitle>
+                        <CardTitle className="text-2xl">Welcome, {user?.displayName || 'User'}!</CardTitle>
                         <CardDescription>
                             Please provide your Employee ID and Feedback Sheet link to continue.
                         </CardDescription>
@@ -177,14 +218,14 @@ export default function EmployeeSetup() {
                                 <motion.button
                                     type="submit"
                                     className="w-full"
-                                    disabled={!isFormValid || loading}
+                                    disabled={!isFormValid || loading || exitLoading}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
                                     <Button
                                         type="button"
                                         className="w-full"
-                                        disabled={!isFormValid || loading}
+                                        disabled={!isFormValid || loading || exitLoading}
                                         tabIndex={-1}
                                         style={{
                                             pointerEvents: 'none',
@@ -197,6 +238,18 @@ export default function EmployeeSetup() {
                                         {loading ? 'Saving...' : 'Get Started'}
                                     </Button>
                                 </motion.button>
+                            </motion.div>
+                            <motion.div variants={fieldVariants}>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    className="w-full mt-2"
+                                    onClick={handleExit}
+                                    disabled={loading || exitLoading}
+                                >
+                                    {exitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {exitLoading ? 'Exiting...' : 'Exit and Delete Account'}
+                                </Button>
                             </motion.div>
                         </motion.form>
                     </CardContent>

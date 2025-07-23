@@ -41,7 +41,8 @@ const formSchema = z.object({
     task_name: z.string().min(5, { message: 'Task name must be at least 5 characters.' }),
     framework_category: z.string().min(1, { message: "Please select a category." }),
     point_type: z.enum(['R1', 'R2', 'R3'], { required_error: "You must select a point type." }),
-    subcategory: z.string().min(3, { message: 'Subcategory is required.' }),
+    subcategory: z.string().optional(),
+    task_link: z.string().optional(),
     recipient: z.string().min(3, { message: 'Recipient is required.' }),
     situation: z.string().min(10, { message: 'Situation must be at least 10 characters.' }),
     behavior: z.string().min(10, { message: 'Behavior must be at least 10 characters.' }),
@@ -77,6 +78,7 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
             framework_category: '',
             point_type: undefined,
             subcategory: '',
+            task_link: '',
             recipient: '',
             situation: '',
             behavior: '',
@@ -103,6 +105,7 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
                 framework_category: defaultValues?.framework_category || '',
                 point_type: defaultValues?.point_type || undefined,
                 subcategory: defaultValues?.subcategory || '',
+                task_link: defaultValues?.task_link || '',
                 recipient: defaultValues?.recipient || '',
                 situation: defaultValues?.situation || '',
                 behavior: defaultValues?.behavior || '',
@@ -195,6 +198,14 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
                                 <FormItem>
                                     <FormLabel>Sub-Category (if applicable)</FormLabel>
                                     <FormControl><Input placeholder="e.g., Frontend, Backend, DevOps" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+
+                            <FormField control={form.control} name="task_link" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Task Link (optional)</FormLabel>
+                                    <FormControl><Input placeholder="e.g., https://github.com/pull/123" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />

@@ -1,7 +1,6 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 
-const db = admin.firestore();
 
 interface EndSessionData {
     sessionId: string;
@@ -10,8 +9,9 @@ interface EndSessionData {
 /**
  * Ends a learning session and locks all associated learning points.
  * This function is callable only by an admin.
- */
+*/
 export const endLearningSessionAndLockPoints = onCall<EndSessionData>(async (request) => {
+    const db = admin.firestore();
     // 1. Authentication & Authorization Check
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "The function must be called while authenticated.");

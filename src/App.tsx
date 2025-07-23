@@ -26,6 +26,8 @@ import LearningHours from "@/features/learning-hours/pages/LearningHours";
 import OnboardingVideoPage from "@/features/onboarding/pages/OnBoardingPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import Standups from "@/features/standups/pages/Standups";
+import TaskAnalyzerPage from "@/features/task-analyzer/pages/TaskAnalyzerPage";
+
 import NotFound from "@/features/not-found/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -104,6 +106,7 @@ const AppContent = () => {
       <Route path="/standups" element={<ProtectedRoute><Standups /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/learning-hours" element={<ProtectedRoute><LearningHours /></ProtectedRoute>} />
+      
 
       {/* --- 2. ADD THE NEW FEEDBACK ROUTE HERE --- */}
       <Route
@@ -118,6 +121,8 @@ const AppContent = () => {
       <Route path="/admin" element={<AdminProtectedRoute><AdminHome /></AdminProtectedRoute>} />
       <Route path="/admin/employees" element={<AdminProtectedRoute><AdminEmployees /></AdminProtectedRoute>} />
       <Route path="/admin/employees/:employeeId" element={<AdminProtectedRoute><AdminEmployeeDetail /></AdminProtectedRoute>} />
+      <Route path="/admin/task-analyzer" element={<AdminProtectedRoute><TaskAnalyzerPage /></AdminProtectedRoute>} />
+      <Route path="/task-analyzer" element={<ProtectedRoute><TaskAnalyzerPage /></ProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<NotFound />} />

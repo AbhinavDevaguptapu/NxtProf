@@ -18,14 +18,14 @@ import { useToast } from '@/components/ui/use-toast';
 import type { LearningPoint } from '../types';
 import { useUserAuth } from '@/context/UserAuthContext';
 
-export const useLearningPoints = () => {
+export const useLearningPoints = (sessionId: string | null) => {
     const { user } = useUserAuth();
     const { toast } = useToast();
     const [learningPoints, setLearningPoints] = useState<LearningPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!user) {
+        if (!user || !sessionId) {
             setLearningPoints([]);
             setIsLoading(false);
             return;
@@ -35,6 +35,7 @@ export const useLearningPoints = () => {
         const q = query(
             collection(db, 'learning_points'),
             where('userId', '==', user.uid),
+            where('sessionId', '==', sessionId),
             orderBy('createdAt', 'desc')
         );
 
@@ -49,7 +50,7 @@ export const useLearningPoints = () => {
         });
 
         return () => unsubscribe();
-    }, [user, toast]);
+    }, [user, sessionId, toast]);
 
     const addLearningPoint = async (newPointData: Omit<LearningPoint, 'id' | 'userId' | 'createdAt' | 'editable' | 'sessionId'>, sessionId: string) => {
         if (!user) {

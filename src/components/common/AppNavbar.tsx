@@ -1,6 +1,6 @@
 // src/components/AppNavbar.tsx
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "@/integrations/firebase/client";
@@ -27,17 +27,19 @@ import {
   Home,
   LayoutDashboard,
   LogOut,
-  UserCircle,
   Search,
   MessageSquareQuote,
   Users,
   GraduationCap,
   Box,
-  CalendarCheck
+  CalendarCheck,
+  User as UserIcon,
+  
 } from "lucide-react";
 
 // The commands list remains unchanged
 const navCommands = [
+  { path: "/admin/employees", label: "Manage Employee", icon: <Users className="mr-2 h-4 w-4" /> },
   { path: "/feedback", label: "AI Feedback", icon: <MessageSquareQuote className="mr-2 h-4 w-4" /> },
   { path: "/standups", label: "Standups", icon: <Users className="mr-2 h-4 w-4" /> },
   { path: "/learning-hours", label: "Learning Hours", icon: <GraduationCap className="mr-2 h-4 w-4" /> },
@@ -47,27 +49,33 @@ const navCommands = [
 
 export default function AppNavbar() {
   const navigate = useNavigate();
-  const [showProfile, setShowProfile] = useState(false);
 
   // State for the search
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { user, loading } = useUserAuth();
-  const { admin } = useAdminAuth();
+  const { admin, isAdmin } = useAdminAuth();
 
   const isLoggedIn = !!user || !!admin;
   const displayName = user?.displayName || admin?.email || "User";
   const displayAvatar = user?.photoURL || undefined;
-  const isAdmin = !!admin;
 
   // Filter commands based on the search query
   const filteredCommands = useMemo(() => {
-    if (!searchQuery) return navCommands;
-    return navCommands.filter(command =>
+    let commandsToFilter = navCommands;
+
+    // If admin, remove AI Feedback
+    if (isAdmin) {
+      commandsToFilter = commandsToFilter.filter(command => command.path !== "/feedback");
+    }
+
+    if (!searchQuery) return commandsToFilter;
+
+    return commandsToFilter.filter(command =>
       command.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery, navCommands]);
+  }, [searchQuery, navCommands, isAdmin]);
 
   const handleLogout = async () => {
     try {
@@ -188,6 +196,13 @@ export default function AppNavbar() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem disabled><div className="font-medium">{displayName}</div></DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate(isAdmin ? '/admin/profile' : '/profile')}>
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Logout</span>

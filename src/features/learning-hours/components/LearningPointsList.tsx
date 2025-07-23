@@ -65,35 +65,81 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
             <AnimatePresence>
                 {points.length > 0 ? (
                     <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {points.map(point => (
-                            <motion.div key={point.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}>
-                                <Card className={`flex flex-col h-full ${!point.editable ? 'bg-gray-50 border-gray-200' : ''}`}>
-                                    <CardHeader>
-                                        <div className="flex justify-between items-start">
-                                            <CardTitle className="text-lg pr-2">{point.task_name}</CardTitle>
-                                            <Badge variant={point.editable ? 'outline' : 'secondary'}>
-                                                {point.editable ? <Unlock className="h-3 w-3 mr-1" /> : <Lock className="h-3 w-3 mr-1" />}
-                                                {point.editable ? 'Editable' : 'Locked'}
-                                            </Badge>
-                                        </div>
-                                        <CardDescription>
-                                            {point.createdAt ? format(point.createdAt.toDate(), 'PPP p') : 'Date not available'}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="flex-grow">
-                                        <p className="text-sm text-muted-foreground line-clamp-3">{point.situation}</p>
-                                    </CardContent>
-                                    <CardFooter className="flex justify-end gap-2">
-                                        {point.editable && (
-                                            <>
-                                                <Button variant="ghost" size="icon" onClick={() => onDeletePoint(point.id)}><Trash2 className="h-4 w-4" /></Button>
-                                                <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(point)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
-                                            </>
-                                        )}
-                                    </CardFooter>
-                                </Card>
-                            </motion.div>
-                        ))}
+                        {points.map(point => {
+                            const isEditable = point.editable && !isDayLocked;
+                            return (
+                                <motion.div key={point.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}>
+                                    <Card className={`flex flex-col h-full ${!isEditable ? 'bg-gray-50 border-gray-200' : ''}`}>
+                                        <CardHeader>
+                                            <div className="flex justify-between items-start">
+                                                <CardTitle className="text-lg pr-2">{point.task_name}</CardTitle>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant={isEditable ? 'outline' : 'secondary'}>
+                                                        {isEditable ? <Unlock className="h-3 w-3 mr-1" /> : <Lock className="h-3 w-3 mr-1" />}
+                                                        {isEditable ? 'Editable' : 'Locked'}
+                                                    </Badge>
+                                                    <Badge variant="default">{point.point_type}</Badge>
+                                                </div>
+                                            </div>
+                                            <CardDescription>
+                                                {point.createdAt ? format(point.createdAt.toDate(), 'PPP p') : 'Date not available'}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="flex-grow space-y-4">
+                                            <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Framework: {point.framework_category}</h4>
+                                                {point.subcategory && <p className="text-xs text-muted-foreground">Subcategory: {point.subcategory}</p>}
+                                            </div>
+
+                                            {point.situation && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Situation</h4>
+                                                <p className="text-sm text-muted-foreground">{point.situation}</p>
+                                            </div>}
+
+                                            {point.behavior && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Behavior</h4>
+                                                <p className="text-sm text-muted-foreground">{point.behavior}</p>
+                                            </div>}
+
+                                            {point.impact && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Impact</h4>
+                                                <p className="text-sm text-muted-foreground">{point.impact}</p>
+                                            </div>}
+
+                                            {point.problem && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Problem</h4>
+                                                <p className="text-sm text-muted-foreground">{point.problem}</p>
+                                            </div>}
+
+                                            {point.core_point_missed && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Core Point Missed</h4>
+                                                <p className="text-sm text-muted-foreground">{point.core_point_missed}</p>
+                                            </div>}
+
+                                            {point.action_item && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Action Item</h4>
+                                                <p className="text-sm text-muted-foreground">{point.action_item}</p>
+                                            </div>}
+
+                                            {point.task_link && <div className="space-y-1">
+                                                <h4 className="font-semibold text-sm">Task Link</h4>
+                                                <a href={point.task_link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline">{point.task_link}</a>
+                                            </div>}
+
+                                        </CardContent>
+                                        <CardFooter className="flex justify-between items-center">
+                                            <p className="text-xs text-muted-foreground">To: {point.recipient}</p>
+                                            {isEditable && (
+                                                <div className="flex gap-2">
+                                                    <Button variant="ghost" size="icon" onClick={() => onDeletePoint(point.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(point)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
+                                                </div>
+                                            )}
+                                        </CardFooter>
+                                    </Card>
+                                </motion.div>
+                            );
+                        })}
                     </motion.div>
                 ) : (
                     !isLoading && (

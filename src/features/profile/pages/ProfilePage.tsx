@@ -130,7 +130,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="employeeId">Employee ID</Label>
-                                <Input id="employeeId" value={employeeId} disabled />
+                                <Input id="employeeId" value={employeeId} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="name">Display Name</Label>

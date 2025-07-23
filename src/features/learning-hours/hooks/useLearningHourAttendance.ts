@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, getDocs, query, where, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, writeBatch, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/integrations/firebase/client';
 import { useToast } from '@/components/ui/use-toast';
 import type { Employee, AttendanceRecord, AttendanceStatus, LearningHour } from '../types';
+import { useUserAuth } from '@/context/UserAuthContext';
 
 export const useLearningHourAttendance = (learningHour: LearningHour | null, todayDocId: string) => {
+    const { user } = useUserAuth();
     const { toast } = useToast();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [tempAttendance, setTempAttendance] = useState<Record<string, AttendanceStatus>>({});
     const [savedAttendance, setSavedAttendance] = useState<Record<string, AttendanceRecord>>({});
+    const [currentUserAttendance, setCurrentUserAttendance] = useState<AttendanceRecord | null>(null);
     const [editingAbsence, setEditingAbsence] = useState<Employee | null>(null);
     const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
 
@@ -34,12 +37,20 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
                     fetchedAttendance[data.employee_id] = data;
                 });
                 setSavedAttendance(fetchedAttendance);
+
+                if (user) {
+                    const userAttendanceDocRef = doc(db, "learning_hours_attendance", `${todayDocId}_${user.uid}`);
+                    const userAttendanceDoc = await getDoc(userAttendanceDocRef);
+                    if (userAttendanceDoc.exists()) {
+                        setCurrentUserAttendance(userAttendanceDoc.data() as AttendanceRecord);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error fetching data:", error);
             toast({ title: "Error loading data", variant: "destructive" });
         }
-    }, [learningHour?.status, todayDocId, toast]);
+    }, [learningHour?.status, todayDocId, toast, user]);
 
     useEffect(() => {
         fetchInitialData();
@@ -98,6 +109,7 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
         tempAttendance,
         setTempAttendance,
         savedAttendance,
+        currentUserAttendance,
         editingAbsence,
         setEditingAbsence,
         absenceReasons,
