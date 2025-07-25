@@ -26,8 +26,23 @@ export const useLearningHourSession = () => {
     useEffect(() => {
         if (learningHour?.status === 'active' && learningHour.startedAt) {
             const intervalId = setInterval(() => {
-                const duration = formatDistanceStrict(new Date(), learningHour.startedAt.toDate());
-                setSessionTime(duration);
+                const now = new Date();
+                const start = learningHour.startedAt.toDate();
+                const seconds = Math.floor((now.getTime() - start.getTime()) / 1000);
+                
+                const h = Math.floor(seconds / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const s = seconds % 60;
+
+                const hStr = String(h).padStart(2, '0');
+                const mStr = String(m).padStart(2, '0');
+                const sStr = String(s).padStart(2, '0');
+
+                if (h > 0) {
+                    setSessionTime(`${hStr}:${mStr}:${sStr}`);
+                } else {
+                    setSessionTime(`${mStr}:${sStr}`);
+                }
             }, 1000);
             return () => clearInterval(intervalId);
         }

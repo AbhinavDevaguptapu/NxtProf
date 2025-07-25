@@ -1,5 +1,5 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CalendarClock, PlayCircle } from "lucide-react";
+import { CalendarClock, PlayCircle, CalendarX } from "lucide-react";
 import { format } from 'date-fns';
 import type { LearningHour } from '../types';
 
@@ -8,9 +8,20 @@ type SessionStatusBannerProps = {
 };
 
 export const SessionStatusBanner = ({ learningHour }: SessionStatusBannerProps) => {
-    if (!learningHour || learningHour.status === 'ended') {
+    if (!learningHour) {
+        return (
+            <Alert className="mb-6 border-gray-400 text-gray-800">
+                <CalendarX className="h-4 w-4 !text-gray-800" />
+                <AlertTitle>No Session Scheduled</AlertTitle>
+                <AlertDescription>
+                    There is no learning session scheduled for today. You can still add learning points, but they will not be locked until a session is run.
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
+    if (learningHour.status === 'ended') {
         // The "ended" state is handled by the lock message in the points list.
-        // The "no session" state is handled by a different view entirely.
         return null;
     }
 

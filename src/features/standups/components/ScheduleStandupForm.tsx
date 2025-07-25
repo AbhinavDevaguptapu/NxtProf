@@ -11,12 +11,12 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CalendarClock, CalendarIcon, Clock, Info, BrainCircuit } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, CalendarClock, CalendarIcon, Clock, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-export const ScheduleLearningHourForm = ({
+export const ScheduleStandupForm = ({
   todayDocId,
   adminName,
   onSuccess,
@@ -28,7 +28,7 @@ export const ScheduleLearningHourForm = ({
   const { toast } = useToast();
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
-  const [scheduledTimeInput, setScheduledTimeInput] = useState<string>(""); // Default to 5:00 PM
+  const [scheduledTimeInput, setScheduledTimeInput] = useState<string>(format(new Date(), "HH:mm"));
 
   const handleSchedule = async () => {
     if (!scheduledDate) {
@@ -48,14 +48,14 @@ export const ScheduleLearningHourForm = ({
 
     setIsScheduling(true);
     try {
-      await setDoc(doc(db, "learning_hours", todayDocId), {
+      await setDoc(doc(db, "standups", todayDocId), {
         status: "scheduled",
         scheduledTime: Timestamp.fromDate(finalDateTime),
         scheduledBy: adminName,
       });
       toast({
         title: "Success!",
-        description: `Learning Hour scheduled for ${format(finalDateTime, "p")}.`,
+        description: `Standup scheduled for ${format(finalDateTime, "p")}.`,
       });
       if (onSuccess) onSuccess();
     } catch (error) {
@@ -70,17 +70,17 @@ export const ScheduleLearningHourForm = ({
     }
   };
 
-  const timeSuggestions = ["16:45", "17:00", "17:15"];
+  const timeSuggestions = ["09:00" , "09:05", "09:10", "09:15"];
 
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
       <Card className="w-full max-w-md shadow-2xl shadow-primary/10 border-border/50">
         <CardHeader className="text-center p-6">
           <div className="mx-auto bg-primary/10 text-primary rounded-full h-14 w-14 flex items-center justify-center mb-2 ring-4 ring-background">
-            <BrainCircuit className="h-7 w-7" />
+            <CalendarClock className="h-7 w-7" />
           </div>
-          <CardTitle className="text-2xl font-bold">Schedule Learning Hour</CardTitle>
-          <CardDescription>Set the date and time for the daily session.</CardDescription>
+          <CardTitle className="text-2xl font-bold">Schedule Today's Standup</CardTitle>
+          <CardDescription>Set the date and time for the daily meeting.</CardDescription>
         </CardHeader>
 
         <CardContent className="p-6 pt-0 space-y-6">
@@ -126,7 +126,7 @@ export const ScheduleLearningHourForm = ({
 
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Quick Select</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {timeSuggestions.map(time => (
                 <Button
                   key={time}
@@ -144,7 +144,7 @@ export const ScheduleLearningHourForm = ({
           <Alert className="bg-muted/50 border-border/50">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Sessions can only be scheduled for today or future dates in 24-hour format.
+              Standups can only be scheduled for today or future dates in 24-hour format.
             </AlertDescription>
           </Alert>
 
@@ -159,7 +159,7 @@ export const ScheduleLearningHourForm = ({
             {isScheduling ? (
               <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Scheduling...</>
             ) : (
-              <><CalendarClock className="mr-2 h-5 w-5" /> Schedule Learning Hour</>
+              <><CalendarClock className="mr-2 h-5 w-5" /> Schedule Standup</>
             )}
           </Button>
         </CardFooter>

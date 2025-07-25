@@ -10,8 +10,7 @@ import {
     doc,
     serverTimestamp,
     orderBy,
-    writeBatch,
-    getDocs
+    getDoc,
 } from 'firebase/firestore';
 import { db } from '@/integrations/firebase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -52,7 +51,23 @@ export const useLearningPoints = (sessionId: string | null) => {
         return () => unsubscribe();
     }, [user, sessionId, toast]);
 
-    const addLearningPoint = async (newPointData: Omit<LearningPoint, 'id' | 'userId' | 'createdAt' | 'editable' | 'sessionId'>, sessionId: string) => {
+    /**
+     * Checks if the current learning session has ended and is locked.
+     * @param sessionId The ID of the session to check.
+     * @returns A promise that resolves to true if the session is locked ('ended'), otherwise false.
+     */
+    const isSessionLocked = async (sessionId: string): Promise<boolean> => {
+        const sessionRef = doc(db, 'learning_hours', sessionId);
+        const sessionSnap = await getDoc(sessionRef);
+        // If the session document doesn't exist, it's not locked.
+        if (!sessionSnap.exists()) {
+            return false;
+        }
+        // The session is only locked if its status is 'ended'.
+        return sessionSnap.data().status === 'ended';
+    };
+
+    const addLearningPoint = async (newPointData: Omit<LearningPoint, 'id' | 'userId' | 'createdAt' | 'editable' | 'sessionId'>) => {
         if (!user) {
             toast({ title: "Not Authenticated", description: "You must be logged in to add a point.", variant: "destructive" });
             return;
@@ -61,13 +76,21 @@ export const useLearningPoints = (sessionId: string | null) => {
             toast({ title: "No Active Session", description: "Cannot add a point as there is no active session.", variant: "destructive" });
             return;
         }
+
+        // --- Corrected Logic: Check if the session has ended ---
+        const locked = await isSessionLocked(sessionId);
+        if (locked) {
+            toast({ title: "Session Has Ended", description: "This learning session is over. Points are now locked.", variant: "destructive" });
+            return;
+        }
+
         try {
             await addDoc(collection(db, 'learning_points'), {
                 ...newPointData,
                 userId: user.uid,
+                sessionId: sessionId,
                 createdAt: serverTimestamp(),
                 editable: true,
-                sessionId: sessionId,
             });
             toast({ title: "Success", description: "Learning point added." });
         } catch (error) {
@@ -77,6 +100,15 @@ export const useLearningPoints = (sessionId: string | null) => {
     };
 
     const updateLearningPoint = async (pointId: string, updatedData: Partial<Omit<LearningPoint, 'id' | 'userId' | 'createdAt'>>) => {
+        if (!sessionId) return;
+
+        // --- Corrected Logic: Check if the session has ended ---
+        const locked = await isSessionLocked(sessionId);
+        if (locked) {
+            toast({ title: "Session Has Ended", description: "This learning session is over. Points are now locked.", variant: "destructive" });
+            return;
+        }
+
         try {
             const pointRef = doc(db, 'learning_points', pointId);
             await updateDoc(pointRef, updatedData);
@@ -88,6 +120,15 @@ export const useLearningPoints = (sessionId: string | null) => {
     };
 
     const deleteLearningPoint = async (pointId: string) => {
+        if (!sessionId) return;
+
+        // --- Corrected Logic: Check if the session has ended ---
+        const locked = await isSessionLocked(sessionId);
+        if (locked) {
+            toast({ title: "Session Has Ended", description: "This learning session is over. Points are now locked.", variant: "destructive" });
+            return;
+        }
+        
         try {
             await deleteDoc(doc(db, 'learning_points', pointId));
             toast({ title: "Success", description: "Learning point deleted." });

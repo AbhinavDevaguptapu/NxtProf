@@ -1,0 +1,236 @@
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { format, formatDistanceStrict } from "date-fns";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  serverTimestamp,
+  collection,
+  query,
+  getDocs,
+  where,
+  writeBatch,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { useUserAuth } from "@/context/UserAuthContext";
+import { useAdminAuth } from "@/context/AdminAuthContext";
+import type { Standup, Employee, AttendanceRecord, AttendanceStatus } from "../types";
+
+export const useStandup = () => {
+  const { user } = useUserAuth();
+  const { admin } = useAdminAuth();
+  const { toast } = useToast();
+
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
+  const [standup, setStandup] = useState<Standup | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [tempAttendance, setTempAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [savedAttendance, setSavedAttendance] = useState<Record<string, AttendanceRecord>>({});
+  const [editingAbsence, setEditingAbsence] = useState<Employee | null>(null);
+  const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
+  const [sessionTime, setSessionTime] = useState("0s");
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
+  const [activeFilter, setActiveFilter] = useState<AttendanceStatus | "all">("all");
+  const [finalFilter, setFinalFilter] = useState<AttendanceStatus | "all">("all");
+
+  const todayDocId = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+
+  useEffect(() => {
+    const standupRef = doc(db, "standups", todayDocId);
+    const unsubscribe = onSnapshot(standupRef, (docSnap) => {
+      setStandup(docSnap.exists() ? (docSnap.data() as Standup) : null);
+      setIsLoadingPage(false);
+    });
+    return () => unsubscribe();
+  }, [todayDocId]);
+
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const empSnapshot = await getDocs(collection(db, "employees"));
+      setEmployees(
+        empSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
+      );
+
+      if (standup?.status === "ended") {
+        const q = query(
+          collection(db, "attendance"),
+          where("standup_id", "==", todayDocId)
+        );
+        const attSnapshot = await getDocs(q);
+        const fetchedAttendance: Record<string, AttendanceRecord> = {};
+        attSnapshot.forEach((doc) => {
+          const data = doc.data() as AttendanceRecord;
+          fetchedAttendance[data.employee_id] = data;
+        });
+        setSavedAttendance(fetchedAttendance);
+      }
+    } catch (error) {
+      console.error("Error fetching initial data:", error);
+      toast({ title: "Error loading data", variant: "destructive" });
+    }
+  }, [standup?.status, todayDocId, toast]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  useEffect(() => {
+    if (standup?.status === "active" && standup.startedAt) {
+      const intervalId = setInterval(() => {
+        const now = new Date();
+        const start = standup.startedAt!.toDate();
+        const seconds = Math.floor((now.getTime() - start.getTime()) / 1000);
+        
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        
+        const hStr = String(h).padStart(2, '0');
+        const mStr = String(m).padStart(2, '0');
+        const sStr = String(s).padStart(2, '0');
+        
+        if (h > 0) {
+          setSessionTime(`${hStr}:${mStr}:${sStr}`);
+        } else {
+          setSessionTime(`${mStr}:${sStr}`);
+        }
+      }, 1000);
+      return () => clearInterval(intervalId);
+    }
+  }, [standup?.status, standup?.startedAt]);
+
+  const handleStartStandup = async () => {
+    setIsUpdatingStatus(true);
+    const initialTempAttendance: Record<string, AttendanceStatus> = {};
+    employees.forEach((emp) => {
+      initialTempAttendance[emp.id] = "Missed";
+    });
+    setTempAttendance(initialTempAttendance);
+    setAbsenceReasons({});
+
+    try {
+      await updateDoc(doc(db, "standups", todayDocId), {
+        status: "active",
+        startedAt: serverTimestamp(),
+      });
+      toast({ title: "Standup Started" });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleStopStandup = async () => {
+    if (!standup) return;
+    setIsUpdatingStatus(true);
+    try {
+      const batch = writeBatch(db);
+      for (const emp of employees) {
+        const attendanceDocRef = doc(collection(db, "attendance"), `${todayDocId}_${emp.id}`);
+        const status = tempAttendance[emp.id] || "Missed";
+        const record: Omit<AttendanceRecord, "markedAt"> & { markedAt: any } = {
+          standup_id: todayDocId,
+          employee_id: emp.id,
+          employee_name: emp.name,
+          employee_email: emp.email,
+          employeeId: emp.employeeId,
+          status: status,
+          scheduled_at: standup.scheduledTime,
+          markedAt: serverTimestamp(),
+        };
+        if (status === "Not Available") {
+          record.reason = absenceReasons[emp.id] || "No reason provided";
+        }
+        batch.set(attendanceDocRef, record);
+      }
+      await batch.commit();
+      await updateDoc(doc(db, "standups", todayDocId), {
+        status: "ended",
+        endedAt: serverTimestamp(),
+      });
+      toast({ title: "Standup Ended", description: "Attendance has been saved." });
+      await fetchInitialData();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleSaveAbsenceReason = (employeeId: string, reason: string) => {
+    if (!reason.trim()) {
+      toast({ title: "Reason is required", variant: "destructive" });
+      return;
+    }
+    setAbsenceReasons((prev) => ({ ...prev, [employeeId]: reason }));
+    setTempAttendance((prev) => ({ ...prev, [employeeId]: "Not Available" }));
+    setEditingAbsence(null);
+    toast({ title: "Absence Recorded" });
+  };
+
+  const handleSetTempAttendance = (employeeId: string, status: AttendanceStatus) => {
+    setTempAttendance((prev) => ({ ...prev, [employeeId]: status }));
+  };
+
+  const activeFilteredEmployees = useMemo(() => {
+    if (activeFilter === "all") return employees;
+    return employees.filter(
+      (emp) => (tempAttendance[emp.id] || "Missed") === activeFilter
+    );
+  }, [activeFilter, employees, tempAttendance]);
+
+  const finalFilteredEmployees = useMemo(() => {
+    if (finalFilter === "all") return employees;
+    return employees.filter(
+      (emp) => (savedAttendance[emp.id]?.status || "Missed") === finalFilter
+    );
+  }, [finalFilter, employees, savedAttendance]);
+
+  const sessionStats = useMemo(() => {
+    const total = employees.length;
+    const values = Object.values(tempAttendance);
+    return {
+      total,
+      present: values.filter((s) => s === "Present").length,
+      absent: values.filter((s) => s === "Absent").length,
+      missed: values.filter((s) => s === "Missed").length,
+      notAvailable: values.filter((s) => s === "Not Available").length,
+    };
+  }, [tempAttendance, employees]);
+
+  return {
+    user,
+    admin,
+    isLoadingPage,
+    standup,
+    isUpdatingStatus,
+    employees,
+    tempAttendance,
+    setTempAttendance,
+    savedAttendance,
+    editingAbsence,
+    setEditingAbsence,
+    absenceReasons,
+    sessionTime,
+    isRescheduling,
+    setIsRescheduling,
+    activeFilter,
+    setActiveFilter,
+    finalFilter,
+    setFinalFilter,
+    todayDocId,
+    handleStartStandup,
+    handleStopStandup,
+    handleSaveAbsenceReason,
+    activeFilteredEmployees,
+    finalFilteredEmployees,
+    sessionStats,
+    handleBeginMarkUnavailable: setEditingAbsence,
+    handleSetTempAttendance,
+  };
+};

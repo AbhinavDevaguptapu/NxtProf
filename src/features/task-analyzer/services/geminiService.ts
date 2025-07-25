@@ -8,14 +8,6 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const analyzeTask = async (taskData: TaskData): Promise<AnalysisResult> => {
   const { task, taskFrameworkCategory, situation, behavior, impact, action } = taskData;
 
-  if (!task) {
-    return {
-      matchPercentage: 0,
-      status: "Needs improvement",
-      rationale: "Task description is empty."
-    };
-  }
-
   // Construct the detailed task information string
   const taskDetailParts = [
     `Original Task: ${task}`,
@@ -26,6 +18,7 @@ export const analyzeTask = async (taskData: TaskData): Promise<AnalysisResult> =
     action ? `Action Item(A): ${action}` : null,
   ].filter(Boolean);
   const taskDetailText = taskDetailParts.join('\n');
+
 
   const prompt = `
     You are an expert evaluator specializing in personal and professional development frameworks. Your task is to analyze a given task entry against a predefined 'Task Framework' and determine how well the specified 'Task Framework Category' aligns with the framework's principles, considering the provided context (Situation, Behavior, Impact, Action Item).

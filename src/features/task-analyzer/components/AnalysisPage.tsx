@@ -16,6 +16,7 @@ interface AnalysisPageProps {
   employees?: Employee[];
   selectedEmployee: Employee | null;
   onEmployeeSelect?: (employee: Employee) => void;
+  onBack?: () => void;
 }
 
 const AnalysisPage: React.FC<AnalysisPageProps> = ({
@@ -23,6 +24,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
   employees = [],
   selectedEmployee,
   onEmployeeSelect,
+  onBack,
 }) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [analyzedTasks, setAnalyzedTasks] = useState<Task[]>([]);
@@ -79,8 +81,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
 
       } catch (e) {
         console.error(e);
-        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-        setError(errorMessage.includes('permission-denied') ? 'permission-denied' : errorMessage);
+        setError("An error occurred while loading the analysis. Please try again.");
       } finally {
         setIsLoading(false);
         setProcessingMessage('');

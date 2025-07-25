@@ -1,20 +1,18 @@
-import React, { useState, useMemo } from "react";
-import { format, formatDistanceStrict } from "date-fns";
-import { AnimatePresence, motion, Variants } from "framer-motion";
+import { AnimatePresence, motion, Variants, LayoutGroup } from "framer-motion";
 import { getFunctions, httpsCallable } from 'firebase/functions';
-
+import { format, formatDistanceStrict } from "date-fns";
+import React, { useState, useMemo, FC } from "react";
 
 // Auth Hooks
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 // UI Components
-
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, Bot } from "lucide-react";
+import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, Bot, UserMinus, UserX, Check } from "lucide-react";
 
 // Feature Components & Hooks
 import { useLearningHourSession } from "@/features/learning-hours/hooks/useLearningHourSession";
@@ -36,12 +34,149 @@ const pageVariants: Variants = {
 };
 const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const itemVariants: Variants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
+const transition = { type: "spring" as const, stiffness: 400, damping: 30 };
 
 import { ViewState, ViewType } from "@/layout/AppShell";
 
+// --- HELPER COMPONENTS ---
+
+const FilterControls: FC<{ currentFilter: string; onFilterChange: (filter: any) => void, layoutId: string }> = ({ currentFilter, onFilterChange, layoutId }) => (
+    <LayoutGroup id={layoutId}>
+        <div className="flex flex-wrap items-center bg-muted p-1 rounded-lg">
+            {(['all', 'Present', 'Absent', 'Missed', 'Not Available'] as const).map(filter => {
+                const isActive = currentFilter === filter;
+                return (
+                    <Button key={filter} size="sm" variant="ghost" className="relative text-xs sm:text-sm" onClick={() => onFilterChange(filter)}>
+                        {isActive && (
+                            <motion.div
+                                layoutId={`${layoutId}-highlight`}
+                                className="absolute inset-0 bg-background rounded-md shadow-sm"
+                                transition={transition}
+                            />
+                        )}
+                        <span className="relative z-10">{filter === 'all' ? 'All' : filter === 'Not Available' ? 'N/A' : filter}</span>
+                    </Button>
+                );
+            })}
+        </div>
+    </LayoutGroup>
+);
+
+const EmptyState: FC<{ filter: string }> = ({ filter }) => (
+    <motion.div className="col-span-full flex flex-col items-center justify-center text-center p-10 bg-muted/50 rounded-lg" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+        <h3 className="text-xl font-semibold">No Members Found</h3>
+        <p className="text-muted-foreground">There are no team members in the "{filter}" category.</p>
+    </motion.div>
+);
+
+const SummaryStat: FC<{ label: string, value: number, icon: React.ElementType }> = ({ label, value, icon: Icon }) => (
+    <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 text-muted-foreground" />
+        <div>
+            <p className="text-xl font-bold">{value}</p>
+            <p className="text-xs font-medium text-muted-foreground -mt-1">{label}</p>
+        </div>
+    </div>
+);
+
+interface EndedViewLayoutProps {
+    learningHour: any;
+    savedAttendance: any;
+    employees: any[];
+    finalFilter: any;
+    setFinalFilter: (filter: any) => void;
+    finalFilteredEmployees: any[];
+}
+
+const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees }: EndedViewLayoutProps) => {
+    const summaryStats = {
+        Present: Object.values(savedAttendance).filter((a: any) => a.status === "Present").length,
+        Absent: Object.values(savedAttendance).filter((a: any) => a.status === "Absent").length,
+        Missed: Object.values(savedAttendance).filter((a: any) => a.status === "Missed").length,
+        'Not Available': Object.values(savedAttendance).filter((a: any) => a.status === "Not Available").length,
+    };
+
+    const SessionCompletedCard = (
+        <Card>
+            <CardHeader className="flex flex-row items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-6 h-6" /></div>
+                <div>
+                    <CardTitle className="text-lg font-bold">Session Completed</CardTitle>
+                    <CardDescription>{`Concluded at ${learningHour.endedAt ? format(learningHour.endedAt.toDate(), "p") : "N/A"}`}</CardDescription>
+                </div>
+            </CardHeader>
+            {learningHour.startedAt && learningHour.endedAt && (
+                <CardContent className="border-t pt-4">
+                    <p className="text-xs text-muted-foreground">TOTAL DURATION</p>
+                    <p className="text-xl font-semibold">{formatDistanceStrict(learningHour.endedAt.toDate(), learningHour.startedAt.toDate())}</p>
+                </CardContent>
+            )}
+        </Card>
+    );
+
+    return (
+        <motion.div key="summary-admin" className="w-full" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+                {/* Right Column: Summary (appears first on mobile) */}
+                <div className="w-full lg:w-1/3 lg:order-2 space-y-6 lg:sticky lg:top-24">
+                    {SessionCompletedCard}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base font-semibold">Final Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-4">
+                            <SummaryStat icon={Check} label="Present" value={summaryStats.Present} />
+                            <SummaryStat icon={UserMinus} label="Absent" value={summaryStats.Absent} />
+                            <SummaryStat icon={UserX} label="Missed" value={summaryStats.Missed} />
+                            <SummaryStat icon={AlertTriangle} label="N/A" value={summaryStats['Not Available']} />
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Left Column: Roster (appears second on mobile) */}
+                <div className="w-full lg:w-2/3 lg:order-1 space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h2 className="text-xl font-bold tracking-tight">Final Roster</h2>
+                            <p className="text-sm text-muted-foreground">Showing {finalFilteredEmployees.length} of {employees.length} members.</p>
+                        </div>
+                        <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="admin-final-filter" />
+                    </div>
+                    <motion.div
+                        key={finalFilter}
+                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        {finalFilteredEmployees.length > 0 ? (
+                            finalFilteredEmployees.map((emp: any) => (
+                                <motion.div key={emp.id} variants={itemVariants}>
+                                    <AttendanceCard
+                                        employee={emp}
+                                        status={savedAttendance[emp.id]?.status || "Missed"}
+                                        reason={savedAttendance[emp.id]?.reason}
+                                        onSetStatus={() => { }}
+                                        onMarkUnavailable={() => { }}
+                                        isInteractive={false}
+                                    />
+                                </motion.div>
+                            ))
+                        ) : (
+                            <EmptyState filter={finalFilter} />
+                        )}
+                    </motion.div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+
 // --- MAIN PAGE COMPONENT ---
 interface LearningHoursPageProps {
-  setActiveView: (view: ViewState) => void;
+    setActiveView: (view: ViewState) => void;
 }
 
 export default function LearningHours({ setActiveView }: LearningHoursPageProps) {
@@ -90,7 +225,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
     const [isRescheduling, setIsRescheduling] = useState(false);
 
     const handleAddPoint = (data: any) => {
-        addLearningPoint(data, todayDocId);
+        addLearningPoint(data);
     };
 
     const renderContent = () => {
@@ -104,51 +239,64 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
 
         // --- USER VIEW ---
         if (!admin) {
+            const isSessionEnded = learningHour?.status === 'ended';
             return (
                 <motion.div key="user-view" variants={pageVariants} initial="initial" animate="animate" exit="exit">
                     <SessionStatusBanner learningHour={learningHour} />
-                    
-                    <LearningPointsList
-                        points={learningPoints}
-                        isLoading={isLoadingPoints}
-                        onAddPoint={handleAddPoint}
-                        onUpdatePoint={updateLearningPoint}
-                        onDeletePoint={deleteLearningPoint}
-                        isDayLocked={learningHour?.status === 'ended'}
-                    />
 
-                    {learningHour?.status === 'ended' && (
-                        <div className="mt-12">
-                             <div className="flex flex-wrap gap-4 items-center mb-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold tracking-tight">Final Roster</h2>
-                                    <p className="text-sm text-muted-foreground">Showing {finalFilteredEmployees.length} of {employees.length} members.</p>
-                                </div>
-                                <div className="flex items-center border border-gray-200 rounded-lg p-1 space-x-1">
-                                    <Button size="sm" variant={finalFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('all')}>All</Button>
-                                    <Button size="sm" variant={finalFilter === 'Present' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Present')}>Present</Button>
-                                    <Button size="sm" variant={finalFilter === 'Absent' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Absent')}>Absent</Button>
-                                    <Button size="sm" variant={finalFilter === 'Missed' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Missed')}>Missed</Button>
-                                    <Button size="sm" variant={finalFilter === 'Not Available' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Not Available')}>N/A</Button>
-                                </div>
-                            </div>
-                            <motion.div key={finalFilter} className="grid grid-cols-1 md:grid-cols-2 gap-6" variants={containerVariants} initial="hidden" animate="visible">
-                                {finalFilteredEmployees.length > 0 ? (
-                                    finalFilteredEmployees.map((emp) => (
-                                        <motion.div key={emp.id} variants={itemVariants}>
-                                            <AttendanceCard employee={emp} status={savedAttendance[emp.id]?.status || 'Missed'} reason={savedAttendance[emp.id]?.reason} onSetStatus={() => { }} onMarkUnavailable={() => { }} isInteractive={false} />
-                                        </motion.div>
-                                    ))
-                                ) : (
-                                    <motion.div className="col-span-full flex flex-col items-center justify-center text-center p-10 bg-gray-50 rounded-lg" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                                        <Users className="h-12 w-12 text-gray-400 mb-4" />
-                                        <h3 className="text-xl font-semibold text-gray-700">No Members Found</h3>
-                                        <p className="text-muted-foreground">There are no team members in the "{finalFilter}" category.</p>
-                                    </motion.div>
-                                )}
-                            </motion.div>
+                    <div className="flex flex-col lg:flex-row gap-8 items-start mt-8">
+                        <div className="w-full lg:flex-1">
+                            <LearningPointsList
+                                points={learningPoints}
+                                isLoading={isLoadingPoints}
+                                onAddPoint={handleAddPoint}
+                                onUpdatePoint={updateLearningPoint}
+                                onDeletePoint={deleteLearningPoint}
+                                isDayLocked={isSessionEnded}
+                            />
                         </div>
-                    )}
+
+                        <AnimatePresence>
+                            {isSessionEnded && (
+                                <motion.div
+                                    className="w-full lg:w-1/3 lg:sticky lg:top-24 space-y-6"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Final Roster</CardTitle>
+                                            <CardDescription>
+                                                Showing {finalFilteredEmployees.length} of {employees.length} members.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="user-final-filter" />
+                                            <motion.div
+                                                key={finalFilter}
+                                                className="space-y-4 mt-4 max-h-96 overflow-y-auto pr-2"
+                                                variants={containerVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                            >
+                                                {finalFilteredEmployees.length > 0 ? (
+                                                    finalFilteredEmployees.map((emp) => (
+                                                        <motion.div key={emp.id} variants={itemVariants}>
+                                                            <AttendanceCard employee={emp} status={savedAttendance[emp.id]?.status || 'Missed'} reason={savedAttendance[emp.id]?.reason} onSetStatus={() => { }} onMarkUnavailable={() => { }} isInteractive={false} />
+                                                        </motion.div>
+                                                    ))
+                                                ) : (
+                                                    <EmptyState filter={finalFilter} />
+                                                )}
+                                            </motion.div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </motion.div>
             );
         }
@@ -169,14 +317,14 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         if (learningHour.status === "scheduled") {
             return (
                 <motion.div key="scheduled" className="flex-grow flex items-center justify-center p-4" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                    <Card className="text-center p-8 max-w-lg mx-auto rounded-xl border-gray-400">
+                    <Card className="text-center p-8 max-w-lg mx-auto rounded-xl border-gray-200">
                         <CardHeader className="mb-4">
                             <div className="mx-auto bg-gray-100 text-black rounded-full h-16 w-16 flex items-center justify-center mb-4">
                                 <BrainCircuit className="h-8 w-8" />
                             </div>
                             <CardTitle className="text-3xl font-extrabold text-gray-900">Learning Session</CardTitle>
                             <CardDescription className="text-gray-600 text-md mt-2">
-                                Scheduled for <span className="font-semibold text-black-700">{format(learningHour.scheduledTime.toDate(), 'p')}</span> today.
+                                Scheduled for <span className="font-semibold text-black">{format(learningHour.scheduledTime.toDate(), 'p')}</span> today.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-2">
@@ -187,7 +335,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                             >
                                 Reschedule
                             </Button>
-                            <Button size="lg" onClick={handleStartSession} disabled={isUpdating} className="w-full bg-black hover:bg-gray-700 text-white font-bold py-3 text-lg">
+                            <Button size="lg" onClick={handleStartSession} disabled={isUpdating} className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 text-lg">
                                 {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <PlayCircle className="mr-2 h-6 w-6" />}
                                 {isUpdating ? 'Starting...' : 'Start Session Now'}
                             </Button>
@@ -215,7 +363,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                             </div>
                             <Button size="lg" variant="destructive" onClick={handleEndSession} disabled={isUpdating}>
                                 {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <StopCircle className="mr-2 h-5 w-5" />}
-                                End & Save
+                                {isUpdating ? 'Ending...' : 'End & Save'}
                             </Button>
                         </div>
                     </div>
@@ -228,15 +376,9 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                                 <h2 className="text-2xl font-bold tracking-tight">Attendance Roster</h2>
                                 <p className="text-sm text-muted-foreground">Click a member's status to mark their attendance.</p>
                             </div>
-                            <div className="flex items-center border border-gray-200 rounded-lg p-1 space-x-1">
-                                <Button size="sm" variant={activeFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => setActiveFilter('all')}>All</Button>
-                                <Button size="sm" variant={activeFilter === 'Present' ? 'secondary' : 'ghost'} onClick={() => setActiveFilter('Present')}>Present</Button>
-                                <Button size="sm" variant={activeFilter === 'Absent' ? 'secondary' : 'ghost'} onClick={() => setActiveFilter('Absent')}>Absent</Button>
-                                <Button size="sm" variant={activeFilter === 'Missed' ? 'secondary' : 'ghost'} onClick={() => setActiveFilter('Missed')}>Missed</Button>
-                                <Button size="sm" variant={activeFilter === 'Not Available' ? 'secondary' : 'ghost'} onClick={() => setActiveFilter('Not Available')}>N/A</Button>
-                            </div>
+                            <FilterControls currentFilter={activeFilter} onFilterChange={setActiveFilter} layoutId="active-filter" />
                         </div>
-                        <motion.div key={activeFilter} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+                        <motion.div key={activeFilter} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
                             {activeFilteredEmployees.length > 0 ? (
                                 activeFilteredEmployees.map((emp) => (
                                     <motion.div key={emp.id} variants={itemVariants}>
@@ -244,11 +386,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                                     </motion.div>
                                 ))
                             ) : (
-                                <motion.div className="col-span-full flex flex-col items-center justify-center text-center p-10 border border-gray rounded-lg" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                                    <Users className="h-12 w-12 text-gray-400 mb-4" />
-                                    <h3 className="text-xl font-semibold text-gray-700">No Members Found</h3>
-                                    <p className="text-muted-foreground">There are no team members in the "{activeFilter}" category.</p>
-                                </motion.div>
+                                <EmptyState filter={activeFilter} />
                             )}
                         </motion.div>
                     </div>
@@ -257,69 +395,14 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         }
 
         if (learningHour.status === "ended") {
-            return (
-                <motion.div key="summary-view-container" className="w-full space-y-8" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                    <div className="p-6 rounded-lg border border-gray-200">
-                        <div className="flex flex-wrap gap-4 justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gray-100 text-black flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-7 h-7" /></div>
-                                <div>
-                                    <h1 className="text-3xl font-bold tracking-tight">Learning Session Completed</h1>
-                                    <p className="text-muted-foreground">{`Concluded at ${learningHour.endedAt ? format(learningHour.endedAt.toDate(), 'p') : 'N/A'}.`}</p>
-                                </div>
-                            </div>
-                            {learningHour.startedAt && learningHour.endedAt && (
-                                <div className="text-right">
-                                    <p className="text-2xl font-semibold text-gray-800">{formatDistanceStrict(learningHour.endedAt.toDate(), learningHour.startedAt.toDate())}</p>
-                                    <p className="text-xs text-muted-foreground">TOTAL DURATION</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h2 className="text-2xl font-bold mb-4 tracking-tight">Final Summary</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Present</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Present').length}</p></Card>
-                            <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Absent</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Absent').length}</p></Card>
-                            <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Missed</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Missed').length}</p></Card>
-                            <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Unavailable</p><p className="text-3xl font-bold">{Object.values(savedAttendance).filter(a => a.status === 'Not Available').length}</p></Card>
-                            <Card className="p-4"><p className="text-sm font-medium text-muted-foreground">Total Team</p><p className="text-3xl font-bold">{employees.length}</p></Card>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="flex flex-wrap gap-4 items-center mb-4">
-                            <div>
-                                <h2 className="text-2xl font-bold tracking-tight">Final Roster</h2>
-                                <p className="text-sm text-muted-foreground">Showing {finalFilteredEmployees.length} of {employees.length} members.</p>
-                            </div>
-                            <div className="flex items-center border border-gray-200 rounded-lg p-1 space-x-1">
-                                <Button size="sm" variant={finalFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('all')}>All</Button>
-                                <Button size="sm" variant={finalFilter === 'Present' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Present')}>Present</Button>
-                                <Button size="sm" variant={finalFilter === 'Absent' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Absent')}>Absent</Button>
-                                <Button size="sm" variant={finalFilter === 'Missed' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Missed')}>Missed</Button>
-                                <Button size="sm" variant={finalFilter === 'Not Available' ? 'secondary' : 'ghost'} onClick={() => setFinalFilter('Not Available')}>N/A</Button>
-                            </div>
-                        </div>
-                        <motion.div key={finalFilter} className="grid grid-cols-1 md:grid-cols-2 gap-6" variants={containerVariants} initial="hidden" animate="visible">
-                            {finalFilteredEmployees.length > 0 ? (
-                                finalFilteredEmployees.map((emp) => (
-                                    <motion.div key={emp.id} variants={itemVariants}>
-                                        <AttendanceCard employee={emp} status={savedAttendance[emp.id]?.status || 'Missed'} reason={savedAttendance[emp.id]?.reason} onSetStatus={() => { }} onMarkUnavailable={() => { }} isInteractive={false} />
-                                    </motion.div>
-                                ))
-                            ) : (
-                                <motion.div className="col-span-full flex flex-col items-center justify-center text-center p-10 bg-gray-50 rounded-lg" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                                    <Users className="h-12 w-12 text-gray-400 mb-4" />
-                                    <h3 className="text-xl font-semibold text-gray-700">No Members Found</h3>
-                                    <p className="text-muted-foreground">There are no team members in the "{finalFilter}" category.</p>
-                                </motion.div>
-                            )}
-                        </motion.div>
-                    </div>
-                </motion.div>
-            );
+            return <EndedViewLayout
+                learningHour={learningHour}
+                savedAttendance={savedAttendance}
+                employees={employees}
+                finalFilter={finalFilter}
+                setFinalFilter={setFinalFilter}
+                finalFilteredEmployees={finalFilteredEmployees}
+            />
         }
 
         return null;
@@ -327,13 +410,16 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
 
     return (
         <>
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold tracking-tight">Learning Hours</h1>
+                <p className="text-muted-foreground">Manage and view daily learning sessions.</p>
+            </div>
             <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-3xl font-bold tracking-tight">Learning Hours</h1>
-                    <Button variant="outline" onClick={() => setActiveView({ view: 'task-analyzer' })}>
-                        <Bot className="mr-2 h-4 w-4" />
-                        AI Task Analysis
-                    </Button>
-                </div>
+                <Button variant="outline" onClick={() => setActiveView({ view: 'task-analyzer' })}>
+                    <Bot className="mr-2 h-4 w-4" />
+                    AI Task Analysis
+                </Button>
+            </div>
             <AnimatePresence mode="wait">
                 {renderContent()}
             </AnimatePresence>
