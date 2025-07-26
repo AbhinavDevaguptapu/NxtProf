@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getSheetData, getSubsheetNames } from '../services/sheetService';
 import { analyzeTask } from '../services/geminiService';
-import { Task, AnalysisStatus, TaskData, Employee } from '../types';
+import { Task, TaskData, Employee } from '../types';
 import TaskCard from './TaskCard';
+
+// Local definition for AnalysisStatus since types.ts is not found
+export enum AnalysisStatus {
+  PENDING = 'PENDING',
+  ANALYZING = 'ANALYZING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  SKIPPED = 'SKIPPED',
+}
+
 import TaskTable from './TaskTable';
 import { Loader2, CheckCircle, XCircle, Calendar as CalendarIcon, ArrowLeft, Users } from 'lucide-react';
 import ErrorDisplay from './ErrorDisplay';
@@ -73,11 +83,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
           .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
         setUniqueDates(dates);
 
-        if (dates.length > 0) {
-          setSelectedDate(dates[0]);
-        } else {
-          setSelectedDate('');
-        }
+        // Initially, don't select any date
+        setSelectedDate('');
 
       } catch (e) {
         console.error(e);
@@ -105,6 +112,12 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
 
       for (let i = 0; i < tasksToProcess.length; i++) {
         const task = tasksToProcess[i];
+        
+        if (task.taskData.pointType !== 'R1' && task.taskData.pointType !== 'R2') {
+          setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: AnalysisStatus.SKIPPED } : t));
+          continue; // Skip to the next task
+        }
+
         setProcessingMessage(`Analyzing task ${i + 1} of ${tasksToProcess.length}...`);
         setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: AnalysisStatus.ANALYZING } : t));
 
@@ -127,7 +140,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
   const tasksForSelectedDate = useMemo(() => allTasks.filter(t => t.taskData.date === selectedDate), [selectedDate, allTasks]);
   const analyzedCount = useMemo(() => analyzedTasks.filter(t => t.status === AnalysisStatus.COMPLETED).length, [analyzedTasks]);
   const failedCount = useMemo(() => analyzedTasks.filter(t => t.status === AnalysisStatus.FAILED).length, [analyzedTasks]);
-  const totalToAnalyze = tasksForSelectedDate.length;
+  const totalToAnalyze = useMemo(() => tasksForSelectedDate.filter(t => t.taskData.pointType === 'R1' || t.taskData.pointType === 'R2').length, [tasksForSelectedDate]);
   const isProcessing = useMemo(() => analyzedTasks.some(t => t.status === AnalysisStatus.ANALYZING), [analyzedTasks]);
   const progress = totalToAnalyze > 0 ? ((analyzedCount + failedCount) / totalToAnalyze) * 100 : 0;
 
@@ -194,39 +207,51 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
 
       {!isLoading && !error && selectedEmployee && (
         <>
-            <TaskTable tasks={tasksForSelectedDate} selectedDate={selectedDate} />
+          {selectedDate ? (
+            <>
+              <TaskTable tasks={tasksForSelectedDate} selectedDate={selectedDate} />
 
-            {(isProcessing || analyzedTasks.length > 0) && (
-                <Card>
-                <CardHeader>
-                    <CardTitle>Analysis for {selectedDate}</CardTitle>
-                    <CardDescription>{processingMessage}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center space-x-4 mb-4">
-                    <div className="flex items-center text-green-500">
-                        <CheckCircle className="w-5 h-5 mr-1.5" />
-                        <span>Analyzed: {analyzedCount}/{totalToAnalyze}</span>
-                    </div>
-                    {failedCount > 0 && (
-                        <div className="flex items-center text-red-500">
-                        <XCircle className="w-5 h-5 mr-1.5" />
-                        <span>Failed: {failedCount}</span>
-                        </div>
-                    )}
-                    </div>
-                    {(isProcessing || progress < 100) && <Progress value={progress} />}
-                </CardContent>
-                </Card>
-            )}
+              {(isProcessing || analyzedTasks.length > 0) && (
+                  <Card>
+                  <CardHeader>
+                      <CardTitle>Analysis for {selectedDate}</CardTitle>
+                      <CardDescription>{processingMessage}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="flex items-center space-x-4 mb-4">
+                      <div className="flex items-center text-green-500">
+                          <CheckCircle className="w-5 h-5 mr-1.5" />
+                          <span>Analyzed: {analyzedCount}/{totalToAnalyze}</span>
+                      </div>
+                      {failedCount > 0 && (
+                          <div className="flex items-center text-red-500">
+                          <XCircle className="w-5 h-5 mr-1.5" />
+                          <span>Failed: {failedCount}</span>
+                          </div>
+                      )}
+                      </div>
+                      {(isProcessing || progress < 100) && <Progress value={progress} />}
+                  </CardContent>
+                  </Card>
+              )}
 
-            <div className="space-y-6">
-                {analyzedTasks.map((task, index) => (
-                <div key={task.id} className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
-                    <TaskCard task={task} />
-                </div>
-                ))}
-            </div>
+              <div className="space-y-6">
+                  {analyzedTasks.map((task, index) => (
+                  <div key={task.id} className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
+                      <TaskCard task={task} />
+                  </div>
+                  ))}
+              </div>
+            </>
+          ) : (
+            <Card className="h-full flex items-center justify-center border-2 border-dashed">
+              <CardContent className="text-center py-10">
+                <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto" />
+                <h2 className="text-xl font-semibold mt-4">Select a Date</h2>
+                <p className="text-muted-foreground mt-1">Choose a date from the dropdown above to begin the analysis.</p>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

@@ -24,6 +24,7 @@ import { SessionStatistics } from "@/features/learning-hours/components/SessionS
 import { AbsenceReasonModal } from "@/features/learning-hours/components/AbsenceReasonModal";
 import { LearningPointsList } from "@/features/learning-hours/components/LearningPointsList";
 import { SessionStatusBanner } from "@/features/learning-hours/components/SessionStatusBanner";
+import { syncLearningPointsToSheet } from "@/features/learning-hours/services/syncService";
 import type { AttendanceStatus } from "@/features/learning-hours/types";
 
 // Animation Variants
@@ -190,6 +191,8 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
 
     const [activeFilter, setActiveFilter] = useState<AttendanceStatus | 'all'>('all');
     const [finalFilter, setFinalFilter] = useState<AttendanceStatus | 'all'>('all');
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [isEndingSession, setIsEndingSession] = useState(false);
 
     const activeFilteredEmployees = useMemo(() => {
         if (activeFilter === 'all') return employees;
@@ -207,6 +210,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
     };
 
     const handleEndSession = async () => {
+        setIsEndingSession(true);
         const functions = getFunctions();
         const endSessionFunction = httpsCallable(functions, 'endLearningSessionAndLockPoints');
 
@@ -219,6 +223,8 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         } catch (error: any) {
             console.error("Error ending session:", error);
             toast({ title: "Error", description: error.message, variant: "destructive" });
+        } finally {
+            setIsEndingSession(false);
         }
     };
 
@@ -361,9 +367,9 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                                 <p className="text-2xl font-semibold text-gray-800">{sessionTime}</p>
                                 <p className="text-xs text-muted-foreground">SESSION TIME</p>
                             </div>
-                            <Button size="lg" variant="destructive" onClick={handleEndSession} disabled={isUpdating}>
-                                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <StopCircle className="mr-2 h-5 w-5" />}
-                                {isUpdating ? 'Ending...' : 'End & Save'}
+                            <Button size="lg" variant="destructive" onClick={handleEndSession} disabled={isUpdating || isEndingSession}>
+                                {isUpdating || isEndingSession ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <StopCircle className="mr-2 h-5 w-5" />}
+                                {isUpdating || isEndingSession ? 'Ending...' : 'End & Save'}
                             </Button>
                         </div>
                     </div>
@@ -395,14 +401,49 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         }
 
         if (learningHour.status === "ended") {
-            return <EndedViewLayout
-                learningHour={learningHour}
-                savedAttendance={savedAttendance}
-                employees={employees}
-                finalFilter={finalFilter}
-                setFinalFilter={setFinalFilter}
-                finalFilteredEmployees={finalFilteredEmployees}
-            />
+            const alreadySynced = !!learningHour.synced;
+
+            const handleSync = async () => {
+                setIsSyncing(true);
+                try {
+                    const res = await syncLearningPointsToSheet(todayDocId);
+                    toast({ title: "Sync complete", description: `${res.appended} rows appended.` });
+                    // force-refresh session doc to get synced:true
+                    await fetchInitialData();
+                } catch (e: any) {
+                    console.error(e);
+                    toast({ title: "Sync failed", description: e.message, variant: "destructive" });
+                } finally {
+                    setIsSyncing(false);
+                }
+            };
+
+            return (
+                <>
+                    {/* SYNC BUTTON */}
+                    <div className="mb-6">
+                        <Button
+                            onClick={handleSync}
+                            disabled={alreadySynced || isSyncing}
+                        >
+                            {isSyncing ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : null}
+                            {alreadySynced ? "Synced" : "Sync to Learning Hours Sheet"}
+                        </Button>
+                    </div>
+
+                    {/* existing ended-view layout */}
+                    <EndedViewLayout
+                        learningHour={learningHour}
+                        savedAttendance={savedAttendance}
+                        employees={employees}
+                        finalFilter={finalFilter}
+                        setFinalFilter={setFinalFilter}
+                        finalFilteredEmployees={finalFilteredEmployees}
+                    />
+                </>
+            );
         }
 
         return null;
@@ -413,12 +454,6 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
             <div className="mb-6">
                 <h1 className="text-3xl font-bold tracking-tight">Learning Hours</h1>
                 <p className="text-muted-foreground">Manage and view daily learning sessions.</p>
-            </div>
-            <div className="flex items-center justify-between mb-6">
-                <Button variant="outline" onClick={() => setActiveView({ view: 'task-analyzer' })}>
-                    <Bot className="mr-2 h-4 w-4" />
-                    AI Task Analysis
-                </Button>
             </div>
             <AnimatePresence mode="wait">
                 {renderContent()}

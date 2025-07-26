@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.endLearningSessionAndLockPoints = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
+exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file contains all the backend serverless logic, including user management,
@@ -41,6 +41,8 @@ exports.endLearningSessionAndLockPoints = exports.getSheetData = exports.getSubs
  */
 const learningSessions_1 = require("./learningSessions");
 Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
+const syncLearningHours_1 = require("./syncLearningHours");
+Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
 const admin = __importStar(require("firebase-admin"));
 const google_auth_library_1 = require("google-auth-library");
 const googleapis_1 = require("googleapis");
@@ -566,6 +568,7 @@ exports.getSheetData = (0, https_1.onCall)({ secrets: ["SHEETS_SA_KEY"] }, async
             date: 'Date',
             task: 'Task in the Day (As in Day Plan)',
             taskFrameworkCategory: 'Task Framework Category',
+            pointType: 'Point Type',
             situation: 'Situation (S)',
             behavior: 'Behavior (B)',
             impact: 'Impact (I)',
@@ -577,6 +580,7 @@ exports.getSheetData = (0, https_1.onCall)({ secrets: ["SHEETS_SA_KEY"] }, async
             date: headers.indexOf(REQUIRED_HEADERS.date.toLowerCase()),
             task: headers.indexOf(REQUIRED_HEADERS.task.toLowerCase()),
             taskFrameworkCategory: headers.indexOf(REQUIRED_HEADERS.taskFrameworkCategory.toLowerCase()),
+            pointType: headers.indexOf(REQUIRED_HEADERS.pointType.toLowerCase()),
             situation: headers.indexOf(REQUIRED_HEADERS.situation.toLowerCase()),
             behavior: headers.indexOf(REQUIRED_HEADERS.behavior.toLowerCase()),
             impact: headers.indexOf(REQUIRED_HEADERS.impact.toLowerCase()),
@@ -593,11 +597,13 @@ exports.getSheetData = (0, https_1.onCall)({ secrets: ["SHEETS_SA_KEY"] }, async
             date: row[headerMapping.date] || '',
             task: row[headerMapping.task] || '',
             taskFrameworkCategory: row[headerMapping.taskFrameworkCategory] || '',
+            pointType: row[headerMapping.pointType] || '',
             situation: row[headerMapping.situation] || '',
             behavior: row[headerMapping.behavior] || '',
             impact: row[headerMapping.impact] || '',
             action: row[headerMapping.action] || '',
-        })).filter(task => task.date || task.task);
+        }))
+            .filter(task => task.date || task.task);
         return tasks;
     }
     catch (error) {

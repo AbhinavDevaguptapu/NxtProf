@@ -41,6 +41,7 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, selectedDate }) => {
               <TableRow>
                 <TableHead className="min-w-[250px]">Task</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Point Type</TableHead>
                 <TableHead className="min-w-[200px]">Situation (S)</TableHead>
                 <TableHead className="min-w-[200px]">Behavior (B)</TableHead>
                 <TableHead className="min-w-[200px]">Impact (I)</TableHead>
@@ -52,6 +53,7 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, selectedDate }) => {
                 <TableRow key={task.id}>
                   <TableCell className="font-medium">{task.taskData.task || '-'}</TableCell>
                   <TableCell>{task.taskData.taskFrameworkCategory || '-'}</TableCell>
+                  <TableCell>{task.taskData.pointType || '-'}</TableCell>
                   <TableCell>{task.taskData.situation || '-'}</TableCell>
                   <TableCell>{task.taskData.behavior || '-'}</TableCell>
                   <TableCell>{task.taskData.impact || '-'}</TableCell>

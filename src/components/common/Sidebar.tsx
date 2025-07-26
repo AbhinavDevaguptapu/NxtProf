@@ -36,6 +36,7 @@ import {
     Menu,
     ChevronRight,
     LucideIcon,
+    Bot
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -45,6 +46,7 @@ const userNavItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
+    { id: "task-analyzer", label: "AI L-Points Analysis", icon: Bot },
     { id: "feedback", label: "AI Feedback", icon: MessageSquareQuote },
     { id: "attendance", label: "Attendance", icon: CalendarCheck },
     { id: "onboardingKit", label: "Onboarding Kit", icon: Box },
@@ -54,6 +56,7 @@ const adminNavItems = [
     { id: "home", label: "Dashboard", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
+    { id: "task-analyzer", label: "AI L-Points Analysis", icon: Bot },
     { id: "manage-employees", label: "Manage Employees", icon: Users },
     { id: "attendance", label: "Manage Attendance", icon: CalendarCheck },
 ]

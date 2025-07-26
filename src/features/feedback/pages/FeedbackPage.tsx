@@ -115,7 +115,7 @@ const FeedbackFilters = ({
   isFiltering: boolean;
 }) => {
   const [activeButton, setActiveButton] =
-    useState<ActiveFilter["mode"]>("daily");
+    useState<ActiveFilter["mode"] | ''>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );

@@ -3,6 +3,7 @@ import { Timestamp } from "firebase/firestore";
 export type AttendanceStatus = "Present" | "Absent" | "Missed" | "Not Available";
 
 export type LearningHour = {
+    synced: any;
     status: "scheduled" | "active" | "ended";
     scheduledTime: Timestamp;
     startedAt?: Timestamp;

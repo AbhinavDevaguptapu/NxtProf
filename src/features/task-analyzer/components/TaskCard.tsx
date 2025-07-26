@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
-import { Task, AnalysisStatus } from '../types';
+import { Task } from '../types';
 import { CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+
+// Local definition for AnalysisStatus since types.ts is not found
+export enum AnalysisStatus {
+  PENDING = 'PENDING',
+  ANALYZING = 'ANALYZING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  SKIPPED = 'SKIPPED',
+}
 
 interface TaskCardProps {
   task: Task;
@@ -34,6 +43,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
           <div className="flex flex-col items-center justify-center h-full p-6">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="mt-3 text-sm text-muted-foreground">Analyzing...</p>
+          </div>
+        );
+      case AnalysisStatus.SKIPPED:
+        return (
+          <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+            <p className="font-semibold">Analysis Skipped</p>
+            <p className="text-xs text-muted-foreground mt-1">This task was not analyzed.</p>
           </div>
         );
       case AnalysisStatus.FAILED:
