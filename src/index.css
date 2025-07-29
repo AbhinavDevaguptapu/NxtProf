@@ -179,3 +179,12 @@
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* 7. Custom Scrollbar Hiding Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

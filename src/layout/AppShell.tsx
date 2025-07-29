@@ -10,7 +10,7 @@ import Attendance from '@/features/attendance/pages/Attendance';
 import FeedbackPage from '@/features/feedback/pages/FeedbackPage';
 import LearningHours from '@/features/learning-hours/pages/LearningHours';
 import OnboardingVideoPage from '@/features/onboarding/pages/OnBoardingPage';
-import AdminEmployees from '@/features/admin/pages/AdminEmployees';
+import AdminEmployeeDashboard from '@/features/admin/pages/AdminEmployeeDashboard';
 import AdminEmployeeDetail from '@/features/admin/pages/AdminEmployeeDetail';
 import TaskAnalyzerPage from '@/features/task-analyzer/pages/TaskAnalyzerPage';
 import PeerFeedbackPage from '@/features/peer-feedback/pages/PeerFeedbackPage';
@@ -33,7 +33,7 @@ export type ViewType =
 
 export interface ViewState {
     view: ViewType;
-    context?: any;
+    context?: unknown;
 }
 
 const AccessDenied = () => <p className="text-lg md:text-base">You do not have permission to view this page.</p>;
@@ -82,11 +82,11 @@ export default function AppShell() {
 
         if (view === 'employee-detail') {
             return admin
-                ? <AdminEmployeeDetail employeeId={context} setActiveView={handleSetActiveView} />
+                ? <AdminEmployeeDetail employeeId={context as string} setActiveView={handleSetActiveView} />
                 : <AccessDenied />;
         }
 
-        const viewMap: Record<string, React.ComponentType<any>> = {
+        const viewMap: Record<string, React.ComponentType<{ setActiveView: (view: ViewState) => void }>> = {
             'home': admin ? AdminHome : UserHome,
             'standups': StandupsPage,
             'attendance': Attendance,
@@ -97,7 +97,7 @@ export default function AppShell() {
             'task-analyzer': TaskAnalyzerPage,
             'peer-feedback': PeerFeedbackPage,
             'admin-peer-feedback': admin ? AdminPeerFeedback : AccessDenied,
-            'manage-employees': admin ? AdminEmployees : AccessDenied,
+            'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
         };
 
         const ComponentToRender = viewMap[view] || viewMap.home;

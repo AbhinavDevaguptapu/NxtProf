@@ -7,7 +7,7 @@ import { format } from "date-fns";
 type SyncRequest = { sessionId: string };
 
 const LEARNING_HOURS_SPREADSHEET_ID =
-    "1wAcR-kHsmVnoow6KOu7wSJCndwkelfKKz7cQgmj94bQ";
+    "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
 
 // Sheets client with service account
 function getSheetsClient() {

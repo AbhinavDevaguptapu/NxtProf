@@ -4,7 +4,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/comp
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FilePlus, Lock, Unlock, Trash2, Pencil, Eye } from 'lucide-react';
+import { FilePlus, Lock, Unlock, Trash2, Pencil, Eye, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import type { LearningPoint } from '../types';
 import { LearningPointForm } from './LearningPointForm';
@@ -47,8 +47,19 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
     return (
         <>
             <div className="mt-8">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold tracking-tight">My Learning Points</h2>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight">My Learning Points</h2>
+                        <a
+                            href="https://d2rj3iig8nko29.cloudfront.net/website-static/task-framework.pdf"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline flex items-center gap-1.5 mt-1"
+                        >
+                            <BookOpen className="h-4 w-4" />
+                            View Task Framework Guide
+                        </a>
+                    </div>
                     <Button onClick={handleOpenFormForCreate} disabled={isDayLocked}>
                         <FilePlus className="mr-2 h-4 w-4" />
                         Add New Point
