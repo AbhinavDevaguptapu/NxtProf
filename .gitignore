@@ -1,19 +1,17 @@
-# -----------------------
-# System / IDE files
-# -----------------------
+# =============================================================================
+# || GENERAL
+# =============================================================================
+
+# System & OS files
 .DS_Store
 Thumbs.db
 
-# Visual Studio Code
+# IDE-specific files
 .vscode/
 !.vscode/extensions.json
-
-# JetBrains
 .idea/
 
-# -----------------------
-# Logs
-# -----------------------
+# Log files
 logs/
 *.log
 npm-debug.log*
@@ -22,43 +20,64 @@ pnpm-debug.log*
 bun-debug.log*
 lerna-debug.log*
 
-# -----------------------
-# Node / Bun
-# -----------------------
-node_modules/
-# lockfiles should be committed (bun.lockb, package-lock.json, yarn.lock, pnpm-lock.yaml)
-# but you can ignore bun's debug files:
-bun-debug.log*
+# =============================================================================
+# || FRONTEND (Vite + React)
+# =============================================================================
 
-# -----------------------
-# Build / Coverage
-# -----------------------
+# Node dependencies
+node_modules/
+
+# Build output
 dist/
 dist-ssr/
 build/
 out/
-coverage/
 
-# -----------------------
-# TypeScript
-# -----------------------
+# TypeScript cache
 *.tsbuildinfo
 
-# -----------------------
-# Environment / Secrets
-# -----------------------
-*.local
+# Test coverage
+coverage/
+
+# =============================================================================
+# || BACKEND (Firebase)
+# =============================================================================
+
+# Firebase CLI local emulator data and logs
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# IMPORTANT: Never commit your service account keys
+serviceAccountKey.json
+
+# =============================================================================
+# || ENVIRONMENT & SECRETS (CRITICAL)
+# =============================================================================
+
+# Environment variables
+# Never commit .env files. Use .env.example for templates.
 .env
 .env.*
 !.env.example
+*.local
 
-# Firebase service account key (do NOT commit!)
-serviceAccountKey.json
+# =============================================================================
+# || USER-SPECIFIC (Custom Ignores)
+# =============================================================================
 
-# Firebase CLI local emulator data
-.firebase/
-
-# -----------------------
-# Miscellaneous
-# -----------------------
+# The user has chosen to ignore these files from their local setup.
+# These are often configuration or planning files that are not part of the
+# main application codebase.
+firebase.json
+firestore.indexes.json
+firestore.rules
+storage.rules
+database.rules.json
+firestore.export.json
+database-debug.log
+error.log
 *.tgz
+plan.md
+error.txt
+

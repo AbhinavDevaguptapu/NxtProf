@@ -82,7 +82,7 @@ function calculateStreak(
 ): number {
     // Keep only the days the user was present
     const presents = entries
-        .filter((e) => e.status === "Present")
+        .filter((e) => e.status === "Present" || e.status === "Not Available")
         // Ensure correct sort just in case
         .sort(
             (a, b) =>
@@ -92,21 +92,29 @@ function calculateStreak(
 
     if (presents.length === 0) return 0;
 
-    // Start streak at 1 for the most recent “Present” day,
-    // but only if it was today or yesterday.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const mostRecentDate = presents[0].scheduled_at.toDate();
     mostRecentDate.setHours(0, 0, 0, 0);
 
-    const diffFromToday = (today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24);
+    const diffFromToday =
+        (today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24);
 
-    // If the last attendance was more than a day ago, the streak is 0.
-    if (diffFromToday > 1) {
-        return 0;
+    // Check if the current streak is active.
+    // On Monday, allow a 2-day gap to account for Sunday being an off-day.
+    // On any other day of the week, only a 1-day gap is allowed.
+    if (today.getDay() === 1) { // Monday
+        if (diffFromToday > 2) {
+            return 0; // Streak is broken if last present day was before Saturday.
+        }
+    } else {
+        if (diffFromToday > 1) {
+            return 0; // Streak is broken if there's a gap of more than 1 day.
+        }
     }
 
+    // Start streak at 1 for the most recent "Present" day.
     let streak = 1;
     let prevDate = mostRecentDate;
 
@@ -117,15 +125,15 @@ function calculateStreak(
         const diffDays =
             (prevDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
 
-        // If the gap is exactly one day, continue the streak.
-        if (diffDays === 1) {
+        // A streak continues if the gap is 1 day.
+        // It also continues if the gap is 2 days and the previous day was a Monday,
+        // which accounts for jumping over a Sunday.
+        if (diffDays === 1 || (diffDays === 2 && prevDate.getDay() === 1)) {
             streak++;
             prevDate = currDate;
-        } else if (diffDays > 1) {
-            // If the gap is more than one day, the streak is broken.
-            break;
+        } else {
+            break; // Streak is broken
         }
-        // If diffDays is 0, it means multiple entries on the same day. We just ignore it and continue.
     }
 
     return streak;

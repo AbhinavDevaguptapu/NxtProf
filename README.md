@@ -9,6 +9,10 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 ### For Team Members
 
 - **Personalized Dashboard**: A central hub displaying consecutive attendance streaks for both standups and learning hours, alerts for scheduled events, and quick access to all features.
+- **Comprehensive Peer Feedback**:
+  - **Request Feedback**: Formally request constructive feedback from any colleague.
+  - **Give Feedback**: Proactively give structured, anonymous feedback to any team member on their work efficiency and collaboration.
+  - **View Received Feedback**: See all feedback you've received in a unified, 100% anonymous view.
 - **AI-Powered Feedback Insights**: View personalized, AI-generated summaries of your performance feedback, including positive highlights and actionable areas for improvement.
 - **Session Participation**: Easily view schedules and status for daily standups and dedicated learning hours.
 - **Comprehensive Onboarding**: A guided onboarding experience including a training video, a checklist of essential resources, and a knowledge assessment to ensure readiness.
@@ -17,6 +21,9 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 ### For Admins
 
 - **Central Admin Dashboard**: An at-a-glance summary of the day's standups and learning hours, including real-time attendance counts and total employee metrics.
+- **Full Feedback Transparency**:
+  - **Real-time Audit Trail**: View a complete, non-anonymous log of all peer feedback given and requested across the organization.
+  - **Employee Filtering**: Easily filter the entire feedback history to see all interactions involving a specific employee.
 - **Secure Role-Based Access**: The admin system is protected by Firebase Custom Claims. Only authorized users can access admin functionality.
 - **Employee Lifecycle Management**:
   - **View & Search**: See a full list of registered employees with real-time search by name, email, or Employee ID.
@@ -41,7 +48,7 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 - **Framework**: React 18
 - **Build Tool**: Vite
 - **Language**: TypeScript
-- **Routing**: React Router v6
+- **Routing**: React Router v6 & State-based navigation
 - **UI Components**: shadcn/ui
 - **Styling**: Tailwind CSS
 - **Animation**: Framer Motion
@@ -53,7 +60,7 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 
 - **Platform**: Google Firebase
 - **Authentication**: Firebase Authentication (Email/Password, Google Sign-In, Custom Claims)
-- **Database**: Firestore (NoSQL)
+- **Database**: Firestore (NoSQL) with Security Rules
 - **File Storage**: Firebase Storage
 - **Serverless Logic**: Firebase Cloud Functions (v2) in TypeScript
 - **AI Model**: Google's Gemini 1.5 Flash API
@@ -71,7 +78,14 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 3.  **Profile Setup (`/setup`)**: New users must provide their Employee ID and a valid Google Sheet URL. This updates their Firestore document, setting `hasCompletedSetup: true`.
 4.  **Onboarding Kit (`/onboardingKit`)**: Users are guided through a multi-step process involving watching a training video, reviewing a checklist of essential resources, and passing a knowledge assessment before they can fully access the platform.
 
-### 2. AI Feedback Dashboard Flow
+### 2. Peer Feedback Flow
+
+1.  **Requesting/Giving**: A user can either request feedback from a target user (creating a `peerFeedbackRequests` document) or give feedback directly (creating a `givenPeerFeedback` document with `type: 'direct'`).
+2.  **Responding to a Request**: When a user responds to a request, a new `givenPeerFeedback` document is created with `type: 'requested'`, and the original request is marked as complete. This unifies all feedback into a single collection.
+3.  **User Anonymity (Cloud Function)**: When a user views their received feedback, they call the `getMyReceivedFeedback` Cloud Function. This function acts as a secure intermediary, fetching all relevant documents from `givenPeerFeedback` but **stripping out the `giverId`** before sending the data to the client. This enforces 100% anonymity.
+4.  **Admin View (Real-time)**: The admin dashboard uses a direct, real-time Firestore listener (`onSnapshot`) on the `givenPeerFeedback` collection. Firestore Security Rules ensure only users with an `isAdmin` claim can create this listener, giving them full, transparent access to the data.
+
+### 3. AI Feedback Dashboard Flow
 
 1.  **Frontend Request**: An admin views an employee's detail page, triggering a call to the `getFeedbackSummary` Cloud Function with the employee's UID and selected date filters.
 2.  **Cloud Function Processing**:
@@ -82,7 +96,7 @@ This project is built entirely on Google's Firebase platform, offering a robust,
     - **Aggregation**: The function processes quantitative ratings, preparing data structures for the frontend charts.
 3.  **Frontend Rendering**: The React component receives a single JSON payload containing AI summaries and chart data, then renders the summary cards and visualizations.
 
-### 3. Standup & Learning Hour Flow
+### 4. Standup & Learning Hour Flow
 
 1.  **Scheduling**: An admin navigates to the Standups or Learning Hours page and schedules a new session for the current day, setting a specific time.
 2.  **Session State**: The session is stored as a document in the `standups` or `learning_hours` collection in Firestore with a status of `scheduled`.

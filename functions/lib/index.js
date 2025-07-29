@@ -33,18 +33,27 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
+exports.standups = exports.peerFeedback = exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file contains all the backend serverless logic, including user management,
  * data synchronization with Google Sheets, and AI-powered feedback analysis.
  */
+const learningSessions_1 = require("./learningSessions");
+Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
+const syncLearningHours_1 = require("./syncLearningHours");
+Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
+const peerFeedback = __importStar(require("./peerFeedback"));
+exports.peerFeedback = peerFeedback;
+const standups = __importStar(require("./standups"));
+exports.standups = standups;
 const admin = __importStar(require("firebase-admin"));
 const google_auth_library_1 = require("google-auth-library");
 const googleapis_1 = require("googleapis");
 const generative_ai_1 = require("@google/generative-ai");
 const https_1 = require("firebase-functions/v2/https");
 const functions = __importStar(require("firebase-functions"));
+const scheduler_1 = require("firebase-functions/v2/scheduler");
 const date_fns_1 = require("date-fns");
 admin.initializeApp();
 // Helper function to securely get the Gemini API Key
@@ -115,12 +124,13 @@ exports.deleteEmployee = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    if (request.auth.token.isAdmin !== true) {
-        throw new https_1.HttpsError("permission-denied", "Only admins can delete employees.");
-    }
     const uid = request.data.uid;
     if (!uid) {
         throw new https_1.HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
+    }
+    // A user can delete their own account, or an admin can delete any account.
+    if (request.auth.uid !== uid && request.auth.token.isAdmin !== true) {
+        throw new https_1.HttpsError("permission-denied", "You do not have permission to delete this account.");
     }
     try {
         await admin.auth().deleteUser(uid);
@@ -245,8 +255,8 @@ exports.getFeedbackChartData = (0, https_1.onCall)({ timeoutSeconds: 60, memory:
         const sumI = filteredData.reduce((s, r) => s + r.instructor, 0);
         graphData = {
             totalFeedbacks,
-            avgUnderstanding: parseFloat((sumU / totalFeedbacks).toFixed(2)),
-            avgInstructor: parseFloat((sumI / totalFeedbacks).toFixed(2)),
+            avgUnderstanding: sumU / totalFeedbacks,
+            avgInstructor: sumI / totalFeedbacks,
         };
     }
     let graphTimeseries = null;
@@ -263,8 +273,8 @@ exports.getFeedbackChartData = (0, https_1.onCall)({ timeoutSeconds: 60, memory:
         const sortedKeys = Array.from(dailyAggregates.keys()).sort();
         graphTimeseries = {
             labels: sortedKeys.map(k => (0, date_fns_1.format)((0, date_fns_1.parseISO)(k), 'MMM d')),
-            understanding: sortedKeys.map(k => parseFloat((dailyAggregates.get(k).sumU / dailyAggregates.get(k).count).toFixed(1))),
-            instructor: sortedKeys.map(k => parseFloat((dailyAggregates.get(k).sumI / dailyAggregates.get(k).count).toFixed(1))),
+            understanding: sortedKeys.map(k => dailyAggregates.get(k).sumU / dailyAggregates.get(k).count),
+            instructor: sortedKeys.map(k => dailyAggregates.get(k).sumI / dailyAggregates.get(k).count),
         };
     }
     else if (request.data.timeFrame === "full") {
@@ -280,8 +290,8 @@ exports.getFeedbackChartData = (0, https_1.onCall)({ timeoutSeconds: 60, memory:
         const sortedKeys = Array.from(monthlyAggregates.keys()).sort();
         graphTimeseries = {
             labels: sortedKeys.map(k => (0, date_fns_1.format)((0, date_fns_1.parse)(k, 'yyyy-MM', new Date()), "MMM yyyy")),
-            understanding: sortedKeys.map(k => parseFloat((monthlyAggregates.get(k).sumU / monthlyAggregates.get(k).count).toFixed(2))),
-            instructor: sortedKeys.map(k => parseFloat((monthlyAggregates.get(k).sumI / monthlyAggregates.get(k).count).toFixed(2))),
+            understanding: sortedKeys.map(k => monthlyAggregates.get(k).sumU / monthlyAggregates.get(k).count),
+            instructor: sortedKeys.map(k => monthlyAggregates.get(k).sumI / monthlyAggregates.get(k).count),
         };
     }
     return { totalFeedbacks, graphData, graphTimeseries };
@@ -316,30 +326,9 @@ exports.getFeedbackAiSummary = (0, https_1.onCall)({ timeoutSeconds: 120, memory
         throw new https_1.HttpsError("internal", "Failed to generate AI summary.");
     }
 });
-// --- Find the syncAttendanceToSheet function and REPLACE it with this entire block ---
-exports.syncAttendanceToSheet = (0, https_1.onCall)({
-    timeoutSeconds: 120,
-    memory: "256MiB",
-    secrets: ["SHEETS_SA_KEY"],
-}, async (request) => {
-    var _a, _b;
-    // 1. Authentication & Authorization (Unchanged)
-    const callerUid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
-    if (!callerUid) {
-        throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
-    }
-    try {
-        const userRecord = await admin.auth().getUser(callerUid);
-        if (((_b = userRecord.customClaims) === null || _b === void 0 ? void 0 : _b.isAdmin) !== true) {
-            throw new https_1.HttpsError("permission-denied", "Must be an admin to run this operation.");
-        }
-    }
-    catch (error) {
-        console.error("Admin check failed:", error);
-        throw new https_1.HttpsError("internal", "Could not verify user permissions.");
-    }
-    // 2. Validate Input (Unchanged)
-    const { date, sessionType } = request.data;
+// --- Internal function to sync attendance data ---
+async function _syncAttendanceToSheet(data) {
+    const { date, sessionType } = data;
     if (!date || !sessionType) {
         throw new https_1.HttpsError("invalid-argument", "Missing 'date' or 'sessionType'.");
     }
@@ -352,16 +341,16 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
     const q = db.collection(collectionName).where(idField, "==", date);
     const snapshot = await q.get();
     if (snapshot.empty) {
+        console.log(`No Firestore records found for ${date}. Sheet was not modified.`);
         return { success: true, message: `No Firestore records found for ${date}. Sheet was not modified.` };
     }
     const recordsToSync = snapshot.docs.map(doc => {
         const data = doc.data();
-        // --- REPLACE WITH THIS BLOCK ---
         const options = {
             hour12: true,
             hour: 'numeric',
             minute: '2-digit',
-            timeZone: 'Asia/Kolkata' // Explicitly set the timezone to IST
+            timeZone: 'Asia/Kolkata'
         };
         const scheduledTime = data.scheduled_at ? new Date(data.scheduled_at.toMillis()).toLocaleTimeString('en-US', options) : "N/A";
         return [
@@ -375,9 +364,7 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
             data.reason || "",
         ];
     });
-    // --- Find and Delete Existing Rows by Sheet Index ---
     try {
-        // 4. Authenticate with Google Sheets
         const saRaw = process.env.SHEETS_SA_KEY;
         const sa = JSON.parse(saRaw);
         const jwt = new google_auth_library_1.JWT({
@@ -386,7 +373,6 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
             scopes: ["https://www.googleapis.com/auth/spreadsheets"],
         });
         const sheets = googleapis_1.google.sheets({ version: "v4", auth: jwt });
-        // 5. Get Sheet Info by Index
         const spreadsheetMeta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
         const allSheets = spreadsheetMeta.data.sheets;
         if (!allSheets || allSheets.length < 2) {
@@ -394,21 +380,15 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
         }
         const targetSheetIndex = sessionType === "standups" ? 0 : 1;
         const targetSheet = allSheets[targetSheetIndex];
-        // 1) make sure we actually got a sheet at that index
         if (!targetSheet) {
             throw new https_1.HttpsError("not-found", `No sheet found at index ${targetSheetIndex}.`);
         }
-        // 2) pull off its properties
         const props = targetSheet.properties || {};
-        // 3) explicitly check for missing (null or undefined)
-        //    this won’t mistake 0 for “missing”
         if (props.sheetId == null || props.title == null) {
             throw new https_1.HttpsError("not-found", `Sheet at index ${targetSheetIndex} is missing an ID or title.`);
         }
-        // 4) now safely extract them
-        const sheetId = props.sheetId; // could be 0, but that’s fine
+        const sheetId = props.sheetId;
         const sheetName = props.title;
-        // 6. Find and Delete Existing Rows
         const rangeToRead = `${sheetName}!A2:A`;
         const existingData = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: rangeToRead });
         const rowsToDelete = [];
@@ -430,7 +410,6 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
             });
             functions.logger.info(`Deleted ${rowsToDelete.length} old rows for date ${date}.`);
         }
-        // 7. Append Fresh Data
         if (recordsToSync.length > 0) {
             await sheets.spreadsheets.values.append({
                 spreadsheetId: SPREADSHEET_ID,
@@ -448,58 +427,192 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
         functions.logger.error("Error during Google Sheets operation:", err);
         throw new https_1.HttpsError("internal", "An error occurred while syncing to the sheet. " + err.message);
     }
+}
+// --- Callable function to sync attendance data ---
+exports.syncAttendanceToSheet = (0, https_1.onCall)({ timeoutSeconds: 120, memory: "256MiB", secrets: ["SHEETS_SA_KEY"] }, async (request) => {
+    var _a, _b;
+    const callerUid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!callerUid) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
+    }
+    try {
+        const userRecord = await admin.auth().getUser(callerUid);
+        if (((_b = userRecord.customClaims) === null || _b === void 0 ? void 0 : _b.isAdmin) !== true) {
+            throw new https_1.HttpsError("permission-denied", "Must be an admin to run this operation.");
+        }
+    }
+    catch (error) {
+        console.error("Admin check failed:", error);
+        throw new https_1.HttpsError("internal", "Could not verify user permissions.");
+    }
+    return await _syncAttendanceToSheet(request.data);
 });
-// // Add this new function alongside your existing addAdminRole function
-// export const removeAdminRole = onCall<RoleManagementData>(async (request) => {
-//     if (!request.auth?.token.isAdmin) {
-//         throw new HttpsError("permission-denied", "Only admins can modify roles.");
-//     }
-//     const email = request.data.email?.trim();
-//     if (!email) {
-//         throw new HttpsError("invalid-argument", "Provide a valid email.");
-//     }
-//     try {
-//         const user = await admin.auth().getUserByEmail(email);
-//         // Set custom claims, ensuring other claims are merged if they exist
-//         await admin.auth().setCustomUserClaims(user.uid, { ...user.customClaims, isAdmin: false });
-//         return { message: `Admin role removed for ${email}.` };
-//     } catch (err: any) {
-//         if (err.code === "auth/user-not-found") {
-//             throw new HttpsError("not-found", "User not found.");
-//         }
-//         console.error("removeAdminRole error:", err);
-//         throw new HttpsError("internal", "Could not remove admin role.");
-//     }
-// });
-// // Add this function to securely get the list of employees with their admin status
-// export const getEmployeesWithAdminStatus = onCall(async (request) => {
-//     if (!request.auth?.token.isAdmin) {
-//         throw new HttpsError("permission-denied", "Only admins can view the employee list.");
-//     }
-//     try {
-//         // Get all users from Firebase Auth to check their custom claims
-//         const listUsersResult = await admin.auth().listUsers(1000);
-//         const adminUids = new Set();
-//         listUsersResult.users.forEach(userRecord => {
-//             if (userRecord.customClaims?.isAdmin === true) {
-//                 adminUids.add(userRecord.uid);
-//             }
-//         });
-//         // Get all employee profiles from Firestore
-//         const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
-//         // Merge the two data sources
-//         const employeesWithStatus = employeesSnapshot.docs.map(doc => {
-//             const employeeData = doc.data();
-//             return {
-//                 id: doc.id,
-//                 ...employeeData,
-//                 isAdmin: adminUids.has(doc.id) // Add the isAdmin flag
-//             };
-//         });
-//         return employeesWithStatus;
-//     } catch (error: any) {
-//         console.error("Error fetching employees with admin status:", error);
-//         throw new HttpsError("internal", "Failed to fetch employee data.");
-//     }
-// });
+// --- Scheduled function to sync attendance data ---
+exports.scheduledSync = (0, scheduler_1.onSchedule)({
+    schedule: '30 19 * * 1-6', // Runs at 7:30 PM from Monday to Saturday
+    timeZone: 'Asia/Kolkata',
+    secrets: ["SHEETS_SA_KEY"], // Ensure secrets are available to the scheduled function
+    timeoutSeconds: 300,
+    memory: "256MiB"
+}, async (event) => {
+    console.log('Running scheduled sync for event:', event.scheduleTime);
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    try {
+        // Sync standups
+        console.log(`Starting standups sync for ${dateString}`);
+        const standupResult = await _syncAttendanceToSheet({ date: dateString, sessionType: 'standups' });
+        console.log('Standups sync completed:', standupResult.message);
+        // Sync learning hours
+        console.log(`Starting learning hours sync for ${dateString}`);
+        const learningHoursResult = await _syncAttendanceToSheet({ date: dateString, sessionType: 'learning_hours' });
+        console.log('Learning hours sync completed:', learningHoursResult.message);
+    }
+    catch (error) {
+        console.error('Scheduled sync failed:', error);
+        // The error is automatically reported to Cloud Logging.
+        // Depending on requirements, you could add more specific error handling here,
+        // such as sending a notification.
+    }
+});
+exports.analyzeTask = (0, https_1.onCall)({ timeoutSeconds: 120, memory: "512MiB", secrets: ["GEMINI_KEY"] }, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication required.");
+    }
+    const { prompt } = request.data;
+    try {
+        const model = new generative_ai_1.GoogleGenerativeAI(getGeminiKey()).getGenerativeModel({ model: "gemini-1.5-flash" });
+        const aiRes = await model.generateContent(prompt);
+        const aiTxt = aiRes.response.text();
+        const js = aiTxt.slice(aiTxt.indexOf("{"), aiTxt.lastIndexOf("}") + 1);
+        const obj = JSON.parse(js);
+        return obj;
+    }
+    catch (e) {
+        console.error("AI processing error:", e);
+        throw new https_1.HttpsError("internal", "Failed to generate AI summary.");
+    }
+});
+exports.getSubsheetNames = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
+    }
+    const SPREADSHEET_ID = "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
+    const isAdmin = request.auth.token.isAdmin === true;
+    try {
+        const sheets = googleapis_1.google.sheets({ version: "v4", auth: getSheetsAuth() });
+        const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+        if (!meta.data.sheets)
+            return [];
+        const allSheetNames = meta.data.sheets
+            .map(sheet => { var _a; return ((_a = sheet.properties) === null || _a === void 0 ? void 0 : _a.title) || ""; })
+            .filter(Boolean);
+        const employeeSheets = allSheetNames
+            .map(name => {
+            const parts = name.split('|').map(p => p.trim());
+            if (parts.length !== 2)
+                return null; // Invalid format
+            return { name: parts[0], id: parts[1], sheetName: name };
+        })
+            .filter(Boolean); // Type assertion
+        employeeSheets.sort((a, b) => a.name.localeCompare(b.name));
+        if (isAdmin) {
+            return employeeSheets;
+        }
+        else {
+            const userDoc = await admin.firestore().collection("employees").doc(request.auth.uid).get();
+            const employeeId = (_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.employeeId;
+            if (!employeeId) {
+                throw new https_1.HttpsError("not-found", "Could not find an employee ID for the current user.");
+            }
+            const userSheet = employeeSheets.find(sheet => sheet.id === employeeId);
+            return userSheet ? [userSheet] : [];
+        }
+    }
+    catch (error) {
+        console.error("Error in getSubsheetNames:", error);
+        throw new https_1.HttpsError("internal", "Failed to retrieve sheet names.", error.message);
+    }
+});
+/**
+ * Fetches and parses data from a specific subsheet by name, with permission checks.
+ * - Admins can access any subsheet.
+ * - Regular users can only access the subsheet that matches their name.
+ */
+exports.getSheetData = (0, https_1.onCall)({ secrets: ["SHEETS_SA_KEY"] }, async (request) => {
+    var _a, _b;
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
+    }
+    const { sheetName } = request.data;
+    if (!sheetName) {
+        throw new https_1.HttpsError("invalid-argument", "A sheet name is required.");
+    }
+    const isAdmin = request.auth.token.isAdmin === true;
+    // --- Authorization Check ---
+    if (!isAdmin) {
+        const userDoc = await admin.firestore().collection("employees").doc(request.auth.uid).get();
+        const employeeId = (_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.employeeId;
+        // Extract the ID from the sheet name (e.g., "Hemanth | NW0004740" -> "NW0004740")
+        const sheetId = (_b = sheetName.split('|').pop()) === null || _b === void 0 ? void 0 : _b.trim();
+        if (!employeeId || sheetId !== employeeId) {
+            throw new https_1.HttpsError("permission-denied", "You do not have permission to access this sheet.");
+        }
+    }
+    const SPREADSHEET_ID = "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
+    try {
+        const sheets = googleapis_1.google.sheets({ version: "v4", auth: getSheetsAuth() });
+        const range = `${sheetName}!A:J`;
+        const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+        const rows = resp.data.values;
+        if (!rows || rows.length < 2)
+            return [];
+        const REQUIRED_HEADERS = {
+            date: 'Date',
+            task: 'Task in the Day (As in Day Plan)',
+            taskFrameworkCategory: 'Task Framework Category',
+            pointType: 'Point Type',
+            situation: 'Situation (S)',
+            behavior: 'Behavior (B)',
+            impact: 'Impact (I)',
+            action: 'Action Item (A)',
+        };
+        const headers = rows[0].map(h => h.toLowerCase().trim());
+        const dataRows = rows.slice(1);
+        const headerMapping = {
+            date: headers.indexOf(REQUIRED_HEADERS.date.toLowerCase()),
+            task: headers.indexOf(REQUIRED_HEADERS.task.toLowerCase()),
+            taskFrameworkCategory: headers.indexOf(REQUIRED_HEADERS.taskFrameworkCategory.toLowerCase()),
+            pointType: headers.indexOf(REQUIRED_HEADERS.pointType.toLowerCase()),
+            situation: headers.indexOf(REQUIRED_HEADERS.situation.toLowerCase()),
+            behavior: headers.indexOf(REQUIRED_HEADERS.behavior.toLowerCase()),
+            impact: headers.indexOf(REQUIRED_HEADERS.impact.toLowerCase()),
+            action: headers.indexOf(REQUIRED_HEADERS.action.toLowerCase()),
+        };
+        const missingHeaders = Object.entries(headerMapping)
+            .filter(([, idx]) => idx === -1)
+            .map(([key]) => REQUIRED_HEADERS[key]);
+        if (missingHeaders.length > 0) {
+            throw new https_1.HttpsError("failed-precondition", `The sheet is missing required columns: ${missingHeaders.join(', ')}.`);
+        }
+        const tasks = dataRows.map((row, index) => ({
+            id: `${sheetName}-${index}`,
+            date: row[headerMapping.date] || '',
+            task: row[headerMapping.task] || '',
+            taskFrameworkCategory: row[headerMapping.taskFrameworkCategory] || '',
+            pointType: row[headerMapping.pointType] || '',
+            situation: row[headerMapping.situation] || '',
+            behavior: row[headerMapping.behavior] || '',
+            impact: row[headerMapping.impact] || '',
+            action: row[headerMapping.action] || '',
+        }))
+            .filter(task => task.date || task.task);
+        return tasks;
+    }
+    catch (error) {
+        console.error(`Error in getSheetData for sheet ${sheetName}:`, error);
+        throw new https_1.HttpsError("internal", "Failed to retrieve and parse sheet data.", error.message);
+    }
+});
 //# sourceMappingURL=index.js.map

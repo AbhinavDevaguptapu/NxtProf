@@ -41,7 +41,7 @@ import React, {
     useState,
     ReactNode,
 } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth, db } from "@/integrations/firebase/client";
 import { doc, DocumentData, onSnapshot, Unsubscribe } from "firebase/firestore";
 
@@ -55,6 +55,7 @@ interface AuthContextType {
     userProfile: UserProfile | null;
     loading: boolean;
     initialized: boolean;
+    logout: () => Promise<void>;
 }
 
 const UserAuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -128,6 +129,11 @@ export const UserAuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, []);
 
+    const logout = async () => {
+        await signOut(auth);
+        // No need to navigate here, the onAuthStateChanged listener will handle the state update
+    };
+
     return (
         <UserAuthContext.Provider
             value={{
@@ -135,6 +141,7 @@ export const UserAuthProvider = ({ children }: { children: ReactNode }) => {
                 userProfile,
                 loading: loadingAuth || loadingProfile,
                 initialized,
+                logout,
             }}
         >
             {children}
