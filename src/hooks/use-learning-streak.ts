@@ -1,5 +1,3 @@
-// src/hooks/use-learning-streak.ts
-
 import { useState, useEffect } from "react";
 import { db } from "@/integrations/firebase/client";
 import {
@@ -73,16 +71,19 @@ export function useLearningStreak() {
 
 /**
  * Given an array of attendance entries sorted descending by date,
- * returns the length of the current “Present” streak.
- * 
- * --- THIS IS THE EXACT, WORKING FUNCTION FROM YOUR REFERENCE ---
+ * returns the length of the current “Present” streak for a Monday-Saturday work week.
  */
 function calculateStreak(
     entries: { status: string; scheduled_at: Timestamp }[]
 ): number {
-    // Keep only the days the user was present
+    // Keep only the days the user was present on a workday (Mon-Sat).
     const presents = entries
-        .filter((e) => e.status === "Present" || e.status === "Not Available")
+        .filter(e => {
+            const day = e.scheduled_at.toDate().getDay();
+            const isWorkday = day !== 0; // 0 is Sunday
+            const isPresent = e.status === "Present" || e.status === "Not Available";
+            return isPresent && isWorkday;
+        })
         // Ensure correct sort just in case
         .sort(
             (a, b) =>
@@ -98,12 +99,15 @@ function calculateStreak(
     const mostRecentDate = presents[0].scheduled_at.toDate();
     mostRecentDate.setHours(0, 0, 0, 0);
 
+    const isToday = today.getTime() === mostRecentDate.getTime();
+
     const diffFromToday =
         (today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24);
 
     // Check if the current streak is active.
     // On Monday, allow a 2-day gap to account for Sunday being an off-day.
-    // On any other day of the week, only a 1-day gap is allowed.
+    // On any other day of the week (including Sunday), only a 1-day gap is allowed
+    // to the last workday (e.g., from Sunday to Saturday).
     if (today.getDay() === 1) { // Monday
         if (diffFromToday > 2) {
             return 0; // Streak is broken if last present day was before Saturday.
@@ -115,7 +119,7 @@ function calculateStreak(
     }
 
     // Start streak at 1 for the most recent "Present" day.
-    let streak = 1;
+    let streak = isToday ? 1 : 0;
     let prevDate = mostRecentDate;
 
     for (let i = 1; i < presents.length; i++) {
@@ -125,9 +129,9 @@ function calculateStreak(
         const diffDays =
             (prevDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
 
-        // A streak continues if the gap is 1 day.
+        // A streak continues if the gap is 1 day (e.g., Tue -> Mon).
         // It also continues if the gap is 2 days and the previous day was a Monday,
-        // which accounts for jumping over a Sunday.
+        // which accounts for jumping over a Sunday from Saturday.
         if (diffDays === 1 || (diffDays === 2 && prevDate.getDay() === 1)) {
             streak++;
             prevDate = currDate;

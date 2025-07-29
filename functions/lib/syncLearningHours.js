@@ -39,7 +39,7 @@ const googleapis_1 = require("googleapis");
 const google_auth_library_1 = require("google-auth-library");
 const admin = __importStar(require("firebase-admin"));
 const date_fns_1 = require("date-fns");
-const LEARNING_HOURS_SPREADSHEET_ID = "1wAcR-kHsmVnoow6KOu7wSJCndwkelfKKz7cQgmj94bQ";
+const LEARNING_HOURS_SPREADSHEET_ID = "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
 // Sheets client with service account
 function getSheetsClient() {
     const saRaw = process.env.SHEETS_SA_KEY;

@@ -118,6 +118,7 @@ const PeerFeedbackPage = () => {
                                 requests={requests}
                                 isLoading={isLoadingRequests}
                                 onFeedbackSubmitted={handleFeedbackGiven}
+                                refreshRequests={refreshRequests}
                             />
                         </CardContent>
                     </Card>

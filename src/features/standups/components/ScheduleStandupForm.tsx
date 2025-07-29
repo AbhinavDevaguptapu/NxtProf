@@ -40,7 +40,7 @@ export const ScheduleStandupForm = ({
       toast({ title: "Invalid time format.", variant: "destructive" });
       return;
     }
-    let finalDateTime = setHours(setMinutes(startOfDay(scheduledDate), minutes), hours);
+    const finalDateTime = setHours(setMinutes(startOfDay(scheduledDate), minutes), hours);
     if (finalDateTime < startOfMinute(new Date())) {
       toast({ title: "Cannot schedule in the past.", variant: "destructive" });
       return;

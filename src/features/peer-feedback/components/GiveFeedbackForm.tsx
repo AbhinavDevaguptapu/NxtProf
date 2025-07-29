@@ -146,7 +146,7 @@ const GiveFeedbackForm = () => {
                                 <FormControl>
                                     <RadioGroup
                                         onValueChange={field.onChange}
-                                        defaultValue={field.value}
+                                        value={field.value}
                                         className="flex flex-wrap gap-4"
                                     >
                                         {[1, 2, 3, 4, 5].map(value => (
@@ -172,7 +172,7 @@ const GiveFeedbackForm = () => {
                                 <FormControl>
                                     <RadioGroup
                                         onValueChange={field.onChange}
-                                        defaultValue={field.value}
+                                        value={field.value}
                                         className="flex flex-wrap gap-4"
                                     >
                                         {[1, 2, 3, 4, 5].map(value => (

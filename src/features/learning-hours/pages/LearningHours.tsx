@@ -211,14 +211,15 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
 
     const handleEndSession = async () => {
         setIsEndingSession(true);
+        endSession(); // Immediately stop the timer on the client-side
+
         const functions = getFunctions();
         const endSessionFunction = httpsCallable(functions, 'endLearningSessionAndLockPoints');
 
         try {
             await endSessionFunction({ sessionId: todayDocId });
-            await saveAttendance(); // This might be redundant if the cloud function handles it, but good for client-side state update
-            await endSession(); // This updates the client-side session state
-            fetchInitialData();
+            await saveAttendance();
+            await fetchInitialData(); // Force a refresh of the attendance data
             toast({ title: "Success", description: "Session ended and points have been locked." });
         } catch (error: any) {
             console.error("Error ending session:", error);
