@@ -1,9 +1,11 @@
 import { motion, Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Loader2, StopCircle, Users } from "lucide-react";
+import { Loader2, StopCircle, Users, Timer } from "lucide-react";
 import { AttendanceCard } from "../components/AttendanceCard";
 import { SessionStatistics } from "../components/SessionStatistics";
-import type { Employee, AttendanceStatus } from "../types";
+import type { Employee, AttendanceStatus, Standup } from "../types";
+import { useEffect, useState } from "react";
+import { differenceInSeconds } from "date-fns";
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -49,6 +51,7 @@ interface StandupActiveAdminViewProps {
     absenceReasons: Record<string, string>;
     onSetTempAttendance: (employeeId: string, status: AttendanceStatus) => void;
     onMarkUnavailable: (employee: Employee) => void;
+    standup: Standup;
 }
 
 export const StandupActiveAdminView = ({
@@ -63,7 +66,33 @@ export const StandupActiveAdminView = ({
     absenceReasons,
     onSetTempAttendance,
     onMarkUnavailable,
-}: StandupActiveAdminViewProps) => (
+    standup,
+}: StandupActiveAdminViewProps) => {
+    const [autoCloseTime, setAutoCloseTime] = useState("");
+
+    useEffect(() => {
+        if (standup?.scheduledTime) {
+            const intervalId = setInterval(() => {
+                const now = new Date();
+                const scheduled = standup.scheduledTime.toDate();
+                scheduled.setMinutes(scheduled.getMinutes() + 15);
+                const diff = differenceInSeconds(scheduled, now);
+
+                if (diff <= 0) {
+                    setAutoCloseTime("00:00");
+                    clearInterval(intervalId);
+                    return;
+                }
+
+                const minutes = Math.floor(diff / 60);
+                const seconds = diff % 60;
+                setAutoCloseTime(`${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`);
+            }, 1000);
+            return () => clearInterval(intervalId);
+        }
+    }, [standup]);
+    
+    return (
     <motion.div
         key="active-admin"
         className="w-full mx-auto space-y-8"
@@ -90,6 +119,12 @@ export const StandupActiveAdminView = ({
                         {sessionTime}
                     </p>
                     <p className="text-xs text-muted-foreground">SESSION TIME</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-2xl font-semibold text-red-500">
+                        {autoCloseTime}
+                    </p>
+                    <p className="text-xs text-muted-foreground">AUTO-CLOSE</p>
                 </div>
                 <Button
                     size="lg"
@@ -165,4 +200,4 @@ export const StandupActiveAdminView = ({
             </motion.div>
         </div>
     </motion.div>
-);
+)};

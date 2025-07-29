@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
+exports.standups = exports.peerFeedback = exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file contains all the backend serverless logic, including user management,
@@ -43,6 +43,10 @@ const learningSessions_1 = require("./learningSessions");
 Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
 const syncLearningHours_1 = require("./syncLearningHours");
 Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
+const peerFeedback = __importStar(require("./peerFeedback"));
+exports.peerFeedback = peerFeedback;
+const standups = __importStar(require("./standups"));
+exports.standups = standups;
 const admin = __importStar(require("firebase-admin"));
 const google_auth_library_1 = require("google-auth-library");
 const googleapis_1 = require("googleapis");
@@ -251,8 +255,8 @@ exports.getFeedbackChartData = (0, https_1.onCall)({ timeoutSeconds: 60, memory:
         const sumI = filteredData.reduce((s, r) => s + r.instructor, 0);
         graphData = {
             totalFeedbacks,
-            avgUnderstanding: parseFloat((sumU / totalFeedbacks).toFixed(2)),
-            avgInstructor: parseFloat((sumI / totalFeedbacks).toFixed(2)),
+            avgUnderstanding: sumU / totalFeedbacks,
+            avgInstructor: sumI / totalFeedbacks,
         };
     }
     let graphTimeseries = null;
@@ -269,8 +273,8 @@ exports.getFeedbackChartData = (0, https_1.onCall)({ timeoutSeconds: 60, memory:
         const sortedKeys = Array.from(dailyAggregates.keys()).sort();
         graphTimeseries = {
             labels: sortedKeys.map(k => (0, date_fns_1.format)((0, date_fns_1.parseISO)(k), 'MMM d')),
-            understanding: sortedKeys.map(k => parseFloat((dailyAggregates.get(k).sumU / dailyAggregates.get(k).count).toFixed(1))),
-            instructor: sortedKeys.map(k => parseFloat((dailyAggregates.get(k).sumI / dailyAggregates.get(k).count).toFixed(1))),
+            understanding: sortedKeys.map(k => dailyAggregates.get(k).sumU / dailyAggregates.get(k).count),
+            instructor: sortedKeys.map(k => dailyAggregates.get(k).sumI / dailyAggregates.get(k).count),
         };
     }
     else if (request.data.timeFrame === "full") {
@@ -286,8 +290,8 @@ exports.getFeedbackChartData = (0, https_1.onCall)({ timeoutSeconds: 60, memory:
         const sortedKeys = Array.from(monthlyAggregates.keys()).sort();
         graphTimeseries = {
             labels: sortedKeys.map(k => (0, date_fns_1.format)((0, date_fns_1.parse)(k, 'yyyy-MM', new Date()), "MMM yyyy")),
-            understanding: sortedKeys.map(k => parseFloat((monthlyAggregates.get(k).sumU / monthlyAggregates.get(k).count).toFixed(2))),
-            instructor: sortedKeys.map(k => parseFloat((monthlyAggregates.get(k).sumI / monthlyAggregates.get(k).count).toFixed(2))),
+            understanding: sortedKeys.map(k => monthlyAggregates.get(k).sumU / monthlyAggregates.get(k).count),
+            instructor: sortedKeys.map(k => monthlyAggregates.get(k).sumI / monthlyAggregates.get(k).count),
         };
     }
     return { totalFeedbacks, graphData, graphTimeseries };

@@ -32,13 +32,10 @@ export default function StandupsPage() {
     setEditingAbsence,
     absenceReasons,
     sessionTime,
-    isRescheduling,
-    setIsRescheduling,
     activeFilter,
     setActiveFilter,
     finalFilter,
     setFinalFilter,
-    todayDocId,
     handleStartStandup,
     handleStopStandup,
     handleSaveAbsenceReason,
@@ -58,14 +55,9 @@ export default function StandupsPage() {
       );
     }
 
-    if (!standup || isRescheduling) {
+    if (!standup) {
       return (
-        <StandupNotScheduledView
-          isAdmin={!!admin}
-          todayDocId={todayDocId}
-          adminName={user?.displayName || "Admin"}
-          onSuccess={() => setIsRescheduling(false)}
-        />
+        <StandupNotScheduledView />
       );
     }
 
@@ -77,13 +69,13 @@ export default function StandupsPage() {
             isAdmin={!!admin}
             isUpdatingStatus={isUpdatingStatus}
             onStart={handleStartStandup}
-            onReschedule={() => setIsRescheduling(true)}
           />
         );
       case "active":
         if (admin) {
           return (
             <StandupActiveAdminView
+              standup={standup}
               sessionTime={sessionTime}
               isUpdatingStatus={isUpdatingStatus}
               onStop={handleStopStandup}

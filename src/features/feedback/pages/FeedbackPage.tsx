@@ -323,7 +323,7 @@ const QuantitativeFeedback = ({
             display: true,
             align: "top" as const,
             anchor: "end" as const,
-            formatter: (value: number) => (value > 0 ? value.toFixed(1) : ""),
+            formatter: (value: number) => (value > 0 ? value.toFixed(3) : ""),
           },
         },
       ],
@@ -379,7 +379,7 @@ const QuantitativeFeedback = ({
           display: true,
           anchor: "end" as const,
           align: "top" as const,
-          formatter: (value: number) => value.toFixed(2),
+          formatter: (value: number) => value.toFixed(3),
         },
       },
       scales: {

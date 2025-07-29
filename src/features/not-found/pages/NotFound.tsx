@@ -1,20 +1,12 @@
-// src/pages/NotFound.tsx
-
-/**
- * Renders a 404 Not Found page for routes that do not exist in the application.
- * Logs an error to the console when a user attempts to access a non-existent route.
- *
- * @returns {JSX.Element} The rendered 404 Not Found page with a link to return to the home page.
- *
- * @remarks
- * - Uses `useLocation` to access the current route and logs the attempted path.
- * - Provides a user-friendly message and navigation back to the home page.
- */
-
 import { useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Home, AlertTriangle } from "lucide-react";
+
 export default function NotFound() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.error(
@@ -23,18 +15,40 @@ export default function NotFound() {
     );
   }, [location.pathname]);
 
+  const handleNavigateHome = () => {
+    navigate('/');
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <Link
-          to="/"
-          className="text-blue-500 hover:text-blue-700 underline"
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center space-y-6"
+      >
+        <motion.div
+          animate={{ rotate: [0, 10, -10, 10, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
         >
+          <AlertTriangle className="h-24 w-24 text-primary mx-auto" />
+        </motion.div>
+        
+        <h1 className="text-8xl font-bold tracking-tighter">
+          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>4</motion.span>
+          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>0</motion.span>
+          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>4</motion.span>
+        </h1>
+        
+        <p className="text-2xl text-muted-foreground">
+          Oops! The page you're looking for has ventured off the grid.
+        </p>
+        
+        <Button onClick={handleNavigateHome} size="lg">
+          <Home className="mr-2 h-5 w-5" />
           Return to Home
-        </Link>
-      </div>
+        </Button>
+      </motion.div>
     </div>
   );
 }

@@ -120,6 +120,14 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
       bg: "bg-amber-500/10",
     },
     {
+      title: "Peer Feedback",
+      description: "Give and request feedback",
+      icon: Users,
+      action: () => setActiveView({ view: "peer-feedback" }),
+      color: "text-teal-500",
+      bg: "bg-teal-500/10",
+    },
+    {
       title: "Onboarding Kit",
       description: "Find resources",
       icon: Box,

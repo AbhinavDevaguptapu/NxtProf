@@ -1,7 +1,6 @@
 import { motion, Variants } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
-import { ScheduleStandupForm } from "../components/ScheduleStandupForm";
+import { AlertTriangle, CalendarClock } from "lucide-react";
 
 const pageAnimationProps: {
     variants: Variants;
@@ -27,40 +26,19 @@ const pageAnimationProps: {
     exit: "exit",
 };
 
-interface StandupNotScheduledViewProps {
-    isAdmin: boolean;
-    todayDocId: string;
-    adminName: string;
-    onSuccess: () => void;
-}
-
-export const StandupNotScheduledView = ({ isAdmin, todayDocId, adminName, onSuccess }: StandupNotScheduledViewProps) => {
-    if (isAdmin) {
-        return (
-            <motion.div
-                key="schedule"
-                className="flex-grow flex items-center justify-center p-4"
-                {...pageAnimationProps}
-            >
-                <ScheduleStandupForm
-                    todayDocId={todayDocId}
-                    adminName={adminName}
-                    onSuccess={onSuccess}
-                />
-            </motion.div>
-        );
-    }
+export const StandupNotScheduledView = () => {
     return (
         <motion.div
             key="no-standup"
             className="flex-grow flex items-center justify-center p-4"
             {...pageAnimationProps}
         >
-            <Alert className="max-w-md border-gray-400 text-destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>No Standup Scheduled</AlertTitle>
+            <Alert className="max-w-md border-blue-400 text-blue-800">
+                <CalendarClock className="h-4 w-4" />
+                <AlertTitle>Standup Automation</AlertTitle>
                 <AlertDescription>
-                    There is no standup scheduled for today. Please check back later.
+                    Standups are automatically scheduled for 9:00 AM every day, except Sundays.
+                    The session will start automatically.
                 </AlertDescription>
             </Alert>
         </motion.div>

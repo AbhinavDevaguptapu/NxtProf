@@ -18,6 +18,6 @@ export default function OnboardingVideoPage({ setActiveView }: OnboardingPagePro
   }
 
   return (
-    <InstructorOnboarding user_id={user.uid} />
+    <InstructorOnboarding user_id={user.uid} setActiveView={setActiveView} />
   );
 }

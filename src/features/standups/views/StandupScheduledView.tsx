@@ -34,10 +34,9 @@ interface StandupScheduledViewProps {
     isAdmin: boolean;
     isUpdatingStatus: boolean;
     onStart: () => void;
-    onReschedule: () => void;
 }
 
-export const StandupScheduledView = ({ standup, isAdmin, isUpdatingStatus, onStart, onReschedule }: StandupScheduledViewProps) => (
+export const StandupScheduledView = ({ standup, isAdmin, isUpdatingStatus, onStart }: StandupScheduledViewProps) => (
     <motion.div
         key="scheduled"
         className="flex-grow flex items-center justify-center p-4"
@@ -60,15 +59,6 @@ export const StandupScheduledView = ({ standup, isAdmin, isUpdatingStatus, onSta
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-                {isAdmin && (
-                    <Button
-                        size="lg"
-                        onClick={onReschedule}
-                        variant="outline"
-                    >
-                        Reschedule
-                    </Button>
-                )}
                 {isAdmin ? (
                     <Button
                         size="lg"

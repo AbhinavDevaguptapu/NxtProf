@@ -5,6 +5,8 @@
  */
 import { endLearningSessionAndLockPoints } from "./learningSessions";
 import { syncLearningPointsToSheet } from "./syncLearningHours";
+import * as peerFeedback from "./peerFeedback";
+import * as standups from "./standups";
 import * as admin from "firebase-admin";
 import { JWT } from "google-auth-library";
 import { google } from "googleapis";
@@ -259,8 +261,8 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
             const sumI = filteredData.reduce((s, r) => s + r.instructor, 0);
             graphData = {
                 totalFeedbacks,
-                avgUnderstanding: parseFloat((sumU / totalFeedbacks).toFixed(2)),
-                avgInstructor: parseFloat((sumI / totalFeedbacks).toFixed(2)),
+                avgUnderstanding: sumU / totalFeedbacks,
+                avgInstructor: sumI / totalFeedbacks,
             };
         }
 
@@ -278,8 +280,8 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
              const sortedKeys = Array.from(dailyAggregates.keys()).sort();
              graphTimeseries = {
                  labels: sortedKeys.map(k => format(parseISO(k), 'MMM d')),
-                 understanding: sortedKeys.map(k => parseFloat((dailyAggregates.get(k)!.sumU / dailyAggregates.get(k)!.count).toFixed(1))),
-                 instructor: sortedKeys.map(k => parseFloat((dailyAggregates.get(k)!.sumI / dailyAggregates.get(k)!.count).toFixed(1))),
+                 understanding: sortedKeys.map(k => dailyAggregates.get(k)!.sumU / dailyAggregates.get(k)!.count),
+                 instructor: sortedKeys.map(k => dailyAggregates.get(k)!.sumI / dailyAggregates.get(k)!.count),
              };
         } else if (request.data.timeFrame === "full") {
             const monthlyAggregates = new Map<string, { sumU: number; sumI: number; count: number }>();
@@ -294,8 +296,8 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
             const sortedKeys = Array.from(monthlyAggregates.keys()).sort();
             graphTimeseries = {
                 labels: sortedKeys.map(k => format(parse(k, 'yyyy-MM', new Date()), "MMM yyyy")),
-                understanding: sortedKeys.map(k => parseFloat((monthlyAggregates.get(k)!.sumU / monthlyAggregates.get(k)!.count).toFixed(2))),
-                instructor: sortedKeys.map(k => parseFloat((monthlyAggregates.get(k)!.sumI / monthlyAggregates.get(k)!.count).toFixed(2))),
+                understanding: sortedKeys.map(k => monthlyAggregates.get(k)!.sumU / monthlyAggregates.get(k)!.count),
+                instructor: sortedKeys.map(k => monthlyAggregates.get(k)!.sumI / monthlyAggregates.get(k)!.count),
             };
         }
 
@@ -688,4 +690,4 @@ export const getSheetData = onCall<{ sheetName: string }>(
   }
 );
 
-export { endLearningSessionAndLockPoints, syncLearningPointsToSheet };
+export { endLearningSessionAndLockPoints, syncLearningPointsToSheet, peerFeedback, standups };

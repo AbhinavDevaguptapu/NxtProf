@@ -70,7 +70,7 @@ const OnboardingStepper = ({ currentStep }) => {
 
 
 // --- Main Onboarding Component ---
-const InstructorOnboarding = ({ user_id }) => {
+const InstructorOnboarding = ({ user_id, setActiveView }: { user_id: string, setActiveView: (view: ViewState) => void }) => {
   // --- State logic ---
   const [onboardingView, setOnboardingView] = useState('loading'); // 'loading', 'onboarding', 'resourcesOnly'
   const [step, setStep] = useState(1);
@@ -105,6 +105,10 @@ const InstructorOnboarding = ({ user_id }) => {
   const allStandardItemsChecked = checklistItems.every(item => !!checkedItems[item]);
   const passedAssessment = isVideoWatched && assessmentCompleted && score >= 80;
   const allChecked = allStandardItemsChecked && passedAssessment;
+
+  if (allChecked) {
+    return <OnboardingSuccess setActiveView={setActiveView} />;
+  }
 
 
   const animationVariants = {

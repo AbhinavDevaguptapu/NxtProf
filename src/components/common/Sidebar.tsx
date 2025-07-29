@@ -36,7 +36,8 @@ import {
     Menu,
     ChevronRight,
     LucideIcon,
-    Bot
+    Bot,
+    UsersRound
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -48,6 +49,7 @@ const userNavItems = [
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
     { id: "task-analyzer", label: "AI L-Points Analysis", icon: Bot },
     { id: "feedback", label: "AI Feedback", icon: MessageSquareQuote },
+    { id: "peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "attendance", label: "Attendance", icon: CalendarCheck },
     { id: "onboardingKit", label: "Onboarding Kit", icon: Box },
 ]
@@ -57,6 +59,7 @@ const adminNavItems = [
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
     { id: "task-analyzer", label: "AI L-Points Analysis", icon: Bot },
+    { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "manage-employees", label: "Manage Employees", icon: Users },
     { id: "attendance", label: "Manage Attendance", icon: CalendarCheck },
 ]

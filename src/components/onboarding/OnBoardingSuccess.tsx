@@ -1,5 +1,6 @@
 // Onboarding Success - UI Updated
 
+import { ViewState } from '@/layout/AppShell';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -45,13 +46,14 @@ const AnimatedCheck = () => {
   );
 };
 
+interface OnboardingSuccessProps {
+  setActiveView: (view: ViewState) => void;
+}
 
-const OnboardingSuccess = () => {
-  const navigate = useNavigate();
 
+const OnboardingSuccess = ({ setActiveView }: OnboardingSuccessProps) => {
   const handleNavigate = () => {
-    // Navigate to home page after onboarding
-    navigate('/');
+    setActiveView({ view: 'home' });
   };
 
   return (
@@ -79,7 +81,7 @@ const OnboardingSuccess = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-6 sm:flex-col sm:space-y-2">
             <Button
               size="lg"
               className="w-full"
@@ -87,6 +89,14 @@ const OnboardingSuccess = () => {
             >
               Go to Dashboard
               <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button
+              size="lg"
+              className="w-full"
+              variant="outline"
+              onClick={handleNavigate}
+            >
+              Close
             </Button>
           </DialogFooter>
         </motion.div>

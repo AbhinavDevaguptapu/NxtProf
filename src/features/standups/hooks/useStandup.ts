@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { format, formatDistanceStrict } from "date-fns";
+import { format } from "date-fns";
 import {
   doc,
   onSnapshot,
@@ -10,7 +10,6 @@ import {
   getDocs,
   where,
   writeBatch,
-  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -32,7 +31,6 @@ export const useStandup = () => {
   const [editingAbsence, setEditingAbsence] = useState<Employee | null>(null);
   const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
   const [sessionTime, setSessionTime] = useState("0s");
-  const [isRescheduling, setIsRescheduling] = useState(false);
 
   const [activeFilter, setActiveFilter] = useState<AttendanceStatus | "all">("all");
   const [finalFilter, setFinalFilter] = useState<AttendanceStatus | "all">("all");
@@ -217,8 +215,6 @@ export const useStandup = () => {
     setEditingAbsence,
     absenceReasons,
     sessionTime,
-    isRescheduling,
-    setIsRescheduling,
     activeFilter,
     setActiveFilter,
     finalFilter,

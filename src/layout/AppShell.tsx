@@ -1,4 +1,4 @@
-import React, { useState, Dispatch, SetStateAction, ReactNode } from 'react';
+import React, { useState, Dispatch, SetStateAction, ReactNode, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/components/common/Sidebar';
 import { useAdminAuth } from '@/context/AdminAuthContext';
@@ -13,6 +13,9 @@ import OnboardingVideoPage from '@/features/onboarding/pages/OnBoardingPage';
 import AdminEmployees from '@/features/admin/pages/AdminEmployees';
 import AdminEmployeeDetail from '@/features/admin/pages/AdminEmployeeDetail';
 import TaskAnalyzerPage from '@/features/task-analyzer/pages/TaskAnalyzerPage';
+import PeerFeedbackPage from '@/features/peer-feedback/pages/PeerFeedbackPage';
+import AdminPeerFeedback from '@/features/admin/pages/AdminPeerFeedback';
+import FloatingNav from '@/components/common/FloatingNav';
 
 export type ViewType =
     | 'home'
@@ -24,7 +27,9 @@ export type ViewType =
     | 'onboardingKit'
     | 'manage-employees'
     | 'employee-detail'
-    | 'task-analyzer';
+    | 'task-analyzer'
+    | 'peer-feedback'
+    | 'admin-peer-feedback';
 
 export interface ViewState {
     view: ViewType;
@@ -33,16 +38,51 @@ export interface ViewState {
 
 const AccessDenied = () => <p className="text-lg md:text-base">You do not have permission to view this page.</p>;
 
+// Function to get the initial view from the URL hash
+const getInitialView = (): ViewState => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+        // You might want to add more robust parsing here if you use context in the URL
+        return { view: hash as ViewType };
+    }
+    return { view: 'home' };
+};
+
 export default function AppShell() {
     const { admin } = useAdminAuth();
-    const [activeView, setActiveView] = useState<ViewState>({ view: 'home' });
+    const [activeView, setActiveView] = useState<ViewState>(getInitialView);
 
+    // This effect handles the browser's back/forward buttons
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            if (event.state) {
+                setActiveView(event.state);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, []);
+
+    // This function centralizes navigation logic
+    const handleSetActiveView = (newViewState: ViewState) => {
+        // Only push a new state if the view is actually changing
+        if (newViewState.view !== activeView.view || JSON.stringify(newViewState.context) !== JSON.stringify(activeView.context)) {
+            setActiveView(newViewState);
+            const newUrl = `#${newViewState.view}`;
+            // Use pushState to add to history
+            window.history.pushState(newViewState, '', newUrl);
+        }
+    };
+    
     const renderContent = () => {
         const { view, context } = activeView;
 
         if (view === 'employee-detail') {
             return admin
-                ? <AdminEmployeeDetail employeeId={context} setActiveView={setActiveView} />
+                ? <AdminEmployeeDetail employeeId={context} setActiveView={handleSetActiveView} />
                 : <AccessDenied />;
         }
 
@@ -55,17 +95,19 @@ export default function AppShell() {
             'profile': ProfilePage,
             'onboardingKit': OnboardingVideoPage,
             'task-analyzer': TaskAnalyzerPage,
+            'peer-feedback': PeerFeedbackPage,
+            'admin-peer-feedback': admin ? AdminPeerFeedback : AccessDenied,
             'manage-employees': admin ? AdminEmployees : AccessDenied,
         };
 
         const ComponentToRender = viewMap[view] || viewMap.home;
 
-        return <ComponentToRender setActiveView={setActiveView} />;
+        return <ComponentToRender setActiveView={handleSetActiveView} />;
     };
 
     return (
         <div className="flex min-h-screen w-full">
-            <Sidebar activeView={activeView.view} setActiveView={setActiveView} />
+            <Sidebar activeView={activeView.view} setActiveView={handleSetActiveView} />
             <div className="flex flex-col flex-1 w-full lg:pl-72">
                 <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pb-8 pt-24 lg:pt-8 text-lg md:text-base">
                     <AnimatePresence mode="wait">
@@ -81,6 +123,7 @@ export default function AppShell() {
                     </AnimatePresence>
                 </main>
             </div>
+            <FloatingNav setActiveView={handleSetActiveView} />
         </div>
     );
 }
