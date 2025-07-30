@@ -36,45 +36,56 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = void 0;
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
+// Import timezone functions
+const date_fns_tz_1 = require("date-fns-tz");
 const date_fns_1 = require("date-fns");
+// Initialize Firebase Admin if not already done
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
 const TIME_ZONE = "Asia/Kolkata";
-// Function to schedule standup at 9:00 AM, skipping Sundays
+// Function to schedule standup
 exports.scheduleDailyStandup = (0, scheduler_1.onSchedule)({
-    schedule: "every day 01:00",
+    schedule: "every day 08:00",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();
-    const today = new Date();
-    const dayOfWeek = (0, date_fns_1.getDay)(today); // Sunday is 0
+    // Get the current date in the specified timezone
+    const now = new Date();
+    const dayOfWeek = (0, date_fns_1.getDay)(now);
     if (dayOfWeek === 0) { // Skip Sundays
         console.log("Skipping standup scheduling on Sunday.");
         return;
     }
-    const todayDocId = (0, date_fns_1.format)(today, "yyyy-MM-dd");
+    // CORRECT: Always format the date in your target timezone
+    const todayDocId = (0, date_fns_tz_1.formatInTimeZone)(now, TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
-    const standupTime = new Date(today);
-    standupTime.setHours(9, 0, 0, 0); // 9:00 AM
+    // CORRECT: Create the 10:30 AM IST date object correctly
+    // 1. Get today's date string in IST
+    const dateString = (0, date_fns_tz_1.formatInTimeZone)(now, TIME_ZONE, 'yyyy-MM-dd');
+    // 2. Create the full timestamp string for 11:10 AM IST
+    const standupTimeInZone = (0, date_fns_tz_1.zonedTimeToUtc)(`${dateString}T09:00:00`, TIME_ZONE);
     try {
         await standupRef.set({
             status: "scheduled",
-            scheduledTime: admin.firestore.Timestamp.fromDate(standupTime),
+            scheduledTime: admin.firestore.Timestamp.fromDate(standupTimeInZone),
             scheduledBy: "System Automation",
         });
-        console.log(`Successfully scheduled standup for ${todayDocId}`);
+        console.log(`Successfully scheduled standup for ${todayDocId} at 09:00 AM IST`);
     }
     catch (error) {
         console.error(`Error scheduling standup for ${todayDocId}:`, error);
     }
 });
-// Function to automatically start the standup at 9:00 AM
+// Function to automatically start the standup
 exports.startScheduledStandup = (0, scheduler_1.onSchedule)({
     schedule: "every mon,tue,wed,thu,fri,sat 09:00",
     timeZone: TIME_ZONE,
 }, async () => {
     var _a;
     const db = admin.firestore();
-    const today = new Date();
-    const todayDocId = (0, date_fns_1.format)(today, "yyyy-MM-dd");
+    // CORRECT: Get doc ID based on the correct timezone
+    const todayDocId = (0, date_fns_tz_1.formatInTimeZone)(new Date(), TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
     try {
         const standupDoc = await standupRef.get();
@@ -90,19 +101,19 @@ exports.startScheduledStandup = (0, scheduler_1.onSchedule)({
         console.error(`Error starting standup for ${todayDocId}:`, error);
     }
 });
-// Function to automatically end the standup at 9:15 AM
+// Function to automatically end the standup
 exports.endActiveStandup = (0, scheduler_1.onSchedule)({
     schedule: "every mon,tue,wed,thu,fri,sat 09:15",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();
-    const today = new Date();
-    const todayDocId = (0, date_fns_1.format)(today, "yyyy-MM-dd");
+    const todayDocId = (0, date_fns_tz_1.formatInTimeZone)(new Date(), TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
     try {
         const standupDoc = await standupRef.get();
         const standupData = standupDoc.data();
         if (standupDoc.exists && (standupData === null || standupData === void 0 ? void 0 : standupData.status) === "active") {
+            // ... (rest of your logic is fine)
             const batch = db.batch();
             const employeesSnapshot = await db.collection("employees").get();
             const attendanceSnapshot = await db.collection("attendance").where("standup_id", "==", todayDocId).get();

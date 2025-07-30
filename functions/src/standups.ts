@@ -1,49 +1,61 @@
 import * as admin from "firebase-admin";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { format, getDay } from "date-fns";
+// Import timezone functions
+import { zonedTimeToUtc, formatInTimeZone } from 'date-fns-tz';
+import { getDay } from "date-fns";
+
+// Initialize Firebase Admin if not already done
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
 
 const TIME_ZONE = "Asia/Kolkata";
 
-// Function to schedule standup at 9:00 AM, skipping Sundays
+// Function to schedule standup
 export const scheduleDailyStandup = onSchedule({
-    schedule: "every day 01:00",
+    schedule: "every day 08:00",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();
-    const today = new Date();
-    const dayOfWeek = getDay(today); // Sunday is 0
+    // Get the current date in the specified timezone
+    const now = new Date();
+    const dayOfWeek = getDay(now);
 
     if (dayOfWeek === 0) { // Skip Sundays
         console.log("Skipping standup scheduling on Sunday.");
         return;
     }
 
-    const todayDocId = format(today, "yyyy-MM-dd");
+    // CORRECT: Always format the date in your target timezone
+    const todayDocId = formatInTimeZone(now, TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
 
-    const standupTime = new Date(today);
-    standupTime.setHours(9, 0, 0, 0); // 9:00 AM
+    // CORRECT: Create the 10:30 AM IST date object correctly
+    // 1. Get today's date string in IST
+    const dateString = formatInTimeZone(now, TIME_ZONE, 'yyyy-MM-dd');
+    // 2. Create the full timestamp string for 11:10 AM IST
+    const standupTimeInZone = zonedTimeToUtc(`${dateString}T09:00:00`, TIME_ZONE);
 
     try {
         await standupRef.set({
             status: "scheduled",
-            scheduledTime: admin.firestore.Timestamp.fromDate(standupTime),
+            scheduledTime: admin.firestore.Timestamp.fromDate(standupTimeInZone),
             scheduledBy: "System Automation",
         });
-        console.log(`Successfully scheduled standup for ${todayDocId}`);
+        console.log(`Successfully scheduled standup for ${todayDocId} at 09:00 AM IST`);
     } catch (error) {
         console.error(`Error scheduling standup for ${todayDocId}:`, error);
     }
 });
 
-// Function to automatically start the standup at 9:00 AM
+// Function to automatically start the standup
 export const startScheduledStandup = onSchedule({
     schedule: "every mon,tue,wed,thu,fri,sat 09:00",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();
-    const today = new Date();
-    const todayDocId = format(today, "yyyy-MM-dd");
+    // CORRECT: Get doc ID based on the correct timezone
+    const todayDocId = formatInTimeZone(new Date(), TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
 
     try {
@@ -60,14 +72,13 @@ export const startScheduledStandup = onSchedule({
     }
 });
 
-// Function to automatically end the standup at 9:15 AM
+// Function to automatically end the standup
 export const endActiveStandup = onSchedule({
     schedule: "every mon,tue,wed,thu,fri,sat 09:15",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();
-    const today = new Date();
-    const todayDocId = format(today, "yyyy-MM-dd");
+    const todayDocId = formatInTimeZone(new Date(), TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
 
     try {
@@ -75,8 +86,8 @@ export const endActiveStandup = onSchedule({
         const standupData = standupDoc.data();
 
         if (standupDoc.exists && standupData?.status === "active") {
+            // ... (rest of your logic is fine)
             const batch = db.batch();
-
             const employeesSnapshot = await db.collection("employees").get();
             const attendanceSnapshot = await db.collection("attendance").where("standup_id", "==", todayDocId).get();
             const markedEmployeeIds = new Set(attendanceSnapshot.docs.map(doc => doc.data().employee_id));
@@ -100,7 +111,6 @@ export const endActiveStandup = onSchedule({
             });
 
             await batch.commit();
-
             await standupRef.update({
                 status: "ended",
                 endedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -111,4 +121,3 @@ export const endActiveStandup = onSchedule({
         console.error(`Error ending standup for ${todayDocId}:`, error);
     }
 });
-

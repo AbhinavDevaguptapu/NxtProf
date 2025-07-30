@@ -12,7 +12,7 @@ admin.initializeApp();
 import { endLearningSessionAndLockPoints } from "./learningSessions";
 import { syncLearningPointsToSheet } from "./syncLearningHours";
 import * as peerFeedback from "./peerFeedback";
-import * as standups from "./standups";
+import { scheduleDailyStandup, startScheduledStandup, endActiveStandup } from "./standups";
 import { addAdminRole, removeAdminRole, deleteEmployee, getEmployeesWithAdminStatus } from "./users";
 import { getFeedbackChartData, getFeedbackAiSummary } from "./feedbackAnalysis";
 import { syncAttendanceToSheet, scheduledSync } from "./attendanceSync";
@@ -27,7 +27,9 @@ export {
     peerFeedback,
 
     // Standups
-    standups,
+    scheduleDailyStandup,
+    startScheduledStandup,
+    endActiveStandup,
 
     // User Management
     addAdminRole,

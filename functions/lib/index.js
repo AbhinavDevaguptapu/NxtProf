@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.standups = exports.peerFeedback = exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = void 0;
+exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.peerFeedback = exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file serves as the main entry point for all backend serverless logic.
@@ -49,8 +49,10 @@ const syncLearningHours_1 = require("./syncLearningHours");
 Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
 const peerFeedback = __importStar(require("./peerFeedback"));
 exports.peerFeedback = peerFeedback;
-const standups = __importStar(require("./standups"));
-exports.standups = standups;
+const standups_1 = require("./standups");
+Object.defineProperty(exports, "scheduleDailyStandup", { enumerable: true, get: function () { return standups_1.scheduleDailyStandup; } });
+Object.defineProperty(exports, "startScheduledStandup", { enumerable: true, get: function () { return standups_1.startScheduledStandup; } });
+Object.defineProperty(exports, "endActiveStandup", { enumerable: true, get: function () { return standups_1.endActiveStandup; } });
 const users_1 = require("./users");
 Object.defineProperty(exports, "addAdminRole", { enumerable: true, get: function () { return users_1.addAdminRole; } });
 Object.defineProperty(exports, "removeAdminRole", { enumerable: true, get: function () { return users_1.removeAdminRole; } });
