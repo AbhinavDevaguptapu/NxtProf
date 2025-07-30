@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 export interface FeedbackRequest {
     id: string;
+    requesterId: string;
     requesterName: string;
     message: string;
     createdAt: {

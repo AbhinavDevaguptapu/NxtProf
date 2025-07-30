@@ -1,12 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import SubmitFeedbackModal from './SubmitFeedbackModal';
 import { FeedbackRequest } from '../hooks/usePendingRequests';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, MessageSquare } from 'lucide-react';
 
 interface PendingRequestsListProps {
     requests: FeedbackRequest[];
@@ -18,6 +18,23 @@ interface PendingRequestsListProps {
 const PendingRequestsList = ({ requests, isLoading, onFeedbackSubmitted, refreshRequests }: PendingRequestsListProps) => {
     const [selectedRequest, setSelectedRequest] = useState<FeedbackRequest | null>(null);
 
+    // Group requests by requester to avoid duplicates
+    const uniqueRequests = useMemo(() => {
+        const grouped = new Map<string, FeedbackRequest[]>();
+        
+        requests.forEach(request => {
+            if (!grouped.has(request.requesterId)) {
+                grouped.set(request.requesterId, []);
+            }
+            grouped.get(request.requesterId)!.push(request);
+        });
+
+        // Return the most recent request from each requester
+        return Array.from(grouped.values()).map(group => 
+            group.sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime())[0]
+        );
+    }, [requests]);
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-48">
@@ -27,7 +44,7 @@ const PendingRequestsList = ({ requests, isLoading, onFeedbackSubmitted, refresh
         );
     }
 
-    if (requests.length === 0) {
+    if (uniqueRequests.length === 0) {
         return (
             <div className="text-center text-muted-foreground py-12">
                 <p>You have no pending feedback requests.</p>
@@ -41,7 +58,10 @@ const PendingRequestsList = ({ requests, isLoading, onFeedbackSubmitted, refresh
 
     return (
         <>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4">
+                <div className="text-sm text-muted-foreground">
+                    {uniqueRequests.length} pending request{uniqueRequests.length !== 1 ? 's' : ''}
+                </div>
                 <Button variant="outline" size="sm" onClick={refreshRequests}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
@@ -49,22 +69,23 @@ const PendingRequestsList = ({ requests, isLoading, onFeedbackSubmitted, refresh
             </div>
             <ScrollArea className="h-[400px] w-full">
                 <div className="space-y-4">
-                    {requests.map((request) => (
-                        <Card key={request.id}>
-                            <CardHeader>
-                                <CardTitle className="text-base">
-                                    Request from {request.requesterName}
-                                </CardTitle>
-                                <CardDescription>
-                                    Requested {formatDistanceToNow(request.createdAt.toDate(), { addSuffix: true })}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <p className="text-sm p-3 bg-muted rounded-lg">{request.message}</p>
-                                <Button onClick={() => setSelectedRequest(request)}>Give Feedback</Button>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                         {uniqueRequests.map((request) => (
+                         <Card key={request.id}>
+                             <CardHeader>
+                                 <CardTitle className="text-base flex items-center gap-2">
+                                     <MessageSquare className="h-4 w-4" />
+                                     Request from {request.requesterName}
+                                 </CardTitle>
+                                 <CardDescription>
+                                     Latest request: {formatDistanceToNow(request.createdAt.toDate(), { addSuffix: true })}
+                                 </CardDescription>
+                             </CardHeader>
+                             <CardContent className="space-y-4">
+                                 <p className="text-sm p-3 bg-muted rounded-lg">{request.message}</p>
+                                 <Button onClick={() => setSelectedRequest(request)}>Give Feedback</Button>
+                             </CardContent>
+                         </Card>
+                     ))}
                 </div>
             </ScrollArea>
             {selectedRequest && (
