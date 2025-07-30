@@ -23,28 +23,20 @@ import { toast } from "sonner";
 import { Search, Loader2, UserX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-// Initialize Firebase Functions
 const functions = getFunctions();
 const requestPeerFeedback = httpsCallable(functions, 'peerFeedback-requestPeerFeedback');
 
-// Zod schema for form validation
 const formSchema = z.object({
     targetIds: z.array(z.string()).min(1, "You must select at least one colleague."),
     message: z.string().min(10, "Message must be at least 10 characters.").max(500, "Message must be 500 characters or less."),
 });
 
-// Interface now includes a 'completed' status
 interface EmployeeWithStatus {
     id: string;
     name: string;
     status: 'available' | 'requested' | 'completed';
 }
 
-/**
- * A form for users to request peer feedback from their colleagues.
- * It disables colleagues who have already provided feedback ('completed')
- * or have a pending request ('requested'), and sorts available colleagues to the top.
- */
 const RequestFeedbackForm = () => {
     const { user } = useUserAuth();
     const [employees, setEmployees] = useState<EmployeeWithStatus[]>([]);
@@ -59,28 +51,27 @@ const RequestFeedbackForm = () => {
         },
     });
 
-    // Effect to fetch employees and categorize their status
     useEffect(() => {
         const fetchAndCategorizeEmployees = async () => {
             if (!user) return;
             setIsLoading(true);
             try {
-                // Define queries for all necessary data
+                // **THE FIX IS HERE:**
+                // The query now correctly looks for documents where the `targetId` is the current user.
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
-                const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
+                const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("targetId", "==", user.uid));
 
-                // Fetch all data in parallel
                 const [employeesSnapshot, requestsSnapshot, feedbackSnapshot] = await Promise.all([
                     getDocs(employeesQuery),
                     getDocs(requestsQuery),
                     getDocs(feedbackQuery),
                 ]);
 
+                // This set now correctly contains the IDs of everyone who has given feedback TO the current user.
                 const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().giverId));
                 const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
 
-                // Process employees to assign a status instead of filtering
                 const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs.map((doc) => {
                     const employeeId = doc.id;
                     let status: EmployeeWithStatus['status'];
@@ -100,7 +91,6 @@ const RequestFeedbackForm = () => {
                     };
                 });
 
-                // Sort by status priority (available -> requested -> completed), then by name
                 const statusOrder = { available: 1, requested: 2, completed: 3 };
                 categorizedEmployees.sort((a, b) => {
                     const orderA = statusOrder[a.status];
@@ -123,12 +113,10 @@ const RequestFeedbackForm = () => {
         fetchAndCategorizeEmployees();
     }, [user]);
 
-    // Memoize the list of available employees for the counter
     const availableEmployeesCount = useMemo(() => {
         return employees.filter(e => e.status === 'available').length;
     }, [employees]);
 
-    // Memoize the filtered list for search
     const filteredEmployees = useMemo(() => {
         if (!searchQuery) return employees;
         return employees.filter(employee =>
@@ -153,7 +141,6 @@ const RequestFeedbackForm = () => {
 
             toast.success(`${values.targetIds.length} request(s) sent successfully!`, { id: toastId });
 
-            // Optimistically update the UI to change status to 'requested'
             setEmployees(prev => {
                 const updated = prev.map(emp =>
                     values.targetIds.includes(emp.id)
