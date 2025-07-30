@@ -67,19 +67,24 @@ const RequestFeedbackForm = () => {
             try {
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
+                const feedbackQuery = query(collection(db, "peerFeedback"), where("targetId", "==", user.uid));
 
-                const [employeesSnapshot, requestsSnapshot] = await Promise.all([
+                const [employeesSnapshot, requestsSnapshot, feedbackSnapshot] = await Promise.all([
                     getDocs(employeesQuery),
                     getDocs(requestsQuery),
+                    getDocs(feedbackQuery),
                 ]);
 
                 const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
+                const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().requesterId));
 
-                const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    name: doc.data().name,
-                    status: requestedIds.has(doc.id) ? 'requested' : 'available',
-                }));
+                const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs
+                    .filter(doc => !feedbackGivenIds.has(doc.id)) // Filter out users who already gave feedback
+                    .map((doc) => ({
+                        id: doc.id,
+                        name: doc.data().name,
+                        status: requestedIds.has(doc.id) ? 'requested' : 'available',
+                    }));
 
                 // Sort by status first, then by name
                 categorizedEmployees.sort((a, b) => {
