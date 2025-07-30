@@ -12,8 +12,8 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onEmployeeSelect }) => {
-  const [employeeSheetNames, setEmployeeSheetNames] = useState<string[]>([]);
-  const [selectedSheetName, setSelectedSheetName] = useState<string>('');
+  const [employeeSheetNames, setEmployeeSheetNames] = useState<Employee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,9 +25,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEmployeeSelect }) => {
         // Fetch all subsheet names, which correspond to employee names.
         const sheetNames = await getSubsheetNames();
         setEmployeeSheetNames(sheetNames);
-        // Set the default selection to the first sheet name if the list is not empty.
+        // Set the default selection to the first employee if the list is not empty.
         if (sheetNames.length > 0) {
-          setSelectedSheetName(sheetNames[0]);
+          setSelectedEmployee(sheetNames[0]);
         }
       } catch (e) {
         console.error(e);
@@ -42,11 +42,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEmployeeSelect }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedSheetName) {
-      // The `onEmployeeSelect` handler expects an `Employee` object.
-      // We can construct a partial one here, as the `AnalysisPage` primarily needs the name.
-      // The `id` can be the same as the name in this context.
-      onEmployeeSelect({ id: selectedSheetName, name: selectedSheetName });
+    if (selectedEmployee) {
+      onEmployeeSelect(selectedEmployee);
     }
   };
 
@@ -70,20 +67,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEmployeeSelect }) => {
 
           {!isLoading && !error && (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <Select onValueChange={setSelectedSheetName} value={selectedSheetName}>
+              <Select onValueChange={(employeeId) => {
+                const employee = employeeSheetNames.find(emp => emp.id === employeeId);
+                setSelectedEmployee(employee || null);
+              }} value={selectedEmployee?.id || ''}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select an employee" />
                 </SelectTrigger>
                 <SelectContent>
-                  {employeeSheetNames.map(name => (
-                    <SelectItem key={name} value={name}>
-                      {name}
+                  {employeeSheetNames.map(employee => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Button type="submit" disabled={!selectedSheetName} className="w-full">
+              <Button type="submit" disabled={!selectedEmployee} className="w-full">
                 Get Analysis
               </Button>
             </form>

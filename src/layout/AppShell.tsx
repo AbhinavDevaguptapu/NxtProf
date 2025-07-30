@@ -82,7 +82,7 @@ export default function AppShell() {
 
         if (view === 'employee-detail') {
             return admin
-                ? <AdminEmployeeDetail employeeId={context as string} setActiveView={handleSetActiveView} />
+                ? <AdminEmployeeDetail employeeId={context as string} />
                 : <AccessDenied />;
         }
 

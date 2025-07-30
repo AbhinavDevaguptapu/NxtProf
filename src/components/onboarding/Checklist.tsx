@@ -47,7 +47,7 @@ const Checklist = ({
   };
 
   if (showSuccess) {
-    return <OnboardingSuccess />;
+    return <OnboardingSuccess setActiveView={() => {}} />;
   }
 
   return (

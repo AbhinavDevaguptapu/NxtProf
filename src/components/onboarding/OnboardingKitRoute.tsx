@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/integrations/firebase/client';
+import { ViewState } from '@/layout/AppShell';
 
 // --- CHILD COMPONENT IMPORTS ---
 import YouTubePlayer from '@/components/common/Youtube';

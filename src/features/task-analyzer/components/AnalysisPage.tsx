@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getSheetData, getSubsheetNames } from '../services/sheetService';
+import { getSheetData} from '../services/sheetService';
 import { analyzeTask } from '../services/geminiService';
 import { Task, TaskData, Employee } from '../types';
 import TaskCard from './TaskCard';
@@ -16,7 +16,6 @@ export enum AnalysisStatus {
 import TaskTable from './TaskTable';
 import { Loader2, CheckCircle, XCircle, Calendar as CalendarIcon, ArrowLeft, Users } from 'lucide-react';
 import ErrorDisplay from './ErrorDisplay';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

@@ -1,7 +1,6 @@
 // Onboarding Success - UI Updated
 
 import { ViewState } from '@/layout/AppShell';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 // --- SHADCN/UI & LUCIDE IMPORTS ---

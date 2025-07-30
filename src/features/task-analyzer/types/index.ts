@@ -9,6 +9,7 @@ export enum AnalysisStatus {
   ANALYZING = 'ANALYZING',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
+  SKIPPED = 'SKIPPED',
 }
 
 // Represents the raw data for a task fetched from the Google Sheet
@@ -21,6 +22,7 @@ export interface TaskData {
   behavior: string;
   impact: string;
   action: string;
+  pointType: string;
 }
 
 // Represents a task with its analysis state
