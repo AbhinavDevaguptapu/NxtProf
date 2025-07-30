@@ -67,7 +67,9 @@ const RequestFeedbackForm = () => {
             try {
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
-                const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("targetId", "==", user.uid));
+
+                // FIX: Query for feedback documents where YOU are the requester.
+                const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
 
                 const [employeesSnapshot, requestsSnapshot, feedbackSnapshot] = await Promise.all([
                     getDocs(employeesQuery),
@@ -76,7 +78,9 @@ const RequestFeedbackForm = () => {
                 ]);
 
                 const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
-                const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().requesterId));
+
+                // FIX: Get the targetId from the feedback docs, which represents the colleague who gave the feedback.
+                const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().targetId));
 
                 const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs
                     .filter(doc => !feedbackGivenIds.has(doc.id)) // Filter out users who already gave feedback
@@ -88,11 +92,9 @@ const RequestFeedbackForm = () => {
 
                 // Sort by status first, then by name
                 categorizedEmployees.sort((a, b) => {
-                    // 'available' users come before 'requested' users
                     if (a.status !== b.status) {
                         return a.status === 'available' ? -1 : 1;
                     }
-                    // If statuses are the same, sort alphabetically by name
                     return a.name.localeCompare(b.name);
                 });
 
