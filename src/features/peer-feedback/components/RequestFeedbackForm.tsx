@@ -67,8 +67,6 @@ const RequestFeedbackForm = () => {
             try {
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
-
-                // FIX: Query for feedback documents where YOU are the requester.
                 const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
 
                 const [employeesSnapshot, requestsSnapshot, feedbackSnapshot] = await Promise.all([
@@ -78,8 +76,6 @@ const RequestFeedbackForm = () => {
                 ]);
 
                 const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
-
-                // FIX: Get the targetId from the feedback docs, which represents the colleague who gave the feedback.
                 const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().targetId));
 
                 const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs
@@ -120,34 +116,70 @@ const RequestFeedbackForm = () => {
 
     // Form submission handler
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        const promises = values.targetIds.map(targetId =>
-            requestPeerFeedback({ targetId, message: values.message })
-        );
+        if (!user) {
+            toast.error("You must be logged in to send requests.");
+            return;
+        }
 
-        await toast.promise(Promise.all(promises), {
-            loading: `Sending ${promises.length} feedback request(s)...`,
-            success: () => {
-                // On success, update the status of sent employees and re-sort the list
-                setEmployees(prev => {
-                    // FIX: Explicitly type the 'updated' constant to avoid type inference issues.
-                    const updated: EmployeeWithStatus[] = prev.map(emp =>
-                        values.targetIds.includes(emp.id)
-                            ? { ...emp, status: 'requested' }
-                            : emp
-                    );
-                    // Re-sort the list to move newly requested users to the bottom
-                    return updated.sort((a, b) => {
-                        if (a.status !== b.status) {
-                            return a.status === 'available' ? -1 : 1;
-                        }
-                        return a.name.localeCompare(b.name);
+        try {
+            // 1. Re-fetch the list of colleagues who have already provided feedback to be certain.
+            const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
+            const feedbackSnapshot = await getDocs(feedbackQuery);
+            const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().targetId));
+
+            // 2. Determine which selected colleagues to send requests to and which to skip.
+            const idsToSend = values.targetIds.filter(id => !feedbackGivenIds.has(id));
+            const idsToSkip = values.targetIds.filter(id => feedbackGivenIds.has(id));
+
+            // 3. Notify the user if any selected colleagues were skipped.
+            if (idsToSkip.length > 0) {
+                const skippedNames = employees
+                    .filter(emp => idsToSkip.includes(emp.id))
+                    .map(emp => emp.name)
+                    .join(', ');
+                toast.info(`Skipped requests for ${skippedNames}, as they've already given feedback.`);
+            }
+
+            // 4. If there are no valid new requests to send, exit early.
+            if (idsToSend.length === 0) {
+                form.reset(); // Reset form fields
+                return;
+            }
+
+            // 5. Create promises only for the valid colleagues.
+            const promises = idsToSend.map(targetId =>
+                requestPeerFeedback({ targetId, message: values.message })
+            );
+
+            // 6. Use toast.promise for user feedback on the API call.
+            await toast.promise(Promise.all(promises), {
+                loading: `Sending ${idsToSend.length} feedback request(s)...`,
+                success: () => {
+                    // 7. On success, update the local UI state ONLY for the colleagues who were actually requested.
+                    setEmployees(prev => {
+                        const updated: EmployeeWithStatus[] = prev.map(emp =>
+                            idsToSend.includes(emp.id) // IMPORTANT: Use idsToSend here
+                                ? { ...emp, status: 'requested' }
+                                : emp
+                        );
+                        // Re-sort the list to move newly requested users down
+                        return updated.sort((a, b) => {
+                            if (a.status !== b.status) {
+                                return a.status === 'available' ? -1 : 1;
+                            }
+                            return a.name.localeCompare(b.name);
+                        });
                     });
-                });
-                form.reset();
-                return `Request(s) sent successfully!`;
-            },
-            error: (err) => `Failed to send requests: ${err.message}`,
-        });
+                    form.reset();
+                    return `${idsToSend.length} request(s) sent successfully!`;
+                },
+                error: (err) => `Failed to send requests: ${err.message}`,
+            });
+
+        } catch (error) {
+            console.error("Error during feedback request submission:", error);
+            toast.error("An unexpected error occurred. Please try again.");
+        }
     };
 
     return (

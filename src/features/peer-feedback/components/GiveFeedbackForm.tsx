@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +55,9 @@ const GiveFeedbackForm = () => {
             targetId: "",
             projectOrTask: "",
             remarks: "",
+            // FIX: Added missing default values for the radio groups
+            workEfficiency: "",
+            easeOfWork: "",
         },
     });
 
@@ -68,7 +70,11 @@ const GiveFeedbackForm = () => {
                 const querySnapshot = await getDocs(q);
                 const fetchedEmployees: Employee[] = [];
                 querySnapshot.forEach((doc) => {
-                    fetchedEmployees.push({ id: doc.id, ...doc.data() } as Employee);
+                    // Assuming employee documents have a 'name' field
+                    const data = doc.data();
+                    if (data.name) {
+                        fetchedEmployees.push({ id: doc.id, name: data.name });
+                    }
                 });
                 setEmployees(fetchedEmployees);
             } catch (error) {
@@ -88,12 +94,15 @@ const GiveFeedbackForm = () => {
             workEfficiency: parseInt(values.workEfficiency, 10),
             easeOfWork: parseInt(values.easeOfWork, 10),
         };
-        toast.promise(givePeerFeedback(numericValues), {
+
+        await toast.promise(givePeerFeedback(numericValues), {
             loading: "Submitting feedback...",
-            success: "Feedback submitted successfully!",
+            success: (result) => {
+                form.reset();
+                return "Feedback submitted successfully!";
+            },
             error: (err) => `Failed to submit feedback: ${err.message}`,
         });
-        form.reset();
     };
 
     return (
