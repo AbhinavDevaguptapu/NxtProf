@@ -33,17 +33,17 @@ const formSchema = z.object({
     message: z.string().min(10, "Message must be at least 10 characters.").max(500, "Message must be 500 characters or less."),
 });
 
-// Interface now includes a status for each employee
+// Interface now includes a 'completed' status
 interface EmployeeWithStatus {
     id: string;
     name: string;
-    status: 'available' | 'requested';
+    status: 'available' | 'requested' | 'completed';
 }
 
 /**
  * A form for users to request peer feedback from their colleagues.
- * It filters out colleagues who have already provided feedback,
- * disables those already requested, and sorts available colleagues to the top.
+ * It disables colleagues who have already provided feedback ('completed')
+ * or have a pending request ('requested'), and sorts available colleagues to the top.
  */
 const RequestFeedbackForm = () => {
     const { user } = useUserAuth();
@@ -59,7 +59,7 @@ const RequestFeedbackForm = () => {
         },
     });
 
-    // Effect to fetch employees and their feedback request status
+    // Effect to fetch employees and categorize their status
     useEffect(() => {
         const fetchAndCategorizeEmployees = async () => {
             if (!user) return;
@@ -77,28 +77,36 @@ const RequestFeedbackForm = () => {
                     getDocs(feedbackQuery),
                 ]);
 
-                // === THE CONFIRMED FIX ===
-                // From your screenshot, the ID of the person who gave feedback is stored in the 'giverId' field.
                 const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().giverId));
-
-                // From your screenshot, the ID of a person with a pending request is 'targetId'. This is correct.
                 const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
 
-                // Process the employee list
-                const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs
-                    // 1. Filter out any employee whose ID is in the feedbackGivenIds set.
-                    .filter(doc => !feedbackGivenIds.has(doc.id))
-                    .map((doc) => ({
-                        id: doc.id,
-                        name: doc.data().name,
-                        // 2. For the remaining employees, check if they have a pending request.
-                        status: requestedIds.has(doc.id) ? 'requested' : 'available',
-                    }));
+                // Process employees to assign a status instead of filtering
+                const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs.map((doc) => {
+                    const employeeId = doc.id;
+                    let status: EmployeeWithStatus['status'];
 
-                // Sort by status first (available on top), then by name
+                    if (feedbackGivenIds.has(employeeId)) {
+                        status = 'completed';
+                    } else if (requestedIds.has(employeeId)) {
+                        status = 'requested';
+                    } else {
+                        status = 'available';
+                    }
+
+                    return {
+                        id: employeeId,
+                        name: doc.data().name,
+                        status: status,
+                    };
+                });
+
+                // Sort by status priority (available -> requested -> completed), then by name
+                const statusOrder = { available: 1, requested: 2, completed: 3 };
                 categorizedEmployees.sort((a, b) => {
-                    if (a.status !== b.status) {
-                        return a.status === 'available' ? -1 : 1;
+                    const orderA = statusOrder[a.status];
+                    const orderB = statusOrder[b.status];
+                    if (orderA !== orderB) {
+                        return orderA - orderB;
                     }
                     return a.name.localeCompare(b.name);
                 });
@@ -115,6 +123,12 @@ const RequestFeedbackForm = () => {
         fetchAndCategorizeEmployees();
     }, [user]);
 
+    // Memoize the list of available employees for the counter
+    const availableEmployeesCount = useMemo(() => {
+        return employees.filter(e => e.status === 'available').length;
+    }, [employees]);
+
+    // Memoize the filtered list for search
     const filteredEmployees = useMemo(() => {
         if (!searchQuery) return employees;
         return employees.filter(employee =>
@@ -128,60 +142,37 @@ const RequestFeedbackForm = () => {
             return;
         }
 
+        const toastId = toast.loading(`Sending ${values.targetIds.length} feedback request(s)...`);
+
         try {
-            // Also update the logic here to be safe, using 'giverId'
-            const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
-            const feedbackSnapshot = await getDocs(feedbackQuery);
-            const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().giverId));
-
-            const idsToSend = values.targetIds.filter(id => !feedbackGivenIds.has(id));
-            const idsToSkip = values.targetIds.filter(id => feedbackGivenIds.has(id));
-
-            if (idsToSkip.length > 0) {
-                const skippedNames = employees
-                    .filter(emp => idsToSkip.includes(emp.id))
-                    .map(emp => emp.name)
-                    .join(', ');
-                toast.info(`Skipped requests for ${skippedNames}, as they've already given feedback.`);
-            }
-
-            if (idsToSend.length === 0) {
-                if (idsToSkip.length > 0) {
-                    toast.info("No new requests to send.");
-                }
-                form.reset();
-                return;
-            }
-
-            const promises = idsToSend.map(targetId =>
+            const promises = values.targetIds.map(targetId =>
                 requestPeerFeedback({ targetId, message: values.message })
             );
 
-            await toast.promise(Promise.all(promises), {
-                loading: `Sending ${idsToSend.length} feedback request(s)...`,
-                success: () => {
-                    setEmployees(prev => {
-                        const updated: EmployeeWithStatus[] = prev.map(emp =>
-                            idsToSend.includes(emp.id)
-                                ? { ...emp, status: 'requested' }
-                                : emp
-                        );
-                        return updated.sort((a, b) => {
-                            if (a.status !== b.status) {
-                                return a.status === 'available' ? -1 : 1;
-                            }
-                            return a.name.localeCompare(b.name);
-                        });
-                    });
-                    form.reset();
-                    return `${idsToSend.length} request(s) sent successfully!`;
-                },
-                error: (err) => `Failed to send requests: ${err.message}`,
-            });
+            await Promise.all(promises);
 
-        } catch (error) {
+            toast.success(`${values.targetIds.length} request(s) sent successfully!`, { id: toastId });
+
+            // Optimistically update the UI to change status to 'requested'
+            setEmployees(prev => {
+                const updated = prev.map(emp =>
+                    values.targetIds.includes(emp.id)
+                        ? { ...emp, status: 'requested' as const }
+                        : emp
+                );
+                const statusOrder = { available: 1, requested: 2, completed: 3 };
+                return updated.sort((a, b) => {
+                    const orderA = statusOrder[a.status];
+                    const orderB = statusOrder[b.status];
+                    if (orderA !== orderB) return orderA - orderB;
+                    return a.name.localeCompare(b.name);
+                });
+            });
+            form.reset();
+
+        } catch (error: any) {
             console.error("Error during feedback request submission:", error);
-            toast.error("An unexpected error occurred. Please try again.");
+            toast.error(`Failed to send requests: ${error.message}`, { id: toastId });
         }
     };
 
@@ -195,9 +186,9 @@ const RequestFeedbackForm = () => {
                         <FormItem>
                             <div className="flex justify-between items-center mb-2">
                                 <FormLabel>Select Colleagues</FormLabel>
-                                {!isLoading && employees.length > 0 && (
+                                {!isLoading && (
                                     <span className="text-sm text-muted-foreground">
-                                        {employees.length} colleagues available
+                                        {availableEmployeesCount} colleagues available
                                     </span>
                                 )}
                             </div>
@@ -213,7 +204,7 @@ const RequestFeedbackForm = () => {
                             <ScrollArea className="h-48 w-full rounded-md border">
                                 <div className="p-4">
                                     {isLoading ? (
-                                        <div className="flex items-center justify-center h-full">
+                                        <div className="flex items-center justify-center h-full pt-10">
                                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                         </div>
                                     ) : filteredEmployees.length > 0 ? (
@@ -223,13 +214,10 @@ const RequestFeedbackForm = () => {
                                                 control={form.control}
                                                 name="targetIds"
                                                 render={({ field }) => (
-                                                    <FormItem
-                                                        key={employee.id}
-                                                        className="flex flex-row items-center space-x-3 space-y-0 mb-4"
-                                                    >
+                                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 mb-4">
                                                         <FormControl>
                                                             <Checkbox
-                                                                disabled={employee.status === 'requested'}
+                                                                disabled={employee.status !== 'available'}
                                                                 checked={field.value?.includes(employee.id)}
                                                                 onCheckedChange={(checked) => {
                                                                     const currentIds = field.value || [];
@@ -240,11 +228,14 @@ const RequestFeedbackForm = () => {
                                                                 }}
                                                             />
                                                         </FormControl>
-                                                        <FormLabel className={`font-normal cursor-pointer ${employee.status === 'requested' ? 'text-muted-foreground' : ''}`}>
+                                                        <FormLabel className={`font-normal cursor-pointer ${employee.status !== 'available' ? 'text-muted-foreground line-through' : ''}`}>
                                                             {employee.name}
                                                         </FormLabel>
                                                         {employee.status === 'requested' && (
                                                             <Badge variant="secondary" className="ml-auto">Requested</Badge>
+                                                        )}
+                                                        {employee.status === 'completed' && (
+                                                            <Badge variant="outline" className="ml-auto text-green-600 border-green-500">Completed</Badge>
                                                         )}
                                                     </FormItem>
                                                 )}
@@ -253,9 +244,9 @@ const RequestFeedbackForm = () => {
                                     ) : (
                                         <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full pt-8">
                                             <UserX className="h-8 w-8 mb-2" />
-                                            <p className="font-semibold">No Colleagues Found</p>
+                                            <p className="font-semibold">{searchQuery ? "No Matches Found" : "No Available Colleagues"}</p>
                                             <p className="text-xs">
-                                                All colleagues may have already given feedback.
+                                                {searchQuery ? "Try a different search term." : "All colleagues have either been requested or have completed feedback."}
                                             </p>
                                         </div>
                                     )}
@@ -273,7 +264,7 @@ const RequestFeedbackForm = () => {
                             <FormLabel>Your Message</FormLabel>
                             <FormControl>
                                 <Textarea
-                                    placeholder="e.g., 'Could you please provide feedback on my presentation skills during the last team meeting?'"
+                                    placeholder="e.g., 'Could you please provide feedback on my presentation skills...'"
                                     {...field}
                                 />
                             </FormControl>
