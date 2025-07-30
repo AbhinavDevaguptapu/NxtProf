@@ -10,7 +10,6 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, Bot, UserMinus, UserX, Check } from "lucide-react";
 
@@ -185,8 +184,8 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
     const { admin } = useAdminAuth();
     const { toast } = useToast();
 
-    const { learningHour, isLoading, isUpdating, sessionTime, todayDocId, startSession, endSession } = useLearningHourSession();
-    const { employees, tempAttendance, setTempAttendance, savedAttendance, currentUserAttendance, editingAbsence, setEditingAbsence, absenceReasons, saveAbsenceReason, saveAttendance, sessionStats, fetchInitialData } = useLearningHourAttendance(learningHour, todayDocId);
+    const { learningHour, isLoading, isUpdating, sessionTime, todayDocId, startSession } = useLearningHourSession();
+    const { employees, tempAttendance, setTempAttendance, savedAttendance, editingAbsence, setEditingAbsence, absenceReasons, saveAbsenceReason, saveAttendance, sessionStats, fetchInitialData } = useLearningHourAttendance(learningHour, todayDocId);
     const { learningPoints, isLoading: isLoadingPoints, addLearningPoint, updateLearningPoint, deleteLearningPoint } = useLearningPoints(todayDocId);
 
     const [activeFilter, setActiveFilter] = useState<AttendanceStatus | 'all'>('all');
@@ -211,15 +210,18 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
 
     const handleEndSession = async () => {
         setIsEndingSession(true);
-        endSession(); // Immediately stop the timer on the client-side
 
         const functions = getFunctions();
         const endSessionFunction = httpsCallable(functions, 'endLearningSessionAndLockPoints');
 
         try {
-            await endSessionFunction({ sessionId: todayDocId });
+            // 1. Save the attendance from client state to Firestore.
             await saveAttendance();
-            await fetchInitialData(); // Force a refresh of the attendance data
+
+            // 2. Call the cloud function to finalize the session (e.g., set status to 'ended').
+            // The real-time listener will then pick up this change and trigger the correct data fetch.
+            await endSessionFunction({ sessionId: todayDocId });
+
             toast({ title: "Success", description: "Session ended and points have been locked." });
         } catch (error: any) {
             console.error("Error ending session:", error);

@@ -15,6 +15,7 @@ import AdminEmployeeDetail from '@/features/admin/pages/AdminEmployeeDetail';
 import TaskAnalyzerPage from '@/features/task-analyzer/pages/TaskAnalyzerPage';
 import PeerFeedbackPage from '@/features/peer-feedback/pages/PeerFeedbackPage';
 import AdminPeerFeedback from '@/features/admin/pages/AdminPeerFeedback';
+import AdminLearningHours from '@/features/admin/pages/AdminLearningHours';
 import FloatingNav from '@/components/common/FloatingNav';
 
 export type ViewType =
@@ -29,7 +30,8 @@ export type ViewType =
     | 'employee-detail'
     | 'task-analyzer'
     | 'peer-feedback'
-    | 'admin-peer-feedback';
+    | 'admin-peer-feedback'
+    | 'admin-learning-hours';
 
 export interface ViewState {
     view: ViewType;
@@ -97,6 +99,7 @@ export default function AppShell() {
             'task-analyzer': TaskAnalyzerPage,
             'peer-feedback': PeerFeedbackPage,
             'admin-peer-feedback': admin ? AdminPeerFeedback : AccessDenied,
+            'admin-learning-hours': admin ? AdminLearningHours : AccessDenied,
             'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
         };
 

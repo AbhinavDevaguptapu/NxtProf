@@ -9,7 +9,7 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 
 // Import and re-export functions from their dedicated modules
-import { endLearningSessionAndLockPoints } from "./learningSessions";
+import { endLearningSessionAndLockPoints, getTodaysLearningPoints } from "./learningSessions";
 import { syncLearningPointsToSheet } from "./syncLearningHours";
 import * as peerFeedback from "./peerFeedback";
 import { scheduleDailyStandup, startScheduledStandup, endActiveStandup } from "./standups";
@@ -22,6 +22,7 @@ export {
     // Learning Sessions
     endLearningSessionAndLockPoints,
     syncLearningPointsToSheet,
+    getTodaysLearningPoints,
 
     // Peer Feedback
     peerFeedback,

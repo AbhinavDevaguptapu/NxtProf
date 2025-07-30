@@ -29,7 +29,7 @@ export const useLearningHourSession = () => {
                 const now = new Date();
                 const start = learningHour.startedAt.toDate();
                 const seconds = Math.floor((now.getTime() - start.getTime()) / 1000);
-                
+
                 const h = Math.floor(seconds / 3600);
                 const m = Math.floor((seconds % 3600) / 60);
                 const s = seconds % 60;

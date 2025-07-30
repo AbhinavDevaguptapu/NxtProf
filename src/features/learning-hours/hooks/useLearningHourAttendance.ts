@@ -89,7 +89,6 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
             batch.set(docRef, record);
         }
         await batch.commit();
-        await fetchInitialData();
     };
 
     const sessionStats = useMemo(() => {

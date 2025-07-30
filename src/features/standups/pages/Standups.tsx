@@ -49,8 +49,9 @@ export default function StandupsPage() {
   const renderContent = () => {
     if (isLoadingPage) {
       return (
-        <motion.div key="loading" className="flex-grow flex items-center justify-center" {...pageAnimationProps}>
+        <motion.div key="loading" className="flex-grow flex flex-col items-center justify-center" {...pageAnimationProps}>
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading standup...</p>
         </motion.div>
       );
     }

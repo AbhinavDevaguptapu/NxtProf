@@ -58,6 +58,7 @@ const adminNavItems = [
     { id: "home", label: "Dashboard", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
+    { id: "admin-learning-hours", label: "Today's Learning Points", icon: GraduationCap },
     { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "manage-employees", label: "Manage Employees", icon: Users },

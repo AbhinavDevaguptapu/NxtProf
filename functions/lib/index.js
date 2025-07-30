@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.peerFeedback = exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = void 0;
+exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.scheduledSync = exports.syncAttendanceToSheet = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.peerFeedback = exports.getTodaysLearningPoints = exports.syncLearningPointsToSheet = exports.endLearningSessionAndLockPoints = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file serves as the main entry point for all backend serverless logic.
@@ -45,6 +45,7 @@ admin.initializeApp();
 // Import and re-export functions from their dedicated modules
 const learningSessions_1 = require("./learningSessions");
 Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
+Object.defineProperty(exports, "getTodaysLearningPoints", { enumerable: true, get: function () { return learningSessions_1.getTodaysLearningPoints; } });
 const syncLearningHours_1 = require("./syncLearningHours");
 Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
 const peerFeedback = __importStar(require("./peerFeedback"));

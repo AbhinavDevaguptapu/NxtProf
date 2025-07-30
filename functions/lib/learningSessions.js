@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.endLearningSessionAndLockPoints = void 0;
+exports.getTodaysLearningPoints = exports.endLearningSessionAndLockPoints = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 /**
@@ -77,6 +77,35 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
     catch (error) {
         console.error("Error ending session and locking points:", error);
         throw new https_1.HttpsError("internal", "An unexpected error occurred while ending the session.");
+    }
+});
+exports.getTodaysLearningPoints = (0, https_1.onCall)(async (request) => {
+    // 1. Authentication & Authorization Check
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
+    }
+    if (request.auth.token.isAdmin !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can view all learning points.");
+    }
+    const db = admin.firestore();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    try {
+        const learningPointsQuery = db.collection("learning_points")
+            .where("createdAt", ">=", today)
+            .where("createdAt", "<", tomorrow);
+        const snapshot = await learningPointsQuery.get();
+        if (snapshot.empty) {
+            return [];
+        }
+        const points = snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+        return points;
+    }
+    catch (error) {
+        console.error("Error fetching today's learning points:", error);
+        throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching learning points.");
     }
 });
 //# sourceMappingURL=learningSessions.js.map

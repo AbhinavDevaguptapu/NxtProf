@@ -56,3 +56,38 @@ export const endLearningSessionAndLockPoints = onCall<EndSessionData>(async (req
         throw new HttpsError("internal", "An unexpected error occurred while ending the session.");
     }
 });
+
+export const getTodaysLearningPoints = onCall(async (request) => {
+    // 1. Authentication & Authorization Check
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
+    }
+    if (request.auth.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can view all learning points.");
+    }
+
+    const db = admin.firestore();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    try {
+        const learningPointsQuery = db.collection("learning_points")
+            .where("createdAt", ">=", today)
+            .where("createdAt", "<", tomorrow);
+
+        const snapshot = await learningPointsQuery.get();
+
+        if (snapshot.empty) {
+            return [];
+        }
+
+        const points = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return points;
+
+    } catch (error) {
+        console.error("Error fetching today's learning points:", error);
+        throw new HttpsError("internal", "An unexpected error occurred while fetching learning points.");
+    }
+});

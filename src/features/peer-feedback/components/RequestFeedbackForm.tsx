@@ -56,8 +56,6 @@ const RequestFeedbackForm = () => {
             if (!user) return;
             setIsLoading(true);
             try {
-                // **THE FIX IS HERE:**
-                // The query now correctly looks for documents where the `targetId` is the current user.
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
                 const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("targetId", "==", user.uid));
@@ -68,7 +66,6 @@ const RequestFeedbackForm = () => {
                     getDocs(feedbackQuery),
                 ]);
 
-                // This set now correctly contains the IDs of everyone who has given feedback TO the current user.
                 const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().giverId));
                 const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
 
@@ -215,15 +212,10 @@ const RequestFeedbackForm = () => {
                                                                 }}
                                                             />
                                                         </FormControl>
+                                                        {/* **THE CHANGE IS HERE:** The badges are removed. */}
                                                         <FormLabel className={`font-normal cursor-pointer ${employee.status !== 'available' ? 'text-muted-foreground line-through' : ''}`}>
                                                             {employee.name}
                                                         </FormLabel>
-                                                        {employee.status === 'requested' && (
-                                                            <Badge variant="secondary" className="ml-auto">Requested</Badge>
-                                                        )}
-                                                        {employee.status === 'completed' && (
-                                                            <Badge variant="outline" className="ml-auto text-green-600 border-green-500">Completed</Badge>
-                                                        )}
                                                     </FormItem>
                                                 )}
                                             />
