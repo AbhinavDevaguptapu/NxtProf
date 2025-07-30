@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,11 +23,13 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
+// Initialize Firebase Functions
 const functions = getFunctions();
 const submitPeerFeedback = httpsCallable(functions, 'peerFeedback-submitPeerFeedback');
 
+// Zod schema for form validation
 const formSchema = z.object({
     projectOrTask: z.string().min(3, "Project or task must be at least 3 characters."),
     workEfficiency: z.string({ required_error: "You must select a rating." }),
@@ -36,34 +37,55 @@ const formSchema = z.object({
     remarks: z.string().min(10, "Remarks must be at least 10 characters.").max(2000),
 });
 
+// Defines the props required by the modal, including the crucial requesterId
 interface SubmitFeedbackModalProps {
     request: {
-        id: string;
+        id: string; // The ID of the feedback request document
+        requesterId: string; // The ID of the user who requested the feedback
         requesterName: string;
     };
     onOpenChange: (open: boolean) => void;
     onFeedbackSubmitted: () => void;
 }
 
+/**
+ * A modal dialog for submitting feedback in response to a specific request.
+ */
 const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: SubmitFeedbackModalProps) => {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             projectOrTask: "",
             remarks: "",
+            workEfficiency: "",
+            easeOfWork: "",
         },
     });
 
+    /**
+     * Handles the form submission, converts ratings to numbers,
+     * and calls the Firebase Cloud Function with the correct IDs.
+     */
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const numericValues = {
             ...values,
             workEfficiency: parseInt(values.workEfficiency, 10),
             easeOfWork: parseInt(values.easeOfWork, 10),
         };
-        await toast.promise(submitPeerFeedback({ requestId: request.id, ...numericValues }), {
+
+        // **THE FIX IS HERE:**
+        // We pass the requestId to identify and delete the original request,
+        // and the original requesterId as the targetId for the new feedback document.
+        const payload = {
+            requestId: request.id,
+            targetId: request.requesterId,
+            ...numericValues
+        };
+
+        await toast.promise(submitPeerFeedback(payload), {
             loading: "Submitting your feedback...",
             success: () => {
-                onFeedbackSubmitted();
+                onFeedbackSubmitted(); // This callback refreshes the data in the parent component
                 return "Feedback submitted successfully!";
             },
             error: (err) => `Failed to submit: ${err.message}`,
@@ -80,7 +102,7 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
                         <FormField
                             control={form.control}
                             name="projectOrTask"
@@ -104,7 +126,7 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
                                         <FormControl>
                                             <RadioGroup
                                                 onValueChange={field.onChange}
-                                                defaultValue={field.value}
+                                                value={field.value}
                                                 className="flex flex-wrap gap-4"
                                             >
                                                 {[1, 2, 3, 4, 5].map(value => (
@@ -130,7 +152,7 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
                                         <FormControl>
                                             <RadioGroup
                                                 onValueChange={field.onChange}
-                                                defaultValue={field.value}
+                                                value={field.value}
                                                 className="flex flex-wrap gap-4"
                                             >
                                                 {[1, 2, 3, 4, 5].map(value => (
@@ -165,10 +187,13 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter>
+                        <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? "Submitting..." : "Submit Anonymously"}
+                                {form.formState.isSubmitting && (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Submit Anonymously
                             </Button>
                         </DialogFooter>
                     </form>

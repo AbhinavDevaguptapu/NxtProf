@@ -26,7 +26,7 @@ import { db } from "@/integrations/firebase/client";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 const functions = getFunctions();
 const givePeerFeedback = httpsCallable(functions, 'peerFeedback-givePeerFeedback');
@@ -55,50 +55,69 @@ const GiveFeedbackForm = () => {
             targetId: "",
             projectOrTask: "",
             remarks: "",
-            // FIX: Added missing default values for the radio groups
             workEfficiency: "",
             easeOfWork: "",
         },
     });
 
     useEffect(() => {
-        const fetchEmployees = async () => {
+        const fetchAvailableEmployees = async () => {
             if (!user) return;
             setIsLoading(true);
             try {
-                const q = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
-                const querySnapshot = await getDocs(q);
-                const fetchedEmployees: Employee[] = [];
-                querySnapshot.forEach((doc) => {
-                    // Assuming employee documents have a 'name' field
-                    const data = doc.data();
-                    if (data.name) {
-                        fetchedEmployees.push({ id: doc.id, name: data.name });
+                const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
+                const feedbackGivenQuery = query(collection(db, "givenPeerFeedback"), where("giverId", "==", user.uid));
+
+                const [employeesSnapshot, feedbackGivenSnapshot] = await Promise.all([
+                    getDocs(employeesQuery),
+                    getDocs(feedbackGivenQuery),
+                ]);
+
+                const alreadyGivenToIds = new Set(feedbackGivenSnapshot.docs.map(doc => doc.data().targetId));
+
+                const availableEmployees: Employee[] = [];
+                employeesSnapshot.forEach((doc) => {
+                    if (!alreadyGivenToIds.has(doc.id)) {
+                        const data = doc.data();
+                        if (data.name) {
+                            availableEmployees.push({ id: doc.id, name: data.name });
+                        }
                     }
                 });
-                setEmployees(fetchedEmployees);
+
+                setEmployees(availableEmployees);
             } catch (error) {
-                console.error("Error fetching employees:", error);
+                console.error("Error fetching data:", error);
                 toast.error("Failed to load employee list.");
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchEmployees();
+        fetchAvailableEmployees();
     }, [user]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        const numericValues = {
+        // **THE FIX IS HERE:**
+        // We explicitly add the giverId to the payload to ensure the backend
+        // knows who is submitting the feedback, preventing any ambiguity.
+        if (!user) {
+            toast.error("You must be logged in to give feedback.");
+            return;
+        }
+
+        const payload = {
             ...values,
+            giverId: user.uid, // Explicitly include the giver's ID
             workEfficiency: parseInt(values.workEfficiency, 10),
             easeOfWork: parseInt(values.easeOfWork, 10),
         };
 
-        await toast.promise(givePeerFeedback(numericValues), {
+        await toast.promise(givePeerFeedback(payload), {
             loading: "Submitting feedback...",
-            success: (result) => {
+            success: () => {
                 form.reset();
+                setEmployees(prev => prev.filter(emp => emp.id !== values.targetId));
                 return "Feedback submitted successfully!";
             },
             error: (err) => `Failed to submit feedback: ${err.message}`,
@@ -114,10 +133,18 @@ const GiveFeedbackForm = () => {
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Select Colleague</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isLoading || employees.length === 0}>
                                 <FormControl>
                                     <SelectTrigger>
-                                        <SelectValue placeholder={isLoading ? "Loading colleagues..." : "Select a colleague to give feedback to"} />
+                                        <SelectValue
+                                            placeholder={
+                                                isLoading
+                                                    ? "Loading colleagues..."
+                                                    : employees.length > 0
+                                                        ? "Select a colleague to give feedback to"
+                                                        : "All colleagues have received feedback"
+                                            }
+                                        />
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -153,11 +180,7 @@ const GiveFeedbackForm = () => {
                             <FormItem className="space-y-3">
                                 <FormLabel>Work Efficiency</FormLabel>
                                 <FormControl>
-                                    <RadioGroup
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                        className="flex flex-wrap gap-4"
-                                    >
+                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap gap-4">
                                         {[1, 2, 3, 4, 5].map(value => (
                                             <FormItem key={value} className="flex items-center space-x-2 space-y-0">
                                                 <FormControl>
@@ -179,11 +202,7 @@ const GiveFeedbackForm = () => {
                             <FormItem className="space-y-3">
                                 <FormLabel>Ease of Collaboration</FormLabel>
                                 <FormControl>
-                                    <RadioGroup
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                        className="flex flex-wrap gap-4"
-                                    >
+                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap gap-4">
                                         {[1, 2, 3, 4, 5].map(value => (
                                             <FormItem key={value} className="flex items-center space-x-2 space-y-0">
                                                 <FormControl>
@@ -216,7 +235,8 @@ const GiveFeedbackForm = () => {
                         </FormItem>
                     )}
                 />
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button type="submit" disabled={form.formState.isSubmitting || isLoading}>
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {form.formState.isSubmitting ? "Submitting..." : "Submit Feedback"}
                 </Button>
             </form>
