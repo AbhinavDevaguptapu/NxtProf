@@ -67,7 +67,7 @@ const RequestFeedbackForm = () => {
             try {
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
-                const feedbackQuery = query(collection(db, "peerFeedback"), where("targetId", "==", user.uid));
+                const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("targetId", "==", user.uid));
 
                 const [employeesSnapshot, requestsSnapshot, feedbackSnapshot] = await Promise.all([
                     getDocs(employeesQuery),
