@@ -42,8 +42,8 @@ interface EmployeeWithStatus {
 
 /**
  * A form for users to request peer feedback from their colleagues.
- * It disables and labels colleagues who have already been requested,
- * and sorts available colleagues to the top.
+ * It filters out colleagues who have already provided feedback,
+ * disables those already requested, and sorts available colleagues to the top.
  */
 const RequestFeedbackForm = () => {
     const { user } = useUserAuth();
@@ -65,28 +65,37 @@ const RequestFeedbackForm = () => {
             if (!user) return;
             setIsLoading(true);
             try {
+                // Define queries for all necessary data
                 const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
                 const requestsQuery = query(collection(db, "peerFeedbackRequests"), where("requesterId", "==", user.uid));
                 const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
 
+                // Fetch all data in parallel
                 const [employeesSnapshot, requestsSnapshot, feedbackSnapshot] = await Promise.all([
                     getDocs(employeesQuery),
                     getDocs(requestsQuery),
                     getDocs(feedbackQuery),
                 ]);
 
-                const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
-                const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().targetId));
+                // === THE CONFIRMED FIX ===
+                // From your screenshot, the ID of the person who gave feedback is stored in the 'giverId' field.
+                const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().giverId));
 
+                // From your screenshot, the ID of a person with a pending request is 'targetId'. This is correct.
+                const requestedIds = new Set(requestsSnapshot.docs.map(doc => doc.data().targetId));
+
+                // Process the employee list
                 const categorizedEmployees: EmployeeWithStatus[] = employeesSnapshot.docs
-                    .filter(doc => !feedbackGivenIds.has(doc.id)) // Filter out users who already gave feedback
+                    // 1. Filter out any employee whose ID is in the feedbackGivenIds set.
+                    .filter(doc => !feedbackGivenIds.has(doc.id))
                     .map((doc) => ({
                         id: doc.id,
                         name: doc.data().name,
+                        // 2. For the remaining employees, check if they have a pending request.
                         status: requestedIds.has(doc.id) ? 'requested' : 'available',
                     }));
 
-                // Sort by status first, then by name
+                // Sort by status first (available on top), then by name
                 categorizedEmployees.sort((a, b) => {
                     if (a.status !== b.status) {
                         return a.status === 'available' ? -1 : 1;
@@ -106,7 +115,6 @@ const RequestFeedbackForm = () => {
         fetchAndCategorizeEmployees();
     }, [user]);
 
-    // Memoized list of employees filtered by the search query
     const filteredEmployees = useMemo(() => {
         if (!searchQuery) return employees;
         return employees.filter(employee =>
@@ -114,7 +122,6 @@ const RequestFeedbackForm = () => {
         );
     }, [employees, searchQuery]);
 
-    // Form submission handler
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         if (!user) {
             toast.error("You must be logged in to send requests.");
@@ -122,16 +129,14 @@ const RequestFeedbackForm = () => {
         }
 
         try {
-            // 1. Re-fetch the list of colleagues who have already provided feedback to be certain.
+            // Also update the logic here to be safe, using 'giverId'
             const feedbackQuery = query(collection(db, "givenPeerFeedback"), where("requesterId", "==", user.uid));
             const feedbackSnapshot = await getDocs(feedbackQuery);
-            const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().targetId));
+            const feedbackGivenIds = new Set(feedbackSnapshot.docs.map(doc => doc.data().giverId));
 
-            // 2. Determine which selected colleagues to send requests to and which to skip.
             const idsToSend = values.targetIds.filter(id => !feedbackGivenIds.has(id));
             const idsToSkip = values.targetIds.filter(id => feedbackGivenIds.has(id));
 
-            // 3. Notify the user if any selected colleagues were skipped.
             if (idsToSkip.length > 0) {
                 const skippedNames = employees
                     .filter(emp => idsToSkip.includes(emp.id))
@@ -140,29 +145,27 @@ const RequestFeedbackForm = () => {
                 toast.info(`Skipped requests for ${skippedNames}, as they've already given feedback.`);
             }
 
-            // 4. If there are no valid new requests to send, exit early.
             if (idsToSend.length === 0) {
-                form.reset(); // Reset form fields
+                if (idsToSkip.length > 0) {
+                    toast.info("No new requests to send.");
+                }
+                form.reset();
                 return;
             }
 
-            // 5. Create promises only for the valid colleagues.
             const promises = idsToSend.map(targetId =>
                 requestPeerFeedback({ targetId, message: values.message })
             );
 
-            // 6. Use toast.promise for user feedback on the API call.
             await toast.promise(Promise.all(promises), {
                 loading: `Sending ${idsToSend.length} feedback request(s)...`,
                 success: () => {
-                    // 7. On success, update the local UI state ONLY for the colleagues who were actually requested.
                     setEmployees(prev => {
                         const updated: EmployeeWithStatus[] = prev.map(emp =>
-                            idsToSend.includes(emp.id) // IMPORTANT: Use idsToSend here
+                            idsToSend.includes(emp.id)
                                 ? { ...emp, status: 'requested' }
                                 : emp
                         );
-                        // Re-sort the list to move newly requested users down
                         return updated.sort((a, b) => {
                             if (a.status !== b.status) {
                                 return a.status === 'available' ? -1 : 1;
@@ -194,7 +197,7 @@ const RequestFeedbackForm = () => {
                                 <FormLabel>Select Colleagues</FormLabel>
                                 {!isLoading && employees.length > 0 && (
                                     <span className="text-sm text-muted-foreground">
-                                        {employees.length} colleagues
+                                        {employees.length} colleagues available
                                     </span>
                                 )}
                             </div>
@@ -252,7 +255,7 @@ const RequestFeedbackForm = () => {
                                             <UserX className="h-8 w-8 mb-2" />
                                             <p className="font-semibold">No Colleagues Found</p>
                                             <p className="text-xs">
-                                                Your search returned no results.
+                                                All colleagues may have already given feedback.
                                             </p>
                                         </div>
                                     )}
