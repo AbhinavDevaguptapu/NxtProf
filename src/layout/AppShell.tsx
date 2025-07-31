@@ -99,7 +99,7 @@ export default function AppShell() {
             'task-analyzer': TaskAnalyzerPage,
             'peer-feedback': PeerFeedbackPage,
             'admin-peer-feedback': admin ? AdminPeerFeedback : AccessDenied,
-            'admin-learning-hours': admin ? AdminLearningHours : AccessDenied,
+            'admin-learning-hours': AdminLearningHours,
             'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
         };
 

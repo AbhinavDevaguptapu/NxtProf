@@ -62,9 +62,6 @@ export const getTodaysLearningPoints = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    if (request.auth.token.isAdmin !== true) {
-        throw new HttpsError("permission-denied", "Only admins can view all learning points.");
-    }
 
     const db = admin.firestore();
     const today = new Date();

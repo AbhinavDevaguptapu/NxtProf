@@ -18,35 +18,37 @@ const PointDetails = ({ point }: { point: LearningPoint }) => {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-muted/20">
-            {point.point_type === 'R1' && (
-                <>
-                    <div className={detailCard}>
-                        <p className={detailLabel}>Problem</p>
-                        <p className={detailText}>{point.problem}</p>
-                    </div>
-                    <div className={detailCard}>
-                        <p className={detailLabel}>Core Point Missed</p>
-                        <p className={detailText}>{point.core_point_missed}</p>
-                    </div>
-                </>
+            {point.problem && (
+                <div className={detailCard}>
+                    <p className={detailLabel}>Problem</p>
+                    <p className={detailText}>{point.problem}</p>
+                </div>
             )}
-            {(point.point_type === 'R2' || point.point_type === 'R3') && (
-                <>
-                    <div className={detailCard}>
-                        <p className={detailLabel}>Situation</p>
-                        <p className={detailText}>{point.situation}</p>
-                    </div>
-                    <div className={detailCard}>
-                        <p className={detailLabel}>Behavior</p>
-                        <p className={detailText}>{point.behavior}</p>
-                    </div>
-                    <div className={detailCard}>
-                        <p className={detailLabel}>Impact</p>
-                        <p className={detailText}>{point.impact}</p>
-                    </div>
-                </>
+            {point.core_point_missed && (
+                <div className={detailCard}>
+                    <p className={detailLabel}>Core Point Missed</p>
+                    <p className={detailText}>{point.core_point_missed}</p>
+                </div>
             )}
-            {point.point_type === 'R3' && point.action_item && (
+            {point.situation && (
+                <div className={detailCard}>
+                    <p className={detailLabel}>Situation</p>
+                    <p className={detailText}>{point.situation}</p>
+                </div>
+            )}
+            {point.behavior && (
+                <div className={detailCard}>
+                    <p className={detailLabel}>Behavior</p>
+                    <p className={detailText}>{point.behavior}</p>
+                </div>
+            )}
+            {point.impact && (
+                <div className={detailCard}>
+                    <p className={detailLabel}>Impact</p>
+                    <p className={detailText}>{point.impact}</p>
+                </div>
+            )}
+            {point.action_item && (
                 <div className={`${detailCard} md:col-span-2 lg:col-span-1`}>
                     <p className={detailLabel}>Action Item</p>
                     <p className={detailText}>{point.action_item}</p>
