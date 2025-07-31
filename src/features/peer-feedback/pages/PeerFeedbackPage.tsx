@@ -100,7 +100,7 @@ const PeerFeedbackPage = () => {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <GiveFeedbackForm />
+                            <GiveFeedbackForm onFeedbackSubmitted={handleFeedbackGiven} />
                         </CardContent>
                     </Card>
                 </TabsContent>

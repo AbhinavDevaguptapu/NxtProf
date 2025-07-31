@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { collection, getDocs, query, where, documentId } from "firebase/firestore";
+import { collection, getDocs, query, where, documentId, deleteDoc } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from "sonner";
@@ -34,8 +34,8 @@ const givePeerFeedback = httpsCallable(functions, 'peerFeedback-givePeerFeedback
 const formSchema = z.object({
     targetId: z.string().min(1, "You must select a colleague."),
     projectOrTask: z.string().min(3, "Project or task must be at least 3 characters."),
-    workEfficiency: z.string({ required_error: "You must select a rating." }),
-    easeOfWork: z.string({ required_error: "You must select a rating." }),
+    workEfficiency: z.string().min(1, "You must select a rating."),
+    easeOfWork: z.string().min(1, "You must select a rating."),
     remarks: z.string().min(10, "Remarks must be at least 10 characters.").max(2000),
 });
 
@@ -44,7 +44,11 @@ interface Employee {
     name: string;
 }
 
-const GiveFeedbackForm = () => {
+interface GiveFeedbackFormProps {
+    onFeedbackSubmitted: () => void;
+}
+
+const GiveFeedbackForm = ({ onFeedbackSubmitted }: GiveFeedbackFormProps) => {
     const { user } = useUserAuth();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -98,9 +102,6 @@ const GiveFeedbackForm = () => {
     }, [user]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        // **THE FIX IS HERE:**
-        // We explicitly add the giverId to the payload to ensure the backend
-        // knows who is submitting the feedback, preventing any ambiguity.
         if (!user) {
             toast.error("You must be logged in to give feedback.");
             return;
@@ -108,17 +109,34 @@ const GiveFeedbackForm = () => {
 
         const payload = {
             ...values,
-            giverId: user.uid, // Explicitly include the giver's ID
+            giverId: user.uid,
             workEfficiency: parseInt(values.workEfficiency, 10),
             easeOfWork: parseInt(values.easeOfWork, 10),
         };
 
         await toast.promise(givePeerFeedback(payload), {
             loading: "Submitting feedback...",
-            success: () => {
+            success: async () => {
                 form.reset();
                 setEmployees(prev => prev.filter(emp => emp.id !== values.targetId));
-                return "Feedback submitted successfully!";
+
+                // After giving feedback, check for and remove any pending requests from that user
+                const requestsQuery = query(
+                    collection(db, "peerFeedbackRequests"),
+                    where("requesterId", "==", values.targetId),
+                    where("targetId", "==", user.uid),
+                    where("status", "==", "pending")
+                );
+
+                const requestsSnapshot = await getDocs(requestsQuery);
+                requestsSnapshot.forEach(async (doc) => {
+                    await deleteDoc(doc.ref);
+                    console.log(`Deleted pending request ${doc.id}`);
+                });
+                
+                onFeedbackSubmitted(); // This will trigger the refresh in the parent component
+
+                return "Feedback submitted successfully! Pending requests cleared.";
             },
             error: (err) => `Failed to submit feedback: ${err.message}`,
         });

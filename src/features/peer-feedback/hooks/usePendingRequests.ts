@@ -32,8 +32,14 @@ export const usePendingRequests = () => {
             );
             const querySnapshot = await getDocs(q);
             const fetchedRequests: FeedbackRequest[] = [];
+            const requesterIds = new Set<string>(); // Keep track of requesters processed
             querySnapshot.forEach((doc) => {
-                fetchedRequests.push({ id: doc.id, ...doc.data() } as FeedbackRequest);
+                const request = { id: doc.id, ...doc.data() } as FeedbackRequest;
+                // Since we ordered by descending creation time, the first request we see for a user is the most recent one.
+                if (!requesterIds.has(request.requesterId)) {
+                    fetchedRequests.push(request);
+                    requesterIds.add(request.requesterId);
+                }
             });
             setRequests(fetchedRequests);
         } catch (error) {

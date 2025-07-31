@@ -24,34 +24,29 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useUserAuth } from "@/context/UserAuthContext";
+import { db } from "@/integrations/firebase/client";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { FeedbackRequest } from "../hooks/usePendingRequests";
 
-// Initialize Firebase Functions
 const functions = getFunctions();
 const submitPeerFeedback = httpsCallable(functions, 'peerFeedback-submitPeerFeedback');
 
-// Zod schema for form validation
 const formSchema = z.object({
     projectOrTask: z.string().min(3, "Project or task must be at least 3 characters."),
-    workEfficiency: z.string({ required_error: "You must select a rating." }),
-    easeOfWork: z.string({ required_error: "You must select a rating." }),
+    workEfficiency: z.string().min(1, "You must select a rating."),
+    easeOfWork: z.string().min(1, "You must select a rating."),
     remarks: z.string().min(10, "Remarks must be at least 10 characters.").max(2000),
 });
 
-// Defines the props required by the modal, including the crucial requesterId
 interface SubmitFeedbackModalProps {
-    request: {
-        id: string; // The ID of the feedback request document
-        requesterId: string; // The ID of the user who requested the feedback
-        requesterName: string;
-    };
+    request: FeedbackRequest;
     onOpenChange: (open: boolean) => void;
     onFeedbackSubmitted: () => void;
 }
 
-/**
- * A modal dialog for submitting feedback in response to a specific request.
- */
 const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: SubmitFeedbackModalProps) => {
+    const { user } = useUserAuth();
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -62,20 +57,33 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
         },
     });
 
-    /**
-     * Handles the form submission, converts ratings to numbers,
-     * and calls the Firebase Cloud Function with the correct IDs.
-     */
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        if (!user) {
+            toast.error("You must be logged in to submit feedback.");
+            return;
+        }
+
+        const feedbackCollection = collection(db, 'givenPeerFeedback');
+        const q = query(
+            feedbackCollection,
+            where('giverId', '==', user.uid),
+            where('targetId', '==', request.requesterId),
+            where('createdAt', '>', request.createdAt)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            toast.error("You have already submitted feedback for this request.");
+            onFeedbackSubmitted();
+            return;
+        }
+
         const numericValues = {
             ...values,
             workEfficiency: parseInt(values.workEfficiency, 10),
             easeOfWork: parseInt(values.easeOfWork, 10),
         };
 
-        // **THE FIX IS HERE:**
-        // We pass the requestId to identify and delete the original request,
-        // and the original requesterId as the targetId for the new feedback document.
         const payload = {
             requestId: request.id,
             targetId: request.requesterId,
@@ -85,7 +93,7 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
         await toast.promise(submitPeerFeedback(payload), {
             loading: "Submitting your feedback...",
             success: () => {
-                onFeedbackSubmitted(); // This callback refreshes the data in the parent component
+                onFeedbackSubmitted();
                 return "Feedback submitted successfully!";
             },
             error: (err) => `Failed to submit: ${err.message}`,

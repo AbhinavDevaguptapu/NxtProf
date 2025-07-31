@@ -1,11 +1,11 @@
 /**
  * EmployeeSetup component allows a user to complete their initial setup by providing their Employee ID
- * and a feedback sheet link. It validates the inputs, updates the user's document in Firestore, and
+ * and an optional feedback sheet link. It validates the inputs, updates the user's document in Firestore, and
  * navigates to the home page upon successful submission.
  *
  * Features:
  * - Employee ID validation (must match the format NW followed by 7 digits).
- * - Feedback sheet link validation (must be a valid URL).
+ * - Feedback sheet link validation (must be a valid URL if provided).
  * - Animated UI using Framer Motion for smooth transitions.
  * - Displays error messages for invalid input or failed submission.
  * - Shows a loading spinner while saving data.
@@ -67,6 +67,7 @@ export default function EmployeeSetup() {
 
     const isEmployeeIdValid = (id: string) => /^NW\d{7}$/.test(id);
     const isSheetLinkValid = (link: string) => {
+        if (link.trim() === '') return true; // Allow empty string
         try {
             new URL(link.trim());
             return true;
@@ -122,20 +123,32 @@ export default function EmployeeSetup() {
                 return;
             }
 
-            // Check for duplicate feedbackSheetUrl
-            const urlQuery = query(employeesRef, where('feedbackSheetUrl', '==', cleanedSheetLink));
-            const urlQuerySnapshot = await getDocs(urlQuery);
-            if (!urlQuerySnapshot.empty) {
-                setError('This Feedback Sheet URL is already associated with another account.');
-                setLoading(false);
-                return;
+            // Check for duplicate feedbackSheetUrl only if a link is provided
+            if (cleanedSheetLink) {
+                const urlQuery = query(employeesRef, where('feedbackSheetUrl', '==', cleanedSheetLink));
+                const urlQuerySnapshot = await getDocs(urlQuery);
+                if (!urlQuerySnapshot.empty) {
+                    setError('This Feedback Sheet URL is already associated with another account.');
+                    setLoading(false);
+                    return;
+                }
             }
+
             const ref = doc(db, 'employees', user.uid);
-            await updateDoc(ref, {
+            const dataToUpdate: {
+                employeeId: string;
+                hasCompletedSetup: boolean;
+                feedbackSheetUrl?: string;
+            } = {
                 employeeId,
-                feedbackSheetUrl: cleanedSheetLink,
                 hasCompletedSetup: true,
-            });
+            };
+
+            if (cleanedSheetLink) {
+                dataToUpdate.feedbackSheetUrl = cleanedSheetLink;
+            }
+
+            await updateDoc(ref, dataToUpdate);
             navigate('/');
         } catch (err) {
             console.error(err);
@@ -160,7 +173,7 @@ export default function EmployeeSetup() {
                     <CardHeader>
                         <CardTitle className="text-2xl">Welcome, {user?.displayName || 'User'}!</CardTitle>
                         <CardDescription>
-                            Please provide your Employee ID and Feedback Sheet link to continue.
+                            Please provide your Employee ID to continue. The Feedback Sheet link is optional.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -189,14 +202,13 @@ export default function EmployeeSetup() {
                             </motion.div>
 
                             <motion.div variants={fieldVariants} className="space-y-2">
-                                <label htmlFor="sheetLink" className="text-sm font-medium">Feedback Sheet Link</label>
+                                <label htmlFor="sheetLink" className="text-sm font-medium">Feedback Sheet Link (Optional)</label>
                                 <Input
                                     id="sheetLink"
                                     type="url"
                                     placeholder="https://docs.google.com/spreadsheets/..."
                                     value={sheetLink}
                                     onChange={(e) => setSheetLink(e.target.value)}
-                                    required
                                 />
                                 {!isSheetLinkValid(sheetLink) && sheetLink.length > 0 && (
                                     <p className="text-xs text-destructive">
