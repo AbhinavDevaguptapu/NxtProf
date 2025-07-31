@@ -1,29 +1,40 @@
-import js from "@eslint/js";
 import globals from "globals";
-import reactHooks from "eslint-plugin-react-hooks";
-import reactRefresh from "eslint-plugin-react-refresh";
+import hooksPlugin from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
+import reactRecommended from "eslint-plugin-react/configs/recommended.js";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}"],
+    ignores: ["dist", "eslint.config.js"], // Ignoring the config file itself is a good practice
+  },
+  {
+    // Base configuration for all JS/TS files
+    files: ["**/*.{js,mjs,cjs,ts,jsx,tsx}"],
+    ...reactRecommended, // Apply React recommended rules
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
+      ...reactRecommended.languageOptions, // Use React's recommended language options
+      globals: {
+        ...globals.browser,
+      },
     },
     plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
+      "react-hooks": hooksPlugin,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
-      "@typescript-eslint/no-unused-vars": "off",
+      ...hooksPlugin.configs.recommended.rules, // Enforce Rules of Hooks
+      "react/react-in-jsx-scope": "off", // Not needed with modern React/Vite
+      "react/jsx-no-target-blank": "off",
+      "@typescript-eslint/no-unused-vars": "warn", // Use "warn" instead of "off" to see unused variables
+    },
+  },
+  // Specific overrides for TypeScript files
+  {
+    files: ["**/*.{ts,tsx}"],
+    extends: [
+      ...tseslint.configs.recommended,
+    ],
+    rules: {
+      // You can add TypeScript-specific rule overrides here
     },
   }
 );
