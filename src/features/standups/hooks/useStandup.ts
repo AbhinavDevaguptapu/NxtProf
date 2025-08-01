@@ -40,7 +40,18 @@ export const useStandup = () => {
   useEffect(() => {
     const standupRef = doc(db, "standups", todayDocId);
     const unsubscribe = onSnapshot(standupRef, (docSnap) => {
-      setStandup(docSnap.exists() ? (docSnap.data() as Standup) : null);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Standup;
+        setStandup(data);
+        if (data.tempAttendance) {
+          setTempAttendance(data.tempAttendance);
+        }
+        if (data.absenceReasons) {
+          setAbsenceReasons(data.absenceReasons);
+        }
+      } else {
+        setStandup(null);
+      }
       setIsLoadingPage(false);
     });
     return () => unsubscribe();
@@ -114,6 +125,8 @@ export const useStandup = () => {
       await updateDoc(doc(db, "standups", todayDocId), {
         status: "active",
         startedAt: serverTimestamp(),
+        tempAttendance: initialTempAttendance,
+        absenceReasons: {},
       });
       toast({ title: "Standup Started" });
     } catch (error) {
@@ -160,7 +173,7 @@ export const useStandup = () => {
     }
   };
 
-  const handleSaveAbsenceReason = (employeeId: string, reason: string) => {
+  const handleSaveAbsenceReason = async (employeeId: string, reason: string) => {
     if (!reason.trim()) {
       toast({ title: "Reason is required", variant: "destructive" });
       return;
@@ -168,11 +181,29 @@ export const useStandup = () => {
     setAbsenceReasons((prev) => ({ ...prev, [employeeId]: reason }));
     setTempAttendance((prev) => ({ ...prev, [employeeId]: "Not Available" }));
     setEditingAbsence(null);
-    toast({ title: "Absence Recorded" });
+    
+    try {
+      await updateDoc(doc(db, "standups", todayDocId), {
+        [`tempAttendance.${employeeId}`]: "Not Available",
+        [`absenceReasons.${employeeId}`]: reason,
+      });
+      toast({ title: "Absence Recorded" });
+    } catch (error) {
+      console.error("Error saving absence reason:", error);
+      toast({ title: "Error saving status", variant: "destructive" });
+    }
   };
 
-  const handleSetTempAttendance = (employeeId: string, status: AttendanceStatus) => {
+  const handleSetTempAttendance = async (employeeId: string, status: AttendanceStatus) => {
     setTempAttendance((prev) => ({ ...prev, [employeeId]: status }));
+    try {
+      await updateDoc(doc(db, "standups", todayDocId), {
+        [`tempAttendance.${employeeId}`]: status,
+      });
+    } catch (error) {
+      console.error("Error updating temp attendance:", error);
+      toast({ title: "Error saving status", variant: "destructive" });
+    }
   };
 
   const activeFilteredEmployees = useMemo(() => {

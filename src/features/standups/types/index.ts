@@ -8,6 +8,8 @@ export type Standup = {
   startedAt?: Timestamp;
   endedAt?: Timestamp;
   scheduledBy: string;
+  tempAttendance?: Record<string, AttendanceStatus>;
+  absenceReasons?: Record<string, string>;
 };
 
 export type Employee = {
