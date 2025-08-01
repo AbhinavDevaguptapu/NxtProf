@@ -81,7 +81,7 @@ export const useStandup = () => {
       console.error("Error fetching initial data:", error);
       toast({ title: "Error loading data", variant: "destructive" });
     }
-  }, [standup?.status, todayDocId, toast]);
+  }, [standup, todayDocId, toast]);
 
   useEffect(() => {
     fetchInitialData();

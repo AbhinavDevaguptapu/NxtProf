@@ -113,25 +113,30 @@ exports.endActiveStandup = (0, scheduler_1.onSchedule)({
         const standupDoc = await standupRef.get();
         const standupData = standupDoc.data();
         if (standupDoc.exists && (standupData === null || standupData === void 0 ? void 0 : standupData.status) === "active") {
-            // ... (rest of your logic is fine)
             const batch = db.batch();
             const employeesSnapshot = await db.collection("employees").get();
             const attendanceSnapshot = await db.collection("attendance").where("standup_id", "==", todayDocId).get();
             const markedEmployeeIds = new Set(attendanceSnapshot.docs.map(doc => doc.data().employee_id));
+            const tempAttendance = standupData.tempAttendance || {};
+            const absenceReasons = standupData.absenceReasons || {};
             employeesSnapshot.forEach(empDoc => {
                 if (!markedEmployeeIds.has(empDoc.id)) {
                     const attendanceDocRef = db.collection("attendance").doc(`${todayDocId}_${empDoc.id}`);
                     const employeeData = empDoc.data();
+                    const status = tempAttendance[empDoc.id] || "Missed"; // Use temp status, default to Missed
                     const record = {
                         standup_id: todayDocId,
                         employee_id: empDoc.id,
                         employee_name: employeeData.name,
                         employee_email: employeeData.email,
                         employeeId: employeeData.employeeId,
-                        status: "Missed",
+                        status: status,
                         scheduled_at: standupData.scheduledTime,
                         markedAt: admin.firestore.FieldValue.serverTimestamp(),
                     };
+                    if (status === "Not Available") {
+                        record.reason = absenceReasons[empDoc.id] || "No reason provided";
+                    }
                     batch.set(attendanceDocRef, record, { merge: true });
                 }
             });
