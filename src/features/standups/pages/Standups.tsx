@@ -36,7 +36,6 @@ export default function StandupsPage() {
     setActiveFilter,
     finalFilter,
     setFinalFilter,
-    handleStartStandup,
     handleStopStandup,
     handleSaveAbsenceReason,
     activeFilteredEmployees,
@@ -67,9 +66,6 @@ export default function StandupsPage() {
         return (
           <StandupScheduledView
             standup={standup}
-            isAdmin={!!admin}
-            isUpdatingStatus={isUpdatingStatus}
-            onStart={handleStartStandup}
           />
         );
       case "active":

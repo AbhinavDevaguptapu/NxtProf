@@ -57,35 +57,46 @@ export const useStandup = () => {
     return () => unsubscribe();
   }, [todayDocId]);
 
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const empSnapshot = await getDocs(collection(db, "employees"));
-      setEmployees(
-        empSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
-      );
-
-      if (standup?.status === "ended") {
-        const q = query(
-          collection(db, "attendance"),
-          where("standup_id", "==", todayDocId)
-        );
-        const attSnapshot = await getDocs(q);
-        const fetchedAttendance: Record<string, AttendanceRecord> = {};
-        attSnapshot.forEach((doc) => {
-          const data = doc.data() as AttendanceRecord;
-          fetchedAttendance[data.employee_id] = data;
-        });
-        setSavedAttendance(fetchedAttendance);
-      }
-    } catch (error) {
-      console.error("Error fetching initial data:", error);
-      toast({ title: "Error loading data", variant: "destructive" });
-    }
-  }, [standup, todayDocId, toast]);
-
+  // Fetch employees only once on component mount
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    const fetchEmployees = async () => {
+      try {
+        const empSnapshot = await getDocs(collection(db, "employees"));
+        setEmployees(
+          empSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
+        );
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+        toast({ title: "Error loading employee data", variant: "destructive" });
+      }
+    };
+    fetchEmployees();
+  }, [toast]);
+
+  // Fetch final attendance only when the standup has ended
+  useEffect(() => {
+    const fetchFinalAttendance = async () => {
+      if (standup?.status === "ended") {
+        try {
+          const q = query(
+            collection(db, "attendance"),
+            where("standup_id", "==", todayDocId)
+          );
+          const attSnapshot = await getDocs(q);
+          const fetchedAttendance: Record<string, AttendanceRecord> = {};
+          attSnapshot.forEach((doc) => {
+            const data = doc.data() as AttendanceRecord;
+            fetchedAttendance[data.employee_id] = data;
+          });
+          setSavedAttendance(fetchedAttendance);
+        } catch (error) {
+          console.error("Error fetching final attendance:", error);
+          toast({ title: "Error loading final attendance", variant: "destructive" });
+        }
+      }
+    };
+    fetchFinalAttendance();
+  }, [standup?.status, todayDocId, toast]);
 
   useEffect(() => {
     if (standup?.status === "active" && standup.startedAt) {
@@ -112,29 +123,7 @@ export const useStandup = () => {
     }
   }, [standup?.status, standup?.startedAt]);
 
-  const handleStartStandup = async () => {
-    setIsUpdatingStatus(true);
-    const initialTempAttendance: Record<string, AttendanceStatus> = {};
-    employees.forEach((emp) => {
-      initialTempAttendance[emp.id] = "Missed";
-    });
-    setTempAttendance(initialTempAttendance);
-    setAbsenceReasons({});
-
-    try {
-      await updateDoc(doc(db, "standups", todayDocId), {
-        status: "active",
-        startedAt: serverTimestamp(),
-        tempAttendance: initialTempAttendance,
-        absenceReasons: {},
-      });
-      toast({ title: "Standup Started" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
+  
 
   const handleStopStandup = async () => {
     if (!standup) return;
@@ -165,7 +154,6 @@ export const useStandup = () => {
         endedAt: serverTimestamp(),
       });
       toast({ title: "Standup Ended", description: "Attendance has been saved." });
-      await fetchInitialData();
     } catch (error) {
       console.error(error);
     } finally {
@@ -251,7 +239,6 @@ export const useStandup = () => {
     finalFilter,
     setFinalFilter,
     todayDocId,
-    handleStartStandup,
     handleStopStandup,
     handleSaveAbsenceReason,
     activeFilteredEmployees,

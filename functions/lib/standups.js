@@ -84,17 +84,24 @@ exports.startScheduledStandup = (0, scheduler_1.onSchedule)({
 }, async () => {
     var _a;
     const db = admin.firestore();
-    // CORRECT: Get doc ID based on the correct timezone
     const todayDocId = (0, date_fns_tz_1.formatInTimeZone)(new Date(), TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
     try {
         const standupDoc = await standupRef.get();
         if (standupDoc.exists && ((_a = standupDoc.data()) === null || _a === void 0 ? void 0 : _a.status) === "scheduled") {
+            // Fetch all employees to initialize tempAttendance
+            const employeesSnapshot = await db.collection("employees").get();
+            const initialTempAttendance = {};
+            employeesSnapshot.forEach(empDoc => {
+                initialTempAttendance[empDoc.id] = "Missed";
+            });
             await standupRef.update({
                 status: "active",
                 startedAt: admin.firestore.FieldValue.serverTimestamp(),
+                tempAttendance: initialTempAttendance,
+                absenceReasons: {},
             });
-            console.log(`Successfully started standup for ${todayDocId}`);
+            console.log(`Successfully started standup for ${todayDocId} and initialized attendance.`);
         }
     }
     catch (error) {
@@ -115,30 +122,26 @@ exports.endActiveStandup = (0, scheduler_1.onSchedule)({
         if (standupDoc.exists && (standupData === null || standupData === void 0 ? void 0 : standupData.status) === "active") {
             const batch = db.batch();
             const employeesSnapshot = await db.collection("employees").get();
-            const attendanceSnapshot = await db.collection("attendance").where("standup_id", "==", todayDocId).get();
-            const markedEmployeeIds = new Set(attendanceSnapshot.docs.map(doc => doc.data().employee_id));
             const tempAttendance = standupData.tempAttendance || {};
             const absenceReasons = standupData.absenceReasons || {};
             employeesSnapshot.forEach(empDoc => {
-                if (!markedEmployeeIds.has(empDoc.id)) {
-                    const attendanceDocRef = db.collection("attendance").doc(`${todayDocId}_${empDoc.id}`);
-                    const employeeData = empDoc.data();
-                    const status = tempAttendance[empDoc.id] || "Missed"; // Use temp status, default to Missed
-                    const record = {
-                        standup_id: todayDocId,
-                        employee_id: empDoc.id,
-                        employee_name: employeeData.name,
-                        employee_email: employeeData.email,
-                        employeeId: employeeData.employeeId,
-                        status: status,
-                        scheduled_at: standupData.scheduledTime,
-                        markedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    };
-                    if (status === "Not Available") {
-                        record.reason = absenceReasons[empDoc.id] || "No reason provided";
-                    }
-                    batch.set(attendanceDocRef, record, { merge: true });
+                const attendanceDocRef = db.collection("attendance").doc(`${todayDocId}_${empDoc.id}`);
+                const employeeData = empDoc.data();
+                const status = tempAttendance[empDoc.id] || "Missed"; // Use temp status, default to Missed
+                const record = {
+                    standup_id: todayDocId,
+                    employee_id: empDoc.id,
+                    employee_name: employeeData.name,
+                    employee_email: employeeData.email,
+                    employeeId: employeeData.employeeId,
+                    status: status,
+                    scheduled_at: standupData.scheduledTime,
+                    markedAt: admin.firestore.FieldValue.serverTimestamp(),
+                };
+                if (status === "Not Available") {
+                    record.reason = absenceReasons[empDoc.id] || "No reason provided";
                 }
+                batch.set(attendanceDocRef, record, { merge: true });
             });
             await batch.commit();
             await standupRef.update({

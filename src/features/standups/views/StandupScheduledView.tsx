@@ -31,12 +31,9 @@ const pageAnimationProps: {
 
 interface StandupScheduledViewProps {
     standup: Standup;
-    isAdmin: boolean;
-    isUpdatingStatus: boolean;
-    onStart: () => void;
 }
 
-export const StandupScheduledView = ({ standup, isAdmin, isUpdatingStatus, onStart }: StandupScheduledViewProps) => (
+export const StandupScheduledView = ({ standup }: StandupScheduledViewProps) => (
     <motion.div
         key="scheduled"
         className="flex-grow flex items-center justify-center p-4"
@@ -59,25 +56,9 @@ export const StandupScheduledView = ({ standup, isAdmin, isUpdatingStatus, onSta
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-                {isAdmin ? (
-                    <Button
-                        size="lg"
-                        onClick={onStart}
-                        disabled={isUpdatingStatus}
-                        className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 text-lg"
-                    >
-                        {isUpdatingStatus ? (
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        ) : (
-                            <PlayCircle className="mr-2 h-6 w-6" />
-                        )}
-                        {isUpdatingStatus ? "Starting..." : "Start Standup Now"}
-                    </Button>
-                ) : (
-                    <p className="text-md text-gray-800 bg-gray-100 p-3 rounded-lg">
-                        The host will start the meeting shortly.
-                    </p>
-                )}
+                <p className="text-md text-gray-800 bg-gray-100 p-3 rounded-lg">
+                    The session will start automatically.
+                </p>
             </CardContent>
         </Card>
     </motion.div>
