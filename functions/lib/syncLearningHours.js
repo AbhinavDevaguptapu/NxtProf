@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncLearningPointsToSheet = void 0;
+exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const googleapis_1 = require("googleapis");
 const google_auth_library_1 = require("google-auth-library");
@@ -53,30 +53,15 @@ function getSheetsClient() {
     });
     return googleapis_1.google.sheets({ version: "v4", auth });
 }
-// Cloud function: syncLearningPointsToSheet
-exports.syncLearningPointsToSheet = (0, https_1.onCall)({
-    timeoutSeconds: 300,
-    memory: "512MiB",
-    secrets: ["SHEETS_SA_KEY"],
-}, async (request) => {
+// Reusable core logic for syncing
+async function _syncLearningPoints(sessionId) {
     var _a;
-    // 1. Auth check
-    if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "Authentication required.");
-    }
-    if (request.auth.token.isAdmin !== true) {
-        throw new https_1.HttpsError("permission-denied", "Only admins may run this sync.");
-    }
-    const { sessionId } = request.data;
-    if (!sessionId) {
-        throw new https_1.HttpsError("invalid-argument", "A valid sessionId is required.");
-    }
     const db = admin.firestore();
     // Verify session
     const sessionRef = db.doc(`learning_hours/${sessionId}`);
     const sessionSnap = await sessionRef.get();
     if (!sessionSnap.exists) {
-        throw new https_1.HttpsError("not-found", "Learning-hour session document not found.");
+        throw new https_1.HttpsError("not-found", `Learning-hour session document not found for ID: ${sessionId}.`);
     }
     const sessionData = sessionSnap.data();
     if (sessionData.status !== "ended") {
@@ -96,7 +81,16 @@ exports.syncLearningPointsToSheet = (0, https_1.onCall)({
         .where("editable", "==", false)
         .get();
     if (pointsSnap.empty) {
-        throw new https_1.HttpsError("not-found", "No locked learning points found for this session.");
+        // If no points, still mark as synced to prevent re-running.
+        await sessionRef.update({
+            synced: true,
+            syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return {
+            success: true,
+            message: "No locked learning points found for this session. Marked as synced.",
+            appended: 0,
+        };
     }
     const grouped = {};
     pointsSnap.forEach((doc) => {
@@ -181,5 +175,50 @@ exports.syncLearningPointsToSheet = (0, https_1.onCall)({
         message: `Synced successfully. ${totalAppended} new rows appended.`,
         appended: totalAppended,
     };
+}
+// Cloud function: syncLearningPointsToSheet
+exports.syncLearningPointsToSheet = (0, https_1.onCall)({
+    timeoutSeconds: 300,
+    memory: "512MiB",
+    secrets: ["SHEETS_SA_KEY"],
+}, async (request) => {
+    // 1. Auth check
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication required.");
+    }
+    if (request.auth.token.isAdmin !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins may run this sync.");
+    }
+    const { sessionId } = request.data;
+    if (!sessionId) {
+        throw new https_1.HttpsError("invalid-argument", "A valid sessionId is required.");
+    }
+    return await _syncLearningPoints(sessionId);
+});
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const functions = __importStar(require("firebase-functions"));
+exports.autoSyncLearningPoints = (0, scheduler_1.onSchedule)({
+    schedule: '0 19 * * 1-6',
+    timeZone: 'Asia/Kolkata',
+    secrets: ["SHEETS_SA_KEY"],
+    timeoutSeconds: 540,
+    memory: "512MiB"
+}, async (event) => {
+    const today = new Date();
+    const dateString = (0, date_fns_1.format)(today, "yyyy-MM-dd");
+    functions.logger.info(`Running scheduled learning points sync for ${dateString}`);
+    try {
+        const result = await _syncLearningPoints(dateString);
+        functions.logger.info(`Learning points sync completed for ${dateString}: ${result.message}`);
+    }
+    catch (error) {
+        // Check if it's an HttpsError and log accordingly
+        if (error.code) {
+            functions.logger.error(`Scheduled sync for ${dateString} failed with code ${error.code}:`, error.message);
+        }
+        else {
+            functions.logger.error(`Scheduled sync for ${dateString} failed with an unexpected error:`, error);
+        }
+    }
 });
 //# sourceMappingURL=syncLearningHours.js.map

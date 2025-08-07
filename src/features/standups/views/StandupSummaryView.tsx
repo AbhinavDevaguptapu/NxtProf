@@ -1,10 +1,11 @@
 "use client"
 
+import { Input } from "@/components/ui/input";
 import { format, formatDistanceStrict } from "date-fns";
 import { motion, AnimatePresence, LayoutGroup, Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Check, CheckCircle2, Users, UserX, UserMinus, AlertCircle } from "lucide-react";
+import { Check, CheckCircle2, Users, UserX, UserMinus, AlertCircle, Search } from "lucide-react";
 import { AttendanceCard } from "../components/AttendanceCard";
 import type { Standup, Employee, AttendanceRecord, AttendanceStatus } from "../types";
 import { FC } from "react";
@@ -27,6 +28,8 @@ interface StandupSummaryViewProps {
     finalFilter: AttendanceStatus | "all";
     setFinalFilter: (filter: AttendanceStatus | "all") => void;
     finalFilteredEmployees: Employee[];
+    finalSearchQuery: string;
+    setFinalSearchQuery: (query: string) => void;
 }
 
 export const StandupSummaryView = (props: StandupSummaryViewProps) => (
@@ -66,7 +69,7 @@ const ActiveViewLayout = () => (
     </div>
 );
 
-const EndedViewLayout = ({ standup, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees }: StandupSummaryViewProps) => {
+const EndedViewLayout = ({ standup, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees, finalSearchQuery, setFinalSearchQuery }: StandupSummaryViewProps) => {
     const summaryStats = {
         Present: Object.values(savedAttendance).filter((a) => a.status === "Present").length,
         Absent: Object.values(savedAttendance).filter((a) => a.status === "Absent").length,
@@ -118,10 +121,19 @@ const EndedViewLayout = ({ standup, savedAttendance, employees, finalFilter, set
                         <h2 className="text-xl font-bold tracking-tight">Final Roster</h2>
                         <p className="text-sm text-muted-foreground">Showing {finalFilteredEmployees.length} of {employees.length} members.</p>
                     </div>
-                    <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} />
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name or email..."
+                            value={finalSearchQuery}
+                            onChange={(e) => setFinalSearchQuery(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
                 </div>
+                <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} />
                 <motion.div
-                    key={finalFilter}
+                    key={finalFilter + finalSearchQuery}
                     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
                     variants={containerVariants}
                     initial="hidden"
@@ -153,7 +165,7 @@ const EndedViewLayout = ({ standup, savedAttendance, employees, finalFilter, set
 
 const FilterControls: FC<{ currentFilter: string; onFilterChange: (filter: any) => void }> = ({ currentFilter, onFilterChange }) => (
     <LayoutGroup id="filter-group">
-        <div className="flex flex-wrap items-center bg-muted p-1 rounded-lg">
+        <div className="inline-flex flex-wrap items-center bg-muted p-1 rounded-lg">
             {(['all', 'Present', 'Absent', 'Missed', 'Not Available'] as const).map(filter => {
                 const isActive = currentFilter === filter;
                 return (

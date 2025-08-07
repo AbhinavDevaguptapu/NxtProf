@@ -1,6 +1,7 @@
+import { Input } from "@/components/ui/input";
 import { motion, Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Loader2, StopCircle, Users, Timer } from "lucide-react";
+import { Loader2, StopCircle, Users, Timer, Search } from "lucide-react";
 import { AttendanceCard } from "../components/AttendanceCard";
 import { SessionStatistics } from "../components/SessionStatistics";
 import type { Employee, AttendanceStatus, Standup } from "../types";
@@ -46,6 +47,8 @@ interface StandupActiveAdminViewProps {
     sessionStats: Record<string, number>;
     activeFilter: AttendanceStatus | "all";
     setActiveFilter: (filter: AttendanceStatus | "all") => void;
+    activeSearchQuery: string;
+    setActiveSearchQuery: (query: string) => void;
     activeFilteredEmployees: Employee[];
     tempAttendance: Record<string, AttendanceStatus>;
     absenceReasons: Record<string, string>;
@@ -61,6 +64,8 @@ export const StandupActiveAdminView = ({
     sessionStats,
     activeFilter,
     setActiveFilter,
+    activeSearchQuery,
+    setActiveSearchQuery,
     activeFilteredEmployees,
     tempAttendance,
     absenceReasons,
@@ -154,6 +159,15 @@ export const StandupActiveAdminView = ({
                         Click a member's status to mark their attendance.
                     </p>
                 </div>
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by name or email..."
+                        value={activeSearchQuery}
+                        onChange={(e) => setActiveSearchQuery(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
                 <div className="flex flex-wrap items-center border border-gray-200 rounded-lg p-1 space-x-1">
                     <Button size="sm" variant={activeFilter === "all" ? "secondary" : "ghost"} onClick={() => setActiveFilter("all")}>All</Button>
                     <Button size="sm" variant={activeFilter === "Present" ? "secondary" : "ghost"} onClick={() => setActiveFilter("Present")}>Present</Button>
@@ -163,7 +177,7 @@ export const StandupActiveAdminView = ({
                 </div>
             </div>
             <motion.div
-                key={activeFilter}
+                key={activeFilter + activeSearchQuery}
                 className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
                 variants={containerVariants}
                 initial="hidden"

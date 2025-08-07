@@ -1,0 +1,16 @@
+feat(feedback, attendance): Add detailed feedback view and roster search
+
+This commit introduces several new features and fixes to improve user experience and automation.
+
+Key changes include:
+
+- **Feedback Details Modal**: A "View All Feedback" button has been added to the feedback dashboard. This opens a modal displaying all raw feedback entries for the selected date range, providing deeper insight beyond the AI summary. A new `getRawFeedback` cloud function was created to support this.
+
+- **Roster Search Functionality**: Search bars have been added to the standup and learning hour modules. Admins can now search for users while marking attendance during active sessions, and both admins and users can search the final roster after a session has ended.
+
+- **Automatic Learning Points Sync**: A new scheduled cloud function, `autoSyncLearningPoints`, has been created to automatically sync learning points to the Google Sheet daily at 7:00 PM (IST), mirroring the existing attendance sync functionality.
+
+- **UI and Backend Fixes**:
+  - The filter buttons (e.g., "Present," "Absent") no longer occupy the full width.
+  - The `#admin-learning-hours` route has been renamed to `#learning-hours-points` for clarity.
+  - Resolved deployment errors in `functions/index.ts` by correcting conflicting imports and exports.

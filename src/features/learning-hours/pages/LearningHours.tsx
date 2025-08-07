@@ -11,7 +11,8 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, Bot, UserMinus, UserX, Check } from "lucide-react";
+import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, Bot, UserMinus, UserX, Check, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 // Feature Components & Hooks
 import { useLearningHourSession } from "@/features/learning-hours/hooks/useLearningHourSession";
@@ -42,7 +43,7 @@ import { ViewState, ViewType } from "@/layout/AppShell";
 
 const FilterControls: FC<{ currentFilter: string; onFilterChange: (filter: any) => void, layoutId: string }> = ({ currentFilter, onFilterChange, layoutId }) => (
     <LayoutGroup id={layoutId}>
-        <div className="flex flex-wrap items-center bg-muted p-1 rounded-lg">
+        <div className="inline-flex flex-wrap items-center bg-muted p-1 rounded-lg">
             {(['all', 'Present', 'Absent', 'Missed', 'Not Available'] as const).map(filter => {
                 const isActive = currentFilter === filter;
                 return (
@@ -87,9 +88,11 @@ interface EndedViewLayoutProps {
     finalFilter: any;
     setFinalFilter: (filter: any) => void;
     finalFilteredEmployees: any[];
+    finalSearchQuery: string;
+    setFinalSearchQuery: (query: string) => void;
 }
 
-const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees }: EndedViewLayoutProps) => {
+const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees, finalSearchQuery, setFinalSearchQuery }: EndedViewLayoutProps) => {
     const summaryStats = {
         Present: Object.values(savedAttendance).filter((a: any) => a.status === "Present").length,
         Absent: Object.values(savedAttendance).filter((a: any) => a.status === "Absent").length,
@@ -141,10 +144,19 @@ const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter
                             <h2 className="text-xl font-bold tracking-tight">Final Roster</h2>
                             <p className="text-sm text-muted-foreground">Showing {finalFilteredEmployees.length} of {employees.length} members.</p>
                         </div>
-                        <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="admin-final-filter" />
+                        <div className="relative w-full md:w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by name or email..."
+                                value={finalSearchQuery}
+                                onChange={(e) => setFinalSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
                     </div>
+                    <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="admin-final-filter" />
                     <motion.div
-                        key={finalFilter}
+                        key={finalFilter + finalSearchQuery}
                         className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
                         variants={containerVariants}
                         initial="hidden"
@@ -185,23 +197,32 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
     const { toast } = useToast();
 
     const { learningHour, isLoading, isUpdating, sessionTime, todayDocId, startSession } = useLearningHourSession();
-    const { employees, tempAttendance, setTempAttendance, savedAttendance, editingAbsence, setEditingAbsence, absenceReasons, saveAbsenceReason, saveAttendance, sessionStats, fetchInitialData } = useLearningHourAttendance(learningHour, todayDocId);
+    const { 
+        employees, 
+        tempAttendance, 
+        setTempAttendance, 
+        savedAttendance, 
+        editingAbsence, 
+        setEditingAbsence, 
+        absenceReasons, 
+        saveAbsenceReason, 
+        saveAttendance, 
+        sessionStats, 
+        fetchInitialData,
+        finalFilter,
+        setFinalFilter,
+        finalSearchQuery,
+        setFinalSearchQuery,
+        finalFilteredEmployees,
+        activeFilteredEmployees,
+        activeSearchQuery,
+        setActiveSearchQuery,
+    } = useLearningHourAttendance(learningHour, todayDocId);
     const { learningPoints, isLoading: isLoadingPoints, addLearningPoint, updateLearningPoint, deleteLearningPoint } = useLearningPoints(todayDocId);
 
     const [activeFilter, setActiveFilter] = useState<AttendanceStatus | 'all'>('all');
-    const [finalFilter, setFinalFilter] = useState<AttendanceStatus | 'all'>('all');
     const [isSyncing, setIsSyncing] = useState(false);
     const [isEndingSession, setIsEndingSession] = useState(false);
-
-    const activeFilteredEmployees = useMemo(() => {
-        if (activeFilter === 'all') return employees;
-        return employees.filter(emp => (tempAttendance[emp.id] || 'Missed') === activeFilter);
-    }, [activeFilter, employees, tempAttendance]);
-
-    const finalFilteredEmployees = useMemo(() => {
-        if (finalFilter === 'all') return employees;
-        return employees.filter(emp => (savedAttendance[emp.id]?.status || 'Missed') === finalFilter);
-    }, [finalFilter, employees, savedAttendance]);
 
     const handleStartSession = async () => {
         await startSession();
@@ -278,18 +299,27 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                                         <CardHeader>
                                             <CardTitle>Final Roster</CardTitle>
                                             <CardDescription>
-                                                Showing {finalFilteredEmployees.length} of {employees.length} members.
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="user-final-filter" />
-                                            <motion.div
-                                                key={finalFilter}
-                                                className="space-y-4 mt-4 max-h-96 overflow-y-auto pr-2"
-                                                variants={containerVariants}
-                                                initial="hidden"
-                                                animate="visible"
-                                            >
+                                                 Showing {finalFilteredEmployees.length} of {employees.length} members.
+                                             </CardDescription>
+                                             <div className="relative mt-2">
+                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                 <Input
+                                                     placeholder="Search..."
+                                                     value={finalSearchQuery}
+                                                     onChange={(e) => setFinalSearchQuery(e.target.value)}
+                                                     className="pl-10"
+                                                 />
+                                             </div>
+                                         </CardHeader>
+                                         <CardContent>
+                                             <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="user-final-filter" />
+                                             <motion.div
+                                                 key={finalFilter + finalSearchQuery}
+                                                 className="space-y-4 mt-4 max-h-96 overflow-y-auto pr-2"
+                                                 variants={containerVariants}
+                                                 initial="hidden"
+                                                 animate="visible"
+                                             >
                                                 {finalFilteredEmployees.length > 0 ? (
                                                     finalFilteredEmployees.map((emp) => (
                                                         <motion.div key={emp.id} variants={itemVariants}>
@@ -385,9 +415,18 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                                 <h2 className="text-2xl font-bold tracking-tight">Attendance Roster</h2>
                                 <p className="text-sm text-muted-foreground">Click a member's status to mark their attendance.</p>
                             </div>
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name or email..."
+                                    value={activeSearchQuery}
+                                    onChange={(e) => setActiveSearchQuery(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
                             <FilterControls currentFilter={activeFilter} onFilterChange={setActiveFilter} layoutId="active-filter" />
                         </div>
-                        <motion.div key={activeFilter} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+                        <motion.div key={activeFilter + activeSearchQuery} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
                             {activeFilteredEmployees.length > 0 ? (
                                 activeFilteredEmployees.map((emp) => (
                                     <motion.div key={emp.id} variants={itemVariants}>
@@ -444,6 +483,8 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                         finalFilter={finalFilter}
                         setFinalFilter={setFinalFilter}
                         finalFilteredEmployees={finalFilteredEmployees}
+                        finalSearchQuery={finalSearchQuery}
+                        setFinalSearchQuery={setFinalSearchQuery}
                     />
                 </>
             );

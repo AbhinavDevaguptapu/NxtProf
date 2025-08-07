@@ -14,6 +14,9 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
     const [currentUserAttendance, setCurrentUserAttendance] = useState<AttendanceRecord | null>(null);
     const [editingAbsence, setEditingAbsence] = useState<Employee | null>(null);
     const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
+    const [activeSearchQuery, setActiveSearchQuery] = useState("");
+    const [finalSearchQuery, setFinalSearchQuery] = useState("");
+    const [finalFilter, setFinalFilter] = useState<AttendanceStatus | "all">("all");
 
     const fetchInitialData = useCallback(async () => {
         try {
@@ -103,6 +106,48 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
         };
     }, [tempAttendance, employees]);
 
+    const activeFilteredEmployees = useMemo(() => {
+        let filtered = employees;
+
+        if (finalFilter !== "all") {
+            filtered = filtered.filter(
+                (emp) => (tempAttendance[emp.id] || "Missed") === finalFilter
+            );
+        }
+
+        if(activeSearchQuery) {
+            const lowercasedQuery = activeSearchQuery.toLowerCase();
+            filtered = filtered.filter(
+                (emp) =>
+                    emp.name.toLowerCase().includes(lowercasedQuery) ||
+                    emp.email.toLowerCase().includes(lowercasedQuery)
+            );
+        }
+
+        return filtered;
+    }, [finalFilter, employees, tempAttendance, activeSearchQuery]);
+
+    const finalFilteredEmployees = useMemo(() => {
+        let filtered = employees;
+
+        if (finalFilter !== "all") {
+            filtered = filtered.filter(
+                (emp) => (savedAttendance[emp.id]?.status || "Missed") === finalFilter
+            );
+        }
+
+        if (finalSearchQuery) {
+            const lowercasedQuery = finalSearchQuery.toLowerCase();
+            filtered = filtered.filter(
+                (emp) =>
+                    emp.name.toLowerCase().includes(lowercasedQuery) ||
+                    emp.email.toLowerCase().includes(lowercasedQuery)
+            );
+        }
+
+        return filtered;
+    }, [finalFilter, employees, savedAttendance, finalSearchQuery]);
+
     return {
         employees,
         tempAttendance,
@@ -116,5 +161,13 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
         saveAttendance,
         sessionStats,
         fetchInitialData,
+        finalFilter,
+        setFinalFilter,
+        finalSearchQuery,
+        setFinalSearchQuery,
+        finalFilteredEmployees,
+        activeFilteredEmployees,
+        activeSearchQuery,
+        setActiveSearchQuery,
     };
 };

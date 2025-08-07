@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFeedbackAiSummary = exports.getFeedbackChartData = void 0;
+exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = void 0;
 /**
  * @file Cloud Functions for feedback analysis.
  */
@@ -172,5 +172,13 @@ exports.getFeedbackAiSummary = (0, https_1.onCall)({ timeoutSeconds: 120, memory
         console.error("AI processing error:", e);
         throw new https_1.HttpsError("internal", "Failed to generate AI summary.");
     }
+});
+exports.getRawFeedback = (0, https_1.onCall)({ timeoutSeconds: 60, memory: "256MiB", secrets: ["SHEETS_SA_KEY"] }, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication required.");
+    }
+    const filteredData = await getFilteredFeedbackData(request.data);
+    // We need to format the date back to a string so it can be sent over HTTPS
+    return filteredData.map(row => (Object.assign(Object.assign({}, row), { date: (0, date_fns_1.format)(row.date, 'yyyy-MM-dd') })));
 });
 //# sourceMappingURL=feedbackAnalysis.js.map

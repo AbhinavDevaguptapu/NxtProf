@@ -34,6 +34,8 @@ export const useStandup = () => {
 
   const [activeFilter, setActiveFilter] = useState<AttendanceStatus | "all">("all");
   const [finalFilter, setFinalFilter] = useState<AttendanceStatus | "all">("all");
+  const [activeSearchQuery, setActiveSearchQuery] = useState("");
+  const [finalSearchQuery, setFinalSearchQuery] = useState("");
 
   const todayDocId = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 
@@ -195,18 +197,46 @@ export const useStandup = () => {
   };
 
   const activeFilteredEmployees = useMemo(() => {
-    if (activeFilter === "all") return employees;
-    return employees.filter(
-      (emp) => (tempAttendance[emp.id] || "Missed") === activeFilter
-    );
-  }, [activeFilter, employees, tempAttendance]);
+    let filtered = employees;
+
+    if (activeFilter !== "all") {
+      filtered = filtered.filter(
+        (emp) => (tempAttendance[emp.id] || "Missed") === activeFilter
+      );
+    }
+
+    if (activeSearchQuery) {
+      const lowercasedQuery = activeSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (emp) =>
+          emp.name.toLowerCase().includes(lowercasedQuery) ||
+          emp.email.toLowerCase().includes(lowercasedQuery)
+      );
+    }
+
+    return filtered;
+  }, [activeFilter, employees, tempAttendance, activeSearchQuery]);
 
   const finalFilteredEmployees = useMemo(() => {
-    if (finalFilter === "all") return employees;
-    return employees.filter(
-      (emp) => (savedAttendance[emp.id]?.status || "Missed") === finalFilter
-    );
-  }, [finalFilter, employees, savedAttendance]);
+    let filtered = employees;
+
+    if (finalFilter !== "all") {
+      filtered = filtered.filter(
+        (emp) => (savedAttendance[emp.id]?.status || "Missed") === finalFilter
+      );
+    }
+
+    if (finalSearchQuery) {
+      const lowercasedQuery = finalSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (emp) =>
+          emp.name.toLowerCase().includes(lowercasedQuery) ||
+          emp.email.toLowerCase().includes(lowercasedQuery)
+      );
+    }
+
+    return filtered;
+  }, [finalFilter, employees, savedAttendance, finalSearchQuery]);
 
   const sessionStats = useMemo(() => {
     const total = employees.length;
@@ -236,8 +266,12 @@ export const useStandup = () => {
     sessionTime,
     activeFilter,
     setActiveFilter,
+    activeSearchQuery,
+    setActiveSearchQuery,
     finalFilter,
     setFinalFilter,
+    finalSearchQuery,
+    setFinalSearchQuery,
     todayDocId,
     handleStopStandup,
     handleSaveAbsenceReason,

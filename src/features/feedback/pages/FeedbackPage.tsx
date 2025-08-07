@@ -31,6 +31,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
   Loader2,
   Sparkles,
   MessageSquare,
@@ -38,6 +55,7 @@ import {
   Lightbulb,
   Calendar as CalendarIcon,
   AlertCircle,
+  BookOpen,
 } from "lucide-react";
 
 // Animation & Utilities
@@ -105,7 +123,78 @@ export type ActiveFilter = {
   dateRange?: DateRange;
 };
 
+type RawFeedbackData = {
+    date: string;
+    understanding: number;
+    instructor: number;
+    comment: string;
+}[];
+
+
 // --- CHILD COMPONENTS ---
+
+const FeedbackDetailsModal = ({
+    isOpen,
+    onClose,
+    feedbackData,
+    isLoading,
+    error,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    feedbackData: RawFeedbackData | null;
+    isLoading: boolean;
+    error: string | null;
+}) => {
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>All Feedback Entries</DialogTitle>
+                    <DialogDescription>
+                        Here are all the individual feedback entries for the selected period.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-4">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-full">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : error ? (
+                        <div className="text-red-500 text-center">{error}</div>
+                    ) : feedbackData && feedbackData.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Understanding</TableHead>
+                                    <TableHead>Instructor</TableHead>
+                                    <TableHead>Comment</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {feedbackData.map((item, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{format(new Date(item.date), "PPP")}</TableCell>
+                                        <TableCell>{item.understanding}</TableCell>
+                                        <TableCell>{item.instructor}</TableCell>
+                                        <TableCell>{item.comment || "-"}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-center text-muted-foreground">No detailed feedback to display.</p>
+                    )}
+                </ScrollArea>
+                <DialogFooter>
+                    <Button onClick={onClose}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 const FeedbackFilters = ({
   onFilterChange,
@@ -471,6 +560,7 @@ const DashboardContent = ({
   chartError,
   aiError,
   hasSearched,
+  onViewAllClick,
 }: {
   isChartLoading: boolean;
   isAiLoading: boolean;
@@ -479,6 +569,7 @@ const DashboardContent = ({
   chartError: string | null;
   aiError: string | null;
   hasSearched: boolean;
+  onViewAllClick: () => void;
 }) => {
   if (!hasSearched) {
     return (
@@ -516,13 +607,19 @@ const DashboardContent = ({
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare /> Quantitative Feedback
-          </CardTitle>
-          <CardDescription>
-            Total Feedbacks Given: {chartData.totalFeedbacks ?? 0}
-          </CardDescription>
+        <CardHeader className="flex flex-row justify-between items-start">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare /> Quantitative Feedback
+            </CardTitle>
+            <CardDescription>
+              Total Feedbacks Given: {chartData.totalFeedbacks ?? 0}
+            </CardDescription>
+          </div>
+          <Button onClick={onViewAllClick} variant="secondary">
+            <BookOpen className="mr-2 h-4 w-4" />
+            View All Feedback
+          </Button>
         </CardHeader>
         <CardContent className="h-[400px] w-full">
           <QuantitativeFeedback chartData={chartData} />
@@ -575,6 +672,45 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
   const [aiError, setAiError] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter | null>(null);
+
+  // State for the new detailed feedback modal
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [rawFeedback, setRawFeedback] = useState<RawFeedbackData | null>(null);
+  const [isRawFeedbackLoading, setIsRawFeedbackLoading] = useState(false);
+  const [rawFeedbackError, setRawFeedbackError] = useState<string | null>(null);
+  
+  const fetchRawFeedback = async () => {
+      if (!employeeData?.firebaseUid || !activeFilter) return;
+
+      setIsRawFeedbackLoading(true);
+      setRawFeedbackError(null);
+      setIsFeedbackModalOpen(true); // Open modal immediately
+
+      const functions = getFunctions();
+      const getRawFeedbackCallable = httpsCallable<any, RawFeedbackData>(functions, "getRawFeedback");
+
+      const params: any = {
+          employeeId: employeeData.firebaseUid,
+          timeFrame: activeFilter.mode,
+      };
+      if ((activeFilter.mode === "daily" || activeFilter.mode === "specific" || activeFilter.mode === "monthly") && activeFilter.date) {
+          params.date = format(activeFilter.date, "yyyy-MM-dd");
+      } else if (activeFilter.mode === "range" && activeFilter.dateRange?.from && activeFilter.dateRange?.to) {
+          params.startDate = format(activeFilter.dateRange.from, "yyyy-MM-dd");
+          params.endDate = format(activeFilter.dateRange.to, "yyyy-MM-dd");
+      }
+
+      try {
+          const result = await getRawFeedbackCallable(params);
+          setRawFeedback(result.data);
+      } catch (err) {
+          console.error("Error fetching raw feedback:", err);
+          setRawFeedbackError("Failed to load detailed feedback. Please try again.");
+      } finally {
+          setIsRawFeedbackLoading(false);
+      }
+  };
 
   // The admin check is now handled by AppShell, so the Navigate component is removed.
 
@@ -610,6 +746,7 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
       if (!employeeData?.firebaseUid) return;
 
       setHasSearched(true);
+      setActiveFilter(filter); // Store the active filter
       setIsChartLoading(true);
       setIsAiLoading(true);
       setChartError(null);
@@ -720,8 +857,16 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
           aiSummary={aiSummary}
           chartError={chartError}
           aiError={aiError}
+          onViewAllClick={fetchRawFeedback}
         />
       </motion.div>
+      <FeedbackDetailsModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        feedbackData={rawFeedback}
+        isLoading={isRawFeedbackLoading}
+        error={rawFeedbackError}
+      />
     </div>
   );
 }

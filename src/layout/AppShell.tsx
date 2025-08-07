@@ -31,7 +31,7 @@ export type ViewType =
     | 'task-analyzer'
     | 'peer-feedback'
     | 'admin-peer-feedback'
-    | 'admin-learning-hours';
+    | 'learning-hours-points';
 
 export interface ViewState {
     view: ViewType;
@@ -99,7 +99,7 @@ export default function AppShell() {
             'task-analyzer': TaskAnalyzerPage,
             'peer-feedback': PeerFeedbackPage,
             'admin-peer-feedback': admin ? AdminPeerFeedback : AccessDenied,
-            'admin-learning-hours': AdminLearningHours,
+            'learning-hours-points': AdminLearningHours,
             'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
         };
 

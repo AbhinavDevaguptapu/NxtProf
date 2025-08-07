@@ -4,27 +4,64 @@
  * It initializes Firebase and exports all cloud functions from their respective modules.
  */
 import * as admin from "firebase-admin";
-
-// Initialize Firebase Admin SDK
 admin.initializeApp();
 
-// Import and re-export functions from their dedicated modules
-import { endLearningSessionAndLockPoints, getTodaysLearningPoints } from "./learningSessions";
-import { syncLearningPointsToSheet } from "./syncLearningHours";
+// Import all functions from their respective modules.
+import { 
+    syncAttendanceToSheet, 
+    scheduledSync 
+} from "./attendanceSync";
+import { 
+    getFeedbackChartData, 
+    getFeedbackAiSummary,
+    getRawFeedback
+} from "./feedbackAnalysis";
+import { 
+    endLearningSessionAndLockPoints, 
+    getTodaysLearningPoints 
+} from "./learningSessions";
 import * as peerFeedback from "./peerFeedback";
-import { scheduleDailyStandup, startScheduledStandup, endActiveStandup } from "./standups";
-import { addAdminRole, removeAdminRole, deleteEmployee, getEmployeesWithAdminStatus } from "./users";
-import { getFeedbackChartData, getFeedbackAiSummary } from "./feedbackAnalysis";
-import { syncAttendanceToSheet, scheduledSync } from "./attendanceSync";
-import { analyzeTask, getSubsheetNames, getSheetData } from "./taskAnalysis";
+import { 
+    scheduleDailyStandup, 
+    startScheduledStandup, 
+    endActiveStandup 
+} from "./standups";
+import { 
+    syncLearningPointsToSheet, 
+    autoSyncLearningPoints 
+} from "./syncLearningHours";
+import { 
+    analyzeTask, 
+    getSubsheetNames, 
+    getSheetData 
+} from "./taskAnalysis";
+import { 
+    addAdminRole, 
+    removeAdminRole, 
+    deleteEmployee, 
+    getEmployeesWithAdminStatus 
+} from "./users";
 
+// Export all functions for deployment.
 export {
+    // Attendance
+    syncAttendanceToSheet,
+    scheduledSync,
+
+    // Feedback Analysis
+    getFeedbackChartData,
+    getFeedbackAiSummary,
+    getRawFeedback,
+
     // Learning Sessions
     endLearningSessionAndLockPoints,
-    syncLearningPointsToSheet,
     getTodaysLearningPoints,
+    
+    // Learning Hours Sync
+    syncLearningPointsToSheet,
+    autoSyncLearningPoints,
 
-    // Peer Feedback
+    // Peer Feedback (exports all functions from the module)
     peerFeedback,
 
     // Standups
@@ -32,22 +69,14 @@ export {
     startScheduledStandup,
     endActiveStandup,
 
+    // Task Analysis
+    analyzeTask,
+    getSubsheetNames,
+    getSheetData,
+
     // User Management
     addAdminRole,
     removeAdminRole,
     deleteEmployee,
     getEmployeesWithAdminStatus,
-
-    // Feedback Analysis
-    getFeedbackChartData,
-    getFeedbackAiSummary,
-
-    // Attendance Sync
-    syncAttendanceToSheet,
-    scheduledSync,
-
-    // Task Analysis & Sheet Data
-    analyzeTask,
-    getSubsheetNames,
-    getSheetData,
 };

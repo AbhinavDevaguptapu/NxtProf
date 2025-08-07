@@ -34,8 +34,12 @@ export default function StandupsPage() {
     sessionTime,
     activeFilter,
     setActiveFilter,
+    activeSearchQuery,
+    setActiveSearchQuery,
     finalFilter,
     setFinalFilter,
+    finalSearchQuery,
+    setFinalSearchQuery,
     handleStopStandup,
     handleSaveAbsenceReason,
     activeFilteredEmployees,
@@ -79,6 +83,8 @@ export default function StandupsPage() {
               sessionStats={sessionStats}
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
+              activeSearchQuery={activeSearchQuery}
+              setActiveSearchQuery={setActiveSearchQuery}
               activeFilteredEmployees={activeFilteredEmployees}
               tempAttendance={tempAttendance}
               absenceReasons={absenceReasons}
@@ -95,6 +101,8 @@ export default function StandupsPage() {
             finalFilter={finalFilter}
             setFinalFilter={setFinalFilter}
             finalFilteredEmployees={finalFilteredEmployees}
+            finalSearchQuery={finalSearchQuery}
+            setFinalSearchQuery={setFinalSearchQuery}
           />
         );
       case "ended":
@@ -106,6 +114,8 @@ export default function StandupsPage() {
             finalFilter={finalFilter}
             setFinalFilter={setFinalFilter}
             finalFilteredEmployees={finalFilteredEmployees}
+            finalSearchQuery={finalSearchQuery}
+            setFinalSearchQuery={setFinalSearchQuery}
           />
         );
       default:

@@ -176,3 +176,20 @@ export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
         }
     }
 );
+
+export const getRawFeedback = onCall<FeedbackRequestData>(
+    { timeoutSeconds: 60, memory: "256MiB", secrets: ["SHEETS_SA_KEY"] },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "Authentication required.");
+        }
+        
+        const filteredData = await getFilteredFeedbackData(request.data);
+        
+        // We need to format the date back to a string so it can be sent over HTTPS
+        return filteredData.map(row => ({
+            ...row,
+            date: format(row.date, 'yyyy-MM-dd'),
+        }));
+    }
+);
