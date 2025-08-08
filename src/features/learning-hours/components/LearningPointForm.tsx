@@ -37,10 +37,10 @@ import type { LearningPoint } from '../types';
 
 // --- FORM SCHEMA ---
 const formSchema = z.object({
-    date: z.date({ required_error: "A date is required." }),
+    date: z.date().optional(),
     task_name: z.string().min(5, { message: 'Task name must be at least 5 characters.' }),
     framework_category: z.string().min(1, { message: "Please select a category." }),
-    point_type: z.enum(['R1', 'R2', 'R3'], { required_error: "You must select a point type." }),
+    point_type: z.enum(['R1', 'R2', 'R3']).optional(),
     subcategory: z.string().optional(),
     task_link: z.string().optional(),
     recipient: z.string().min(3, { message: 'Recipient is required.' }),
@@ -48,6 +48,12 @@ const formSchema = z.object({
     behavior: z.string().min(10, { message: 'Behavior must be at least 10 characters.' }),
     impact: z.string().min(10, { message: 'Impact must be at least 10 characters.' }),
     action_item: z.string().optional(),
+}).refine(data => data.date, {
+    message: "A date is required.",
+    path: ["date"],
+}).refine(data => data.point_type, {
+    message: "You must select a point type.",
+    path: ["point_type"],
 }).refine(data => {
     if ((data.point_type === 'R1' || data.point_type === 'R2') && (!data.action_item || data.action_item.length < 10)) {
         return false;
@@ -126,7 +132,7 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md md:max-w-3xl h-[90vh] overflow-y-auto">
+            <DialogContent onPointerDownOutside={(e) => e.preventDefault()} className="max-w-md md:max-w-3xl h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{defaultValues?.id ? 'Edit' : 'Create'} Learning Point</DialogTitle>
                     <DialogDescription>

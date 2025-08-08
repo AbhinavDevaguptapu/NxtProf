@@ -183,13 +183,19 @@ export const getRawFeedback = onCall<FeedbackRequestData>(
         if (!request.auth) {
             throw new HttpsError("unauthenticated", "Authentication required.");
         }
-        
+
         const filteredData = await getFilteredFeedbackData(request.data);
-        
-        // We need to format the date back to a string so it can be sent over HTTPS
-        return filteredData.map(row => ({
-            ...row,
-            date: format(row.date, 'yyyy-MM-dd'),
-        }));
+
+        // The date objects from getFilteredFeedbackData were parsed assuming the server's
+        // local timezone. We format them back into a string representing that local time,
+        // and then append the correct IST offset (+05:30) to create a timezone-aware
+        // ISO 8601 string for the frontend.
+        return filteredData.map(row => {
+            const localTimeStr = format(row.date, "yyyy-MM-dd'T'HH:mm:ss");
+            return {
+                ...row,
+                date: `${localTimeStr}+05:30`,
+            };
+        });
     }
 );

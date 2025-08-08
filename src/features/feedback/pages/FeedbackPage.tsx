@@ -63,6 +63,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { useMobile } from "@/hooks/use-mobile";
 
 // Charting Libraries
 import {
@@ -139,13 +140,82 @@ const FeedbackDetailsModal = ({
     feedbackData,
     isLoading,
     error,
+    isMobile,
 }: {
     isOpen: boolean;
     onClose: () => void;
     feedbackData: RawFeedbackData | null;
     isLoading: boolean;
     error: string | null;
+    isMobile: boolean;
 }) => {
+    const renderContent = () => {
+        if (isLoading) {
+            return (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            );
+        }
+        if (error) {
+            return <div className="text-red-500 text-center">{error}</div>;
+        }
+        if (!feedbackData || feedbackData.length === 0) {
+            return <p className="text-center text-muted-foreground">No detailed feedback to display.</p>;
+        }
+
+        if (isMobile) {
+            return (
+                <div className="space-y-4">
+                    {feedbackData.map((item, index) => (
+                        <Card key={index} className="p-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="text-sm font-medium">{format(new Date(item.date), "PPP p")}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Understanding</p>
+                                    <p className="font-semibold">{item.understanding}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Instructor</p>
+                                    <p className="font-semibold">{item.instructor}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Comment</p>
+                                <p className="text-sm break-words">{item.comment || "-"}</p>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            );
+        }
+
+        return (
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Understanding</TableHead>
+                        <TableHead>Instructor</TableHead>
+                        <TableHead>Comment</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {feedbackData.map((item, index) => (
+                        <TableRow key={index}>
+                            <TableCell>{format(new Date(item.date), "PPP p")}</TableCell>
+                            <TableCell>{item.understanding}</TableCell>
+                            <TableCell>{item.instructor}</TableCell>
+                            <TableCell>{item.comment || "-"}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        );
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl">
@@ -156,36 +226,7 @@ const FeedbackDetailsModal = ({
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="h-[60vh] pr-4">
-                    {isLoading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : error ? (
-                        <div className="text-red-500 text-center">{error}</div>
-                    ) : feedbackData && feedbackData.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Understanding</TableHead>
-                                    <TableHead>Instructor</TableHead>
-                                    <TableHead>Comment</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {feedbackData.map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell>{format(new Date(item.date), "PPP")}</TableCell>
-                                        <TableCell>{item.understanding}</TableCell>
-                                        <TableCell>{item.instructor}</TableCell>
-                                        <TableCell>{item.comment || "-"}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <p className="text-center text-muted-foreground">No detailed feedback to display.</p>
-                    )}
+                    {renderContent()}
                 </ScrollArea>
                 <DialogFooter>
                     <Button onClick={onClose}>Close</Button>
@@ -663,6 +704,7 @@ interface FeedbackPageProps {
 export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
   const { user, loading: userAuthLoading } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
+  const isMobile = useMobile();
 
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -866,6 +908,7 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
         feedbackData={rawFeedback}
         isLoading={isRawFeedbackLoading}
         error={rawFeedbackError}
+        isMobile={isMobile}
       />
     </div>
   );
