@@ -197,6 +197,11 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
     const { toast } = useToast();
 
     const { learningHour, isLoading, isUpdating, sessionTime, todayDocId, startSession } = useLearningHourSession();
+    
+    // FIX: Declare activeFilter state before it is used in the useLearningHourAttendance hook.
+    // This resolves the "block-scoped variable used before declaration" error.
+    const [activeFilter, setActiveFilter] = useState<AttendanceStatus | 'all'>('all');
+
     const { 
         employees, 
         tempAttendance, 
@@ -217,10 +222,11 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         activeFilteredEmployees,
         activeSearchQuery,
         setActiveSearchQuery,
-    } = useLearningHourAttendance(learningHour, todayDocId);
+    // FIX: Pass the activeFilter state down to the useLearningHourAttendance hook.
+    // This ensures the hook re-calculates the filtered list whenever the activeFilter changes.
+    } = useLearningHourAttendance(learningHour, todayDocId, activeFilter);
     const { learningPoints, isLoading: isLoadingPoints, addLearningPoint, updateLearningPoint, deleteLearningPoint } = useLearningPoints(todayDocId);
 
-    const [activeFilter, setActiveFilter] = useState<AttendanceStatus | 'all'>('all');
     const [isSyncing, setIsSyncing] = useState(false);
     const [isEndingSession, setIsEndingSession] = useState(false);
 

@@ -5,7 +5,12 @@ import { useToast } from '@/components/ui/use-toast';
 import type { Employee, AttendanceRecord, AttendanceStatus, LearningHour } from '../types';
 import { useUserAuth } from '@/context/UserAuthContext';
 
-export const useLearningHourAttendance = (learningHour: LearningHour | null, todayDocId: string) => {
+// FIX: Accept activeFilter as a parameter to ensure the hook can react to UI changes.
+export const useLearningHourAttendance = (
+    learningHour: LearningHour | null,
+    todayDocId: string,
+    activeFilter: AttendanceStatus | "all"
+) => {
     const { user } = useUserAuth();
     const { toast } = useToast();
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -109,13 +114,15 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
     const activeFilteredEmployees = useMemo(() => {
         let filtered = employees;
 
-        if (finalFilter !== "all") {
+        // FIX: Use the 'activeFilter' passed into the hook, not the 'finalFilter' state.
+        // This was the core of the bug. The component's active filter state was not being used for filtering.
+        if (activeFilter !== "all") {
             filtered = filtered.filter(
-                (emp) => (tempAttendance[emp.id] || "Missed") === finalFilter
+                (emp) => (tempAttendance[emp.id] || "Missed") === activeFilter
             );
         }
 
-        if(activeSearchQuery) {
+        if (activeSearchQuery) {
             const lowercasedQuery = activeSearchQuery.toLowerCase();
             filtered = filtered.filter(
                 (emp) =>
@@ -125,7 +132,9 @@ export const useLearningHourAttendance = (learningHour: LearningHour | null, tod
         }
 
         return filtered;
-    }, [finalFilter, employees, tempAttendance, activeSearchQuery]);
+    // FIX: Add 'activeFilter' to the dependency array.
+    // This ensures the list is re-calculated whenever the filter changes.
+    }, [activeFilter, employees, tempAttendance, activeSearchQuery]);
 
     const finalFilteredEmployees = useMemo(() => {
         let filtered = employees;
