@@ -20,7 +20,7 @@
  */
 // src/pages/EmployeeSetup.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -64,6 +64,8 @@ export default function EmployeeSetup() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [exitLoading, setExitLoading] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(true);
+    const [countdown, setCountdown] = useState(30);
 
     const isEmployeeIdValid = (id: string) => /^NW\d{7}$/.test(id);
     const isSheetLinkValid = (link: string) => {
@@ -78,6 +80,15 @@ export default function EmployeeSetup() {
 
     const cleanedSheetLink = sheetLink.trim();
     const isFormValid = isEmployeeIdValid(employeeId) && isSheetLinkValid(cleanedSheetLink);
+
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+            return () => clearTimeout(timer);
+        } else {
+            setIsInitializing(false);
+        }
+    }, [countdown]);
 
     const handleEmployeeIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setEmployeeId(e.target.value.toUpperCase());
@@ -118,7 +129,7 @@ export default function EmployeeSetup() {
             const idQuery = query(employeesRef, where('employeeId', '==', employeeId));
             const idQuerySnapshot = await getDocs(idQuery);
             if (!idQuerySnapshot.empty) {
-                setError('This Employee ID is already in use.');
+                setError('This Employee ID is already in use. Please refresh.');
                 setLoading(false);
                 return;
             }
@@ -257,10 +268,14 @@ export default function EmployeeSetup() {
                                     variant="destructive"
                                     className="w-full mt-2"
                                     onClick={handleExit}
-                                    disabled={loading || exitLoading}
+                                    disabled={loading || exitLoading || isInitializing}
                                 >
                                     {exitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {exitLoading ? 'Exiting...' : 'Exit and Delete Account'}
+                                    {exitLoading
+                                        ? 'Exiting...'
+                                        : isInitializing
+                                        ? `Exit and Delete Account (${countdown}s)`
+                                        : 'Exit and Delete Account'}
                                 </Button>
                             </motion.div>
                         </motion.form>

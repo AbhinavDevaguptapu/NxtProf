@@ -49,6 +49,7 @@ const AppContent = () => {
       <Route path="/auth" element={!user ? <AuthPage /> : <Navigate to="/" />} />
       <Route path="/admin/login" element={!user ? <AdminLogin /> : <Navigate to="/" />} />
       <Route path="/setup" element={<ProtectedRoute><EmployeeSetup /></ProtectedRoute>} />
+      <Route path="/" element={user ? <Navigate to="/index" /> : <Navigate to="/landing" />} />
       <Route
         path="/*"
         element={
