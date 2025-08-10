@@ -76,7 +76,7 @@ const StreakBanner = ({ title, streak, loading, icon: Icon, colors }: StreakBann
             <h3 className="font-medium text-muted-foreground text-sm">{title}</h3>
             <div className="flex items-baseline gap-1.5">
               <p className="text-3xl font-bold text-card-foreground">{streak}</p>
-              <span className="text-sm font-medium text-muted-foreground">day streak</span>
+              <span className="text-sm font-medium text-muted-foreground">day streak for current month</span>
             </div>
           </div>
         </div>
@@ -120,10 +120,10 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
       bg: "bg-amber-500/10",
     },
     {
-      title: "Peer Feedback",
-      description: "Give and request feedback",
+      title: "Today Learning Points",
+      description: "Check today's learning points",
       icon: Users,
-      action: () => setActiveView({ view: "peer-feedback" }),
+      action: () => setActiveView({ view: "learning-hours-points" }),
       color: "text-teal-500",
       bg: "bg-teal-500/10",
     },

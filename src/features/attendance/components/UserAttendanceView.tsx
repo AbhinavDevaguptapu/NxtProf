@@ -141,32 +141,34 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
   }, [fetchAllData]);
 
   const monthlyStats = useMemo(() => {
-    // ... (stats logic remains the same)
-    const daysInMonth = eachDayOfInterval({
-      start: startOfMonth(month),
-      end: endOfMonth(month),
-    });
-    const totalWorkingDays = daysInMonth.filter((day) => !isSunday(day)).length;
-    let standupCount = 0;
-    let learningHourCount = 0;
+    const stats = {
+        standup: { present: 0, missed: 0, absent: 0, notAvailable: 0 },
+        learning: { present: 0, missed: 0, absent: 0, notAvailable: 0 },
+    };
 
     Object.entries(allAttendance).forEach(([dateStr, statuses]) => {
-      try {
-        const date = parseISO(dateStr);
-        if (isSameMonth(date, month) && !isSunday(date)) {
-          if (statuses.standup === "Present") standupCount++;
-          if (statuses.learning === "Present") learningHourCount++;
+        try {
+            const date = parseISO(dateStr);
+            if (isSameMonth(date, month) && !isSunday(date)) {
+                // Standup stats
+                if (statuses.standup === "Present") stats.standup.present++;
+                else if (statuses.standup === "Missed") stats.standup.missed++;
+                else if (statuses.standup === "Absent") stats.standup.absent++;
+                else if (statuses.standup === "Not Available") stats.standup.notAvailable++;
+
+                // Learning Hour stats
+                if (statuses.learning === "Present") stats.learning.present++;
+                else if (statuses.learning === "Missed") stats.learning.missed++;
+                else if (statuses.learning === "Absent") stats.learning.absent++;
+                else if (statuses.learning === "Not Available") stats.learning.notAvailable++;
+            }
+        } catch (error) {
+            console.error("Error parsing date:", dateStr, error);
         }
-      } catch (error) {
-        console.error("Error parsing date:", dateStr, error);
-      }
     });
 
-    const standupPercentage = totalWorkingDays > 0 ? (standupCount / totalWorkingDays) * 100 : 0;
-    const learningPercentage = totalWorkingDays > 0 ? (learningHourCount / totalWorkingDays) * 100 : 0;
-
-    return { standupCount, learningHourCount, totalWorkingDays, standupPercentage, learningPercentage };
-  }, [allAttendance, month]);
+    return stats;
+}, [allAttendance, month]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(month);
@@ -184,20 +186,43 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
 
   // --- Reusable Sub-components ---
 
-  const StatCard = ({ title, value, icon, progress }: { title: string, value: string, icon: React.ReactNode, progress: number }) => (
-    <Card className="flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-      <CardContent className="pt-0">
-        <Progress value={progress} className="h-2" />
-      </CardContent>
-    </Card>
-  );
+  const StatCard = ({ title, stats, icon }: { title: string, stats: { present: number, missed: number, absent: number, notAvailable: number }, icon: React.ReactNode }) => {
+    const considered = stats.present + stats.missed;
+    const totalConducted = considered + stats.absent + stats.notAvailable;
+    const percentage = considered > 0 ? Math.round((stats.present / considered) * 100) : 0;
+
+    const colorClass = useMemo(() => {
+        if (percentage >= 90) return 'bg-green-500';
+        if (percentage >= 75) return 'bg-yellow-500';
+        return 'bg-red-500';
+    }, [percentage]);
+
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">{icon} {title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">Total: <span className="font-bold text-primary">{totalConducted}</span></p>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <p>Present: <span className="font-bold">{stats.present}</span></p>
+                    <p>Missed: <span className="font-bold">{stats.missed}</span></p>
+                    <p>Absent: <span className="font-bold">{stats.absent}</span></p>
+                    <p>N/A: <span className="font-bold">{stats.notAvailable}</span></p>
+                </div>
+                <div>
+                    <div className="flex justify-between items-end mb-1">
+                        <h5 className="text-sm font-medium text-muted-foreground">Attendance</h5>
+                        <p className="font-bold">{percentage}%</p>
+                    </div>
+                    <Progress value={percentage} className="h-2" indicatorClassName={colorClass} />
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
 
   const DayCell = ({ date }: { date: Date }) => {
     const dateKey = format(date, "yyyy-MM-dd");
@@ -299,16 +324,14 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <StatCard
-            title="Standups Attended"
-            value={`${monthlyStats.standupCount} / ${monthlyStats.totalWorkingDays}`}
-            icon={<Users className="h-4 w-4 text-muted-foreground" />}
-            progress={monthlyStats.standupPercentage}
+            title="Standups"
+            stats={monthlyStats.standup}
+            icon={<Users className="h-5 w-5 text-muted-foreground" />}
           />
           <StatCard
-            title="Learning Hours Logged"
-            value={`${monthlyStats.learningHourCount} / ${monthlyStats.totalWorkingDays}`}
-            icon={<BookOpen className="h-4 w-4 text-muted-foreground" />}
-            progress={monthlyStats.learningPercentage}
+            title="Learning Hours"
+            stats={monthlyStats.learning}
+            icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
           />
         </CardContent>
       </Card>
