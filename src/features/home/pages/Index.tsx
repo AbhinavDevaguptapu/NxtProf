@@ -97,7 +97,7 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
     },
     {
       title: "Learning Hours",
-      description: "Access materials",
+      description: "Add learning points here",
       icon: BookOpen,
       action: () => setActiveView({ view: "learning-hours" }),
       color: "text-blue-500",
