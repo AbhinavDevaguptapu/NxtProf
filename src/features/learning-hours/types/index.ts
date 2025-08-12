@@ -9,6 +9,8 @@ export type LearningHour = {
     startedAt?: Timestamp;
     endedAt?: Timestamp;
     scheduledBy: string;
+    tempAttendance?: Record<string, AttendanceStatus>;
+    absenceReasons?: Record<string, string>;
 };
 
 export type Employee = {
@@ -21,7 +23,6 @@ export type Employee = {
 export type AttendanceRecord = {
     employeeId: string;
     employee_email: string;
-
     employee_id: string;
     employee_name: string;
     status: AttendanceStatus;

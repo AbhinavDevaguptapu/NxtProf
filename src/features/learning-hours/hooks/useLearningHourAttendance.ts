@@ -31,9 +31,11 @@ export const useLearningHourAttendance = (
 
             if (learningHour?.status === "active") {
                 const initialAttendance: Record<string, AttendanceStatus> = {};
-                fetchedEmployees.forEach(emp => { initialAttendance[emp.id] = "Missed"; });
+                fetchedEmployees.forEach(emp => {
+                    initialAttendance[emp.id] = learningHour.tempAttendance?.[emp.id] || "Missed";
+                });
                 setTempAttendance(initialAttendance);
-                setAbsenceReasons({});
+                setAbsenceReasons(learningHour.absenceReasons || {});
             }
 
             if (learningHour?.status === "ended") {
@@ -58,7 +60,7 @@ export const useLearningHourAttendance = (
             console.error("Error fetching data:", error);
             toast({ title: "Error loading data", variant: "destructive" });
         }
-    }, [learningHour?.status, todayDocId, toast, user]);
+    }, [learningHour, todayDocId, toast, user]);
 
     useEffect(() => {
         fetchInitialData();
