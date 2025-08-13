@@ -37,7 +37,8 @@ import {
     ChevronRight,
     LucideIcon,
     Bot,
-    UsersRound
+    UsersRound,
+    BookCheck
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -50,8 +51,9 @@ const userNavItems = [
     { id: "learning-hours-points", label: "Today's Learning Points", icon: GraduationCap },
     { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     { id: "feedback", label: "AI Feedback", icon: MessageSquareQuote },
-    { id: "peer-feedback", label: "Peer Feedback", icon: UsersRound },
+    { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
     { id: "attendance", label: "Attendance", icon: CalendarCheck },
+    { id: "peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "onboardingKit", label: "Onboarding Kit", icon: Box },
 ]
 
@@ -62,6 +64,7 @@ const adminNavItems = [
     { id: "learning-hours-points", label: "Today's Learning Points", icon: GraduationCap },
     { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
+    { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
     { id: "manage-employees", label: "Manage Employees", icon: Users },
     { id: "attendance", label: "Manage Attendance", icon: CalendarCheck },
 ]

@@ -17,6 +17,7 @@ import PeerFeedbackPage from '@/features/peer-feedback/pages/PeerFeedbackPage';
 import AdminPeerFeedback from '@/features/admin/pages/AdminPeerFeedback';
 import AdminLearningHours from '@/features/admin/pages/AdminLearningHours';
 import FloatingNav from '@/components/common/FloatingNav';
+import DailyObservationsPage from '@/features/daily-observations/pages/DailyObservationsPage';
 
 export type ViewType =
     | 'home'
@@ -31,7 +32,8 @@ export type ViewType =
     | 'task-analyzer'
     | 'peer-feedback'
     | 'admin-peer-feedback'
-    | 'learning-hours-points';
+    | 'learning-hours-points'
+    | 'daily-observations';
 
 export interface ViewState {
     view: ViewType;
@@ -101,6 +103,7 @@ export default function AppShell() {
             'admin-peer-feedback': admin ? AdminPeerFeedback : AccessDenied,
             'learning-hours-points': AdminLearningHours,
             'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
+            'daily-observations': DailyObservationsPage,
         };
 
         const ComponentToRender = viewMap[view] || viewMap.home;

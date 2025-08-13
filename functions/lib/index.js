@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.peerFeedback = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getTodaysLearningPoints = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
+exports.peerFeedback = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getTodaysLearningPoints = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file serves as the main entry point for all backend serverless logic.
@@ -41,33 +41,45 @@ exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdm
  */
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
-// Import all functions from their respective modules.
-const attendanceSync_1 = require("./attendanceSync");
+// Re-export all functions directly from their respective modules.
+// Attendance
+var attendanceSync_1 = require("./attendanceSync");
 Object.defineProperty(exports, "syncAttendanceToSheet", { enumerable: true, get: function () { return attendanceSync_1.syncAttendanceToSheet; } });
 Object.defineProperty(exports, "scheduledSync", { enumerable: true, get: function () { return attendanceSync_1.scheduledSync; } });
-const feedbackAnalysis_1 = require("./feedbackAnalysis");
+// Feedback Analysis
+var feedbackAnalysis_1 = require("./feedbackAnalysis");
 Object.defineProperty(exports, "getFeedbackChartData", { enumerable: true, get: function () { return feedbackAnalysis_1.getFeedbackChartData; } });
 Object.defineProperty(exports, "getFeedbackAiSummary", { enumerable: true, get: function () { return feedbackAnalysis_1.getFeedbackAiSummary; } });
 Object.defineProperty(exports, "getRawFeedback", { enumerable: true, get: function () { return feedbackAnalysis_1.getRawFeedback; } });
-const learningSessions_1 = require("./learningSessions");
+// Learning Sessions
+var learningSessions_1 = require("./learningSessions");
 Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
 Object.defineProperty(exports, "getTodaysLearningPoints", { enumerable: true, get: function () { return learningSessions_1.getTodaysLearningPoints; } });
-const peerFeedback = __importStar(require("./peerFeedback"));
-exports.peerFeedback = peerFeedback;
-const standups_1 = require("./standups");
+// Learning Hours Sync
+var syncLearningHours_1 = require("./syncLearningHours");
+Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
+Object.defineProperty(exports, "autoSyncLearningPoints", { enumerable: true, get: function () { return syncLearningHours_1.autoSyncLearningPoints; } });
+// Daily Observations
+var dailyObservations_1 = require("./dailyObservations");
+Object.defineProperty(exports, "addObservation", { enumerable: true, get: function () { return dailyObservations_1.addObservation; } });
+Object.defineProperty(exports, "updateObservation", { enumerable: true, get: function () { return dailyObservations_1.updateObservation; } });
+Object.defineProperty(exports, "deleteObservation", { enumerable: true, get: function () { return dailyObservations_1.deleteObservation; } });
+// Standups
+var standups_1 = require("./standups");
 Object.defineProperty(exports, "scheduleDailyStandup", { enumerable: true, get: function () { return standups_1.scheduleDailyStandup; } });
 Object.defineProperty(exports, "startScheduledStandup", { enumerable: true, get: function () { return standups_1.startScheduledStandup; } });
 Object.defineProperty(exports, "endActiveStandup", { enumerable: true, get: function () { return standups_1.endActiveStandup; } });
-const syncLearningHours_1 = require("./syncLearningHours");
-Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
-Object.defineProperty(exports, "autoSyncLearningPoints", { enumerable: true, get: function () { return syncLearningHours_1.autoSyncLearningPoints; } });
-const taskAnalysis_1 = require("./taskAnalysis");
+// Task Analysis
+var taskAnalysis_1 = require("./taskAnalysis");
 Object.defineProperty(exports, "analyzeTask", { enumerable: true, get: function () { return taskAnalysis_1.analyzeTask; } });
 Object.defineProperty(exports, "getSubsheetNames", { enumerable: true, get: function () { return taskAnalysis_1.getSubsheetNames; } });
 Object.defineProperty(exports, "getSheetData", { enumerable: true, get: function () { return taskAnalysis_1.getSheetData; } });
-const users_1 = require("./users");
+// User Management
+var users_1 = require("./users");
 Object.defineProperty(exports, "addAdminRole", { enumerable: true, get: function () { return users_1.addAdminRole; } });
 Object.defineProperty(exports, "removeAdminRole", { enumerable: true, get: function () { return users_1.removeAdminRole; } });
 Object.defineProperty(exports, "deleteEmployee", { enumerable: true, get: function () { return users_1.deleteEmployee; } });
 Object.defineProperty(exports, "getEmployeesWithAdminStatus", { enumerable: true, get: function () { return users_1.getEmployeesWithAdminStatus; } });
+// Peer Feedback (exports all functions from the module as a single group)
+exports.peerFeedback = __importStar(require("./peerFeedback"));
 //# sourceMappingURL=index.js.map

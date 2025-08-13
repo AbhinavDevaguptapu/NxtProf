@@ -12,6 +12,7 @@ import EmployeeSetup from "@/features/auth/pages/EmployeeSetup";
 import LandingPage from "@/features/home/pages/LandingPage";
 import AppShell from "@/layout/AppShell";
 import NotFound from "@/features/not-found/pages/NotFound";
+import DailyObservationsPage from "@/features/daily-observations/pages/DailyObservationsPage";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const AppContent = () => {
           )
         }
       />
+      <Route path="/daily-observations" element={<ProtectedRoute><DailyObservationsPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

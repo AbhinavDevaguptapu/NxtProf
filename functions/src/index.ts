@@ -6,77 +6,54 @@
 import * as admin from "firebase-admin";
 admin.initializeApp();
 
-// Import all functions from their respective modules.
-import { 
-    syncAttendanceToSheet, 
-    scheduledSync 
-} from "./attendanceSync";
-import { 
-    getFeedbackChartData, 
-    getFeedbackAiSummary,
-    getRawFeedback
-} from "./feedbackAnalysis";
-import { 
-    endLearningSessionAndLockPoints, 
-    getTodaysLearningPoints 
-} from "./learningSessions";
-import * as peerFeedback from "./peerFeedback";
-import { 
-    scheduleDailyStandup, 
-    startScheduledStandup, 
-    endActiveStandup 
-} from "./standups";
-import { 
-    syncLearningPointsToSheet, 
-    autoSyncLearningPoints 
-} from "./syncLearningHours";
-import { 
-    analyzeTask, 
-    getSubsheetNames, 
-    getSheetData 
-} from "./taskAnalysis";
-import { 
-    addAdminRole, 
-    removeAdminRole, 
-    deleteEmployee, 
-    getEmployeesWithAdminStatus 
-} from "./users";
+// Re-export all functions directly from their respective modules.
 
-// Export all functions for deployment.
+// Attendance
+export { syncAttendanceToSheet, scheduledSync } from "./attendanceSync";
+
+// Feedback Analysis
 export {
-    // Attendance
-    syncAttendanceToSheet,
-    scheduledSync,
-
-    // Feedback Analysis
     getFeedbackChartData,
     getFeedbackAiSummary,
     getRawFeedback,
+} from "./feedbackAnalysis";
 
-    // Learning Sessions
+// Learning Sessions
+export {
     endLearningSessionAndLockPoints,
     getTodaysLearningPoints,
-    
-    // Learning Hours Sync
+} from "./learningSessions";
+
+// Learning Hours Sync
+export {
     syncLearningPointsToSheet,
     autoSyncLearningPoints,
+} from "./syncLearningHours";
 
-    // Peer Feedback (exports all functions from the module)
-    peerFeedback,
+// Daily Observations
+export {
+    addObservation,
+    updateObservation,
+    deleteObservation,
+} from "./dailyObservations";
 
-    // Standups
+// Standups
+export {
     scheduleDailyStandup,
     startScheduledStandup,
     endActiveStandup,
+} from "./standups";
 
-    // Task Analysis
-    analyzeTask,
-    getSubsheetNames,
-    getSheetData,
+// Task Analysis
+export { analyzeTask, getSubsheetNames, getSheetData } from "./taskAnalysis";
 
-    // User Management
+// User Management
+export {
     addAdminRole,
     removeAdminRole,
     deleteEmployee,
     getEmployeesWithAdminStatus,
-};
+} from "./users";
+
+// Peer Feedback (exports all functions from the module as a single group)
+export * as peerFeedback from "./peerFeedback";
