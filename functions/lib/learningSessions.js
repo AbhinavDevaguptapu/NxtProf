@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTodaysLearningPoints = exports.endLearningSessionAndLockPoints = void 0;
+exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 /**
@@ -79,20 +79,23 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
         throw new https_1.HttpsError("internal", "An unexpected error occurred while ending the session.");
     }
 });
-exports.getTodaysLearningPoints = (0, https_1.onCall)(async (request) => {
-    // 1. Authentication & Authorization Check
+exports.getLearningPointsByDate = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
+    const { date } = request.data || {};
     const db = admin.firestore();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // If a date is provided, use it. Otherwise, default to the current date.
+    const targetDate = date ? new Date(date) : new Date();
+    // Determine the start and end of the day in UTC.
+    const startDate = new Date(targetDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(startDate.getUTCDate() + 1);
     try {
         const learningPointsQuery = db.collection("learning_points")
-            .where("createdAt", ">=", today)
-            .where("createdAt", "<", tomorrow);
+            .where("createdAt", ">=", startDate)
+            .where("createdAt", "<", endDate);
         const snapshot = await learningPointsQuery.get();
         if (snapshot.empty) {
             return [];
@@ -101,7 +104,7 @@ exports.getTodaysLearningPoints = (0, https_1.onCall)(async (request) => {
         return points;
     }
     catch (error) {
-        console.error("Error fetching today's learning points:", error);
+        console.error("Error fetching learning points:", error);
         throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching learning points.");
     }
 });

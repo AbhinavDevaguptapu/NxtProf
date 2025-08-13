@@ -21,7 +21,7 @@ export {
 // Learning Sessions
 export {
     endLearningSessionAndLockPoints,
-    getTodaysLearningPoints,
+    getLearningPointsByDate,
 } from "./learningSessions";
 
 // Learning Hours Sync

@@ -1,12 +1,14 @@
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAdminLearningPoints } from '@/features/learning-hours/hooks/useAdminLearningPoints';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, ChevronsUpDown, Link as LinkIcon } from 'lucide-react';
+import { Loader2, ChevronsUpDown, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { LearningPoint } from '@/features/learning-hours/types';
 import { Badge } from '@/components/ui/badge';
@@ -68,9 +70,15 @@ const PointDetails = ({ point }: { point: LearningPoint }) => {
 
 
 const AdminLearningHours = () => {
-    const { learningPoints, employees, isLoading } = useAdminLearningPoints();
+    const [date, setDate] = useState<Date>(new Date());
+    const { learningPoints, employees, isLoading, refetch } = useAdminLearningPoints(date);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
     const [openRowId, setOpenRowId] = useState<string | null>(null);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+
+    useEffect(() => {
+        refetch();
+    }, [date, refetch]);
 
     const employeeMap = useMemo(() => {
         return employees.reduce((acc, emp) => {
@@ -102,7 +110,34 @@ const AdminLearningHours = () => {
                 <CardDescription>
                     Here are all the learning points submitted today. You can filter them by employee.
                 </CardDescription>
-                <div className="pt-4">
+                <div className="pt-4 flex gap-4">
+                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className="w-[280px] justify-start text-left font-normal"
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(date, "PPP")}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={(newDate) => {
+                                    if (newDate) {
+                                        // To prevent any timezone-related shifts, create a new Date object in UTC
+                                        // using the year, month, and day from the selected date.
+                                        const correctedDate = new Date(Date.UTC(newDate.getFullYear(), newDate.getMonth(), newDate.getDate()));
+                                        setDate(correctedDate);
+                                    }
+                                    setIsDatePickerOpen(false);
+                                }}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
                     <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
                         <SelectTrigger className="w-[280px]">
                             <SelectValue placeholder="Filter by employee..." />
@@ -121,7 +156,6 @@ const AdminLearningHours = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[48px]"></TableHead>
                                 <TableHead>Employee</TableHead>
                                 <TableHead>Task</TableHead>
                                 <TableHead>Point Type</TableHead>
@@ -132,42 +166,36 @@ const AdminLearningHours = () => {
                         <TableBody>
                             {filteredLearningPoints.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center">
+                                    <TableCell colSpan={5} className="h-24 text-center">
                                         No learning points found for the selected filter.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredLearningPoints.map((point) => (
-                                    <Collapsible asChild key={point.id} open={openRowId === point.id} onOpenChange={() => setOpenRowId(prevId => prevId === point.id ? null : point.id)}>
-                                        <>
-                                            <TableRow>
-                                                <TableCell>
-                                                    <CollapsibleTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <ChevronsUpDown className="h-4 w-4" />
-                                                            <span className="sr-only">Toggle details</span>
-                                                        </Button>
-                                                    </CollapsibleTrigger>
-                                                </TableCell>
-                                                <TableCell className="font-medium">{employeeMap[point.userId] || 'Unknown'}</TableCell>
-                                                <TableCell>
-                                                    {point.task_name}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">{point.point_type}</Badge>
-                                                </TableCell>
-                                                <TableCell>{point.recipient}</TableCell>
-                                                <TableCell>{format(point.createdAt.toDate(), "PPP p")}</TableCell>
-                                            </TableRow>
-                                            <CollapsibleContent asChild>
-                                                <tr>
-                                                    <td colSpan={6}>
-                                                        <PointDetails point={point} />
-                                                    </td>
-                                                </tr>
-                                            </CollapsibleContent>
-                                        </>
-                                    </Collapsible>
+                                filteredLearningPoints.map((point, index) => (
+                                    <React.Fragment key={point.id}>
+                                        <Collapsible asChild key={point.id} open={openRowId === point.id} onOpenChange={() => setOpenRowId(prevId => prevId === point.id ? null : point.id)}>
+                                            <>
+                                                <CollapsibleTrigger asChild>
+                                                    <TableRow className={`data-[state=open]:bg-muted/50 hover:bg-muted/50 cursor-pointer ${index % 2 === 0 ? 'bg-muted/25' : ''}`}>
+                                                        <TableCell className="font-medium">{employeeMap[point.userId] || 'Unknown'}</TableCell>
+                                                        <TableCell>{point.task_name}</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline">{point.point_type}</Badge>
+                                                        </TableCell>
+                                                        <TableCell>{point.recipient}</TableCell>
+                                                        <TableCell>{format(point.createdAt.toDate(), "PPP p")}</TableCell>
+                                                    </TableRow>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent asChild>
+                                                    <tr className="bg-muted/25">
+                                                        <td colSpan={5}>
+                                                            <PointDetails point={point} />
+                                                        </td>
+                                                    </tr>
+                                                </CollapsibleContent>
+                                            </>
+                                        </Collapsible>
+                                    </React.Fragment>
                                 ))
                             )}
                         </TableBody>

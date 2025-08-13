@@ -57,22 +57,29 @@ export const endLearningSessionAndLockPoints = onCall<EndSessionData>(async (req
     }
 });
 
-export const getTodaysLearningPoints = onCall(async (request) => {
-    // 1. Authentication & Authorization Check
+export const getLearningPointsByDate = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
 
+    const { date } = request.data || {};
+
     const db = admin.firestore();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // If a date is provided, use it. Otherwise, default to the current date.
+    const targetDate = date ? new Date(date) : new Date();
+    
+    // Determine the start and end of the day in UTC.
+    const startDate = new Date(targetDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(startDate.getUTCDate() + 1);
 
     try {
         const learningPointsQuery = db.collection("learning_points")
-            .where("createdAt", ">=", today)
-            .where("createdAt", "<", tomorrow);
+            .where("createdAt", ">=", startDate)
+            .where("createdAt", "<", endDate);
 
         const snapshot = await learningPointsQuery.get();
 
@@ -84,7 +91,7 @@ export const getTodaysLearningPoints = onCall(async (request) => {
         return points;
 
     } catch (error) {
-        console.error("Error fetching today's learning points:", error);
+        console.error("Error fetching learning points:", error);
         throw new HttpsError("internal", "An unexpected error occurred while fetching learning points.");
     }
 });

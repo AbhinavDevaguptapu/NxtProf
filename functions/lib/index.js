@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.peerFeedback = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getTodaysLearningPoints = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
+exports.peerFeedback = exports.getEmployeesWithAdminStatus = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = exports.getSheetData = exports.getSubsheetNames = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file serves as the main entry point for all backend serverless logic.
@@ -54,7 +54,7 @@ Object.defineProperty(exports, "getRawFeedback", { enumerable: true, get: functi
 // Learning Sessions
 var learningSessions_1 = require("./learningSessions");
 Object.defineProperty(exports, "endLearningSessionAndLockPoints", { enumerable: true, get: function () { return learningSessions_1.endLearningSessionAndLockPoints; } });
-Object.defineProperty(exports, "getTodaysLearningPoints", { enumerable: true, get: function () { return learningSessions_1.getTodaysLearningPoints; } });
+Object.defineProperty(exports, "getLearningPointsByDate", { enumerable: true, get: function () { return learningSessions_1.getLearningPointsByDate; } });
 // Learning Hours Sync
 var syncLearningHours_1 = require("./syncLearningHours");
 Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
