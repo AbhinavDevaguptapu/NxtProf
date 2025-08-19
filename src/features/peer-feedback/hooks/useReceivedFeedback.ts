@@ -27,15 +27,21 @@ export const useReceivedFeedback = () => {
             const receivedFeedback = snapshot.docs.map(doc => {
                 const data = doc.data();
                 const timestamp = data.createdAt as Timestamp;
+
+                if (!timestamp) {
+                    console.warn("Feedback item without a timestamp:", doc.id);
+                    return null;
+                }
+
                 return {
                     id: doc.id,
                     projectOrTask: data.projectOrTask,
                     workEfficiency: data.workEfficiency,
                     easeOfWork: data.easeOfWork,
                     remarks: data.remarks,
-                    submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString(),
+                    submittedAt: timestamp.toDate().toISOString(),
                 } as Feedback;
-            });
+            }).filter((item): item is Feedback => item !== null);
             setFeedback(receivedFeedback);
             setIsLoading(false);
         }, (error) => {

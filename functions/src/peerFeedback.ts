@@ -69,6 +69,39 @@ export const adminGetAllPeerFeedback = onCall(async (request) => {
     return feedback;
 });
 
+export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can toggle the peer feedback lock.");
+    }
+
+    const db = admin.firestore();
+    const lockRef = db.collection("moduleLocks").doc("peerFeedback");
+
+    try {
+        await lockRef.set({ locked: request.data.lock });
+        return { success: true, locked: request.data.lock };
+    } catch (error) {
+        console.error("Error toggling peer feedback lock:", error);
+        throw new HttpsError("internal", "An unexpected error occurred while toggling the lock.");
+    }
+});
+
+export const getPeerFeedbackLockStatus = onCall(async () => {
+    const db = admin.firestore();
+    const lockRef = db.collection("moduleLocks").doc("peerFeedback");
+
+    try {
+        const doc = await lockRef.get();
+        if (!doc.exists) {
+            return { locked: false }; // Default to unlocked if not set
+        }
+        return { locked: doc.data()?.locked || false };
+    } catch (error) {
+        console.error("Error getting peer feedback lock status:", error);
+        throw new HttpsError("internal", "An unexpected error occurred while fetching lock status.");
+    }
+});
+
 export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string; workEfficiency: number; easeOfWork: number; remarks: string; }>(async (request) => {
     const db = admin.firestore();
     if (!request.auth) {
@@ -88,6 +121,13 @@ export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string
     const giverId = request.auth.uid;
 
     try {
+        // Check if the module is locked
+        const lockRef = db.collection("moduleLocks").doc("peerFeedback");
+        const lockDoc = await lockRef.get();
+        if (lockDoc.exists && lockDoc.data()?.locked === true) {
+            throw new HttpsError("failed-precondition", "Feedback submissions are temporarily disabled.");
+        }
+
         // Check if feedback has already been given by this user to the target this month
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

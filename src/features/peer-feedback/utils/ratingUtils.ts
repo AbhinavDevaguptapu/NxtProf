@@ -2,36 +2,33 @@ import { Feedback } from "../types";
 
 export interface OverallRating {
     averageRating: number;
-    finalRating: number;
+    starRating: number;
     totalEntries: number;
 }
 
+const RATING_THRESHOLDS: { threshold: number; stars: number }[] = [
+    { threshold: 4.8, stars: 5 },
+    { threshold: 4.6, stars: 4 },
+    { threshold: 4.3, stars: 3 },
+    { threshold: 4.0, stars: 2 },
+    { threshold: 3.5, stars: 1 },
+];
+
 export const calculateOverallRating = (feedback: Feedback[]): OverallRating => {
     if (feedback.length === 0) {
-        return { averageRating: 0, finalRating: 0, totalEntries: 0 };
+        return { averageRating: 0, starRating: 0, totalEntries: 0 };
     }
 
     const totalRatings = feedback.reduce((acc, item) => acc + item.workEfficiency + item.easeOfWork, 0);
     const averageRating = totalRatings / (feedback.length * 2);
 
-    let finalRating: number;
-    if (averageRating >= 4.8) {
-        finalRating = 5;
-    } else if (averageRating >= 4.6) {
-        finalRating = 4;
-    } else if (averageRating >= 4.3) {
-        finalRating = 3;
-    } else if (averageRating >= 4.0) {
-        finalRating = 2;
-    } else if (averageRating >= 3.5) {
-        finalRating = 1;
-    } else {
-        finalRating = 0;
-    }
+    const starRating = RATING_THRESHOLDS.find(
+        ({ threshold }) => averageRating >= threshold
+    )?.stars ?? 0;
 
     return {
         averageRating,
-        finalRating,
+        starRating,
         totalEntries: feedback.length,
     };
 };

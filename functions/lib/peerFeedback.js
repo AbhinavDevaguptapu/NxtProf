@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.givePeerFeedback = exports.adminGetAllPeerFeedback = exports.getMyReceivedFeedback = void 0;
+exports.givePeerFeedback = exports.getPeerFeedbackLockStatus = exports.togglePeerFeedbackLock = exports.adminGetAllPeerFeedback = exports.getMyReceivedFeedback = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 // Function to get feedback received by the current user (anonymous)
@@ -87,7 +87,40 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)(async (request) => {
     }));
     return feedback;
 });
+exports.togglePeerFeedbackLock = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can toggle the peer feedback lock.");
+    }
+    const db = admin.firestore();
+    const lockRef = db.collection("moduleLocks").doc("peerFeedback");
+    try {
+        await lockRef.set({ locked: request.data.lock });
+        return { success: true, locked: request.data.lock };
+    }
+    catch (error) {
+        console.error("Error toggling peer feedback lock:", error);
+        throw new https_1.HttpsError("internal", "An unexpected error occurred while toggling the lock.");
+    }
+});
+exports.getPeerFeedbackLockStatus = (0, https_1.onCall)(async () => {
+    var _a;
+    const db = admin.firestore();
+    const lockRef = db.collection("moduleLocks").doc("peerFeedback");
+    try {
+        const doc = await lockRef.get();
+        if (!doc.exists) {
+            return { locked: false }; // Default to unlocked if not set
+        }
+        return { locked: ((_a = doc.data()) === null || _a === void 0 ? void 0 : _a.locked) || false };
+    }
+    catch (error) {
+        console.error("Error getting peer feedback lock status:", error);
+        throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching lock status.");
+    }
+});
 exports.givePeerFeedback = (0, https_1.onCall)(async (request) => {
+    var _a;
     const db = admin.firestore();
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "You must be logged in to give feedback.");
@@ -101,6 +134,12 @@ exports.givePeerFeedback = (0, https_1.onCall)(async (request) => {
     }
     const giverId = request.auth.uid;
     try {
+        // Check if the module is locked
+        const lockRef = db.collection("moduleLocks").doc("peerFeedback");
+        const lockDoc = await lockRef.get();
+        if (lockDoc.exists && ((_a = lockDoc.data()) === null || _a === void 0 ? void 0 : _a.locked) === true) {
+            throw new https_1.HttpsError("failed-precondition", "Feedback submissions are temporarily disabled.");
+        }
         // Check if feedback has already been given by this user to the target this month
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

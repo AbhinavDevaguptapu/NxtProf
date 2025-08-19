@@ -5,7 +5,6 @@ export interface Feedback {
     easeOfWork: number;
     remarks: string;
     submittedAt: string;
-    finalRating?: number;
 }
 
 export interface Employee {

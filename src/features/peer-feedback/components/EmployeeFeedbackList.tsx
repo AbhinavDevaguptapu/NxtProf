@@ -1,69 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useUserAuth } from "@/context/UserAuthContext";
-import { collection, getDocs, query, where, documentId, Timestamp } from "firebase/firestore";
-import { db } from "@/integrations/firebase/client";
-import { toast } from "sonner";
 import { UserX, Edit } from "lucide-react";
 import SubmitFeedbackModal from "./SubmitFeedbackModal";
 import { Employee } from "../types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAvailableEmployees } from "../hooks/useAvailableEmployees";
 
 const EmployeeFeedbackList = () => {
-    const { user } = useUserAuth();
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { employees, isLoading, removeEmployee } = useAvailableEmployees();
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-    useEffect(() => {
-        const fetchAvailableEmployees = async () => {
-            if (!user) return;
-            setIsLoading(true);
-            try {
-                const employeesQuery = query(collection(db, "employees"), where(documentId(), "!=", user.uid));
-                const now = new Date();
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-                const feedbackGivenQuery = query(
-                    collection(db, "givenPeerFeedback"),
-                    where("giverId", "==", user.uid),
-                    where("createdAt", ">=", startOfMonth),
-                    where("createdAt", "<=", endOfMonth)
-                );
-
-                const [employeesSnapshot, feedbackGivenSnapshot] = await Promise.all([
-                    getDocs(employeesQuery),
-                    getDocs(feedbackGivenQuery),
-                ]);
-
-                const alreadyGivenToIds = new Set(feedbackGivenSnapshot.docs.map(doc => doc.data().targetId));
-
-                const availableEmployees: Employee[] = [];
-                employeesSnapshot.forEach((doc) => {
-                    if (!alreadyGivenToIds.has(doc.id)) {
-                        const data = doc.data();
-                        if (data.name) {
-                            availableEmployees.push({ id: doc.id, name: data.name });
-                        }
-                    }
-                });
-
-                setEmployees(availableEmployees);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                toast.error("Failed to load employee list.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchAvailableEmployees();
-    }, [user]);
-
     const handleFeedbackSubmitted = (targetId: string) => {
-        setEmployees(prev => prev.filter(emp => emp.id !== targetId));
+        removeEmployee(targetId);
         setSelectedEmployee(null);
     };
 

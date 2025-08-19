@@ -27,6 +27,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { Employee } from "../types";
 import RatingInput from "./RatingInput";
 import { useState } from "react";
+import { usePeerFeedbackLock } from "../hooks/usePeerFeedbackLock";
 
 const functions = getFunctions();
 const givePeerFeedback = httpsCallable(functions, 'peerFeedback-givePeerFeedback');
@@ -48,6 +49,7 @@ interface SubmitFeedbackModalProps {
 const SubmitFeedbackModal = ({ isOpen, onOpenChange, targetEmployee, onFeedbackSubmitted }: SubmitFeedbackModalProps) => {
     const { user } = useUserAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isLocked } = usePeerFeedbackLock();
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -144,7 +146,7 @@ const SubmitFeedbackModal = ({ isOpen, onOpenChange, targetEmployee, onFeedbackS
                         />
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting || isLocked}>
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
