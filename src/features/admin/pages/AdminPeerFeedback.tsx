@@ -34,6 +34,7 @@ const AdminPeerFeedback = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
+    const [viewMode, setViewMode] = useState<'given' | 'received'>('given');
 
     useEffect(() => {
         // Listener for employee names
@@ -70,10 +71,11 @@ const AdminPeerFeedback = () => {
         if (selectedEmployeeId === 'all') {
             return allFeedback;
         }
-        return allFeedback.filter(
-            (item) => item.giverId === selectedEmployeeId || item.targetId === selectedEmployeeId
-        );
-    }, [allFeedback, selectedEmployeeId]);
+        if (viewMode === 'given') {
+            return allFeedback.filter((item) => item.giverId === selectedEmployeeId);
+        }
+        return allFeedback.filter((item) => item.targetId === selectedEmployeeId);
+    }, [allFeedback, selectedEmployeeId, viewMode]);
 
     const employeeMap = useMemo(() => {
         return employees.reduce((acc, emp) => {
@@ -96,7 +98,7 @@ const AdminPeerFeedback = () => {
             <CardHeader>
                 <CardTitle>All Peer Feedback (Real-time)</CardTitle>
                 <CardDescription>Filter the feedback records by selecting an employee.</CardDescription>
-                <div className="pt-4">
+                <div className="pt-4 flex gap-4">
                     <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
                         <SelectTrigger className="w-[280px]">
                             <SelectValue placeholder="Filter by employee..." />
@@ -108,6 +110,17 @@ const AdminPeerFeedback = () => {
                             ))}
                         </SelectContent>
                     </Select>
+                    {selectedEmployeeId !== 'all' && (
+                        <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'given' | 'received')}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="given">Feedback Given</SelectItem>
+                                <SelectItem value="received">Feedback Received</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    )}
                 </div>
             </CardHeader>
             <CardContent>
