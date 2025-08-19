@@ -1,42 +1,52 @@
-
-import { useState, useEffect, useCallback } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { toast } from "sonner";
-
-const functions = getFunctions();
-const getMyReceivedFeedback = httpsCallable(functions, 'peerFeedback-getMyReceivedFeedback');
-
-export interface Feedback {
-    id: string;
-    projectOrTask: string;
-    workEfficiency: number;
-    easeOfWork: number;
-    remarks: string;
-    submittedAt: string;
-    type: 'direct' | 'requested';
-    finalRating?: number;
-}
+import { db } from '@/integrations/firebase/client';
+import { useUserAuth } from '@/context/UserAuthContext';
+import { Feedback } from '../types';
 
 export const useReceivedFeedback = () => {
+    const { user } = useUserAuth();
     const [feedback, setFeedback] = useState<Feedback[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchFeedback = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const result = await getMyReceivedFeedback();
-            setFeedback(result.data as Feedback[]);
-        } catch (error: any) {
-            console.error("Error fetching received feedback:", error);
-            toast.error("Failed to load your feedback.", { description: error.message });
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        fetchFeedback();
-    }, [fetchFeedback]);
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
 
-    return { feedback, isLoading, refresh: fetchFeedback };
+        setIsLoading(true);
+        const feedbackQuery = query(
+            collection(db, "givenPeerFeedback"),
+            where("targetId", "==", user.uid),
+            orderBy("createdAt", "desc")
+        );
+
+        const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
+            const receivedFeedback = snapshot.docs.map(doc => {
+                const data = doc.data();
+                const timestamp = data.createdAt as Timestamp;
+                return {
+                    id: doc.id,
+                    projectOrTask: data.projectOrTask,
+                    workEfficiency: data.workEfficiency,
+                    easeOfWork: data.easeOfWork,
+                    remarks: data.remarks,
+                    submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString(),
+                } as Feedback;
+            });
+            setFeedback(receivedFeedback);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching real-time feedback:", error);
+            toast.error("Failed to load your feedback in real-time.");
+            setIsLoading(false);
+        });
+
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
+    }, [user]);
+
+    return { feedback, isLoading };
 };

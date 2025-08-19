@@ -33,113 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.givePeerFeedback = exports.adminGetAllPeerFeedback = exports.getMyReceivedFeedback = exports.submitPeerFeedback = exports.requestPeerFeedback = void 0;
+exports.givePeerFeedback = exports.adminGetAllPeerFeedback = exports.getMyReceivedFeedback = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
-// Callable function for a user to request feedback from another user
-exports.requestPeerFeedback = (0, https_1.onCall)(async (request) => {
-    var _a, _b;
-    const db = admin.firestore();
-    if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "You must be logged in to request feedback.");
-    }
-    const { targetId, message } = request.data;
-    if (!targetId) {
-        throw new https_1.HttpsError("invalid-argument", "A target user ID must be provided.");
-    }
-    const requesterId = request.auth.uid;
-    try {
-        // Check if feedback has already been given
-        const existingFeedbackQuery = await db.collection("givenPeerFeedback")
-            .where("giverId", "==", targetId)
-            .where("targetId", "==", requesterId)
-            .limit(1)
-            .get();
-        if (!existingFeedbackQuery.empty) {
-            throw new https_1.HttpsError("failed-precondition", "You have already received feedback from this user.");
-        }
-        // Fetch requester and target user data to store their names
-        const requesterDoc = await db.collection("employees").doc(requesterId).get();
-        const targetDoc = await db.collection("employees").doc(targetId).get();
-        if (!requesterDoc.exists || !targetDoc.exists) {
-            throw new https_1.HttpsError("not-found", "One of the users involved does not exist.");
-        }
-        const requesterName = ((_a = requesterDoc.data()) === null || _a === void 0 ? void 0 : _a.name) || "Unknown User";
-        const targetName = ((_b = targetDoc.data()) === null || _b === void 0 ? void 0 : _b.name) || "Unknown User";
-        const feedbackRequest = {
-            requesterId,
-            requesterName,
-            targetId,
-            targetName,
-            message,
-            status: "pending",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        const docRef = await db.collection("peerFeedbackRequests").add(feedbackRequest);
-        return { success: true, id: docRef.id };
-    }
-    catch (error) {
-        console.error("Error requesting peer feedback:", error);
-        if (error instanceof https_1.HttpsError) {
-            throw error;
-        }
-        throw new https_1.HttpsError("internal", "An unexpected error occurred while requesting feedback.");
-    }
-});
-// Callable function to submit feedback in response to a request
-exports.submitPeerFeedback = (0, https_1.onCall)(async (request) => {
-    const db = admin.firestore();
-    if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "You must be logged in to submit feedback.");
-    }
-    const { requestId, projectOrTask, workEfficiency, easeOfWork, remarks } = request.data;
-    // Validate inputs
-    if (!requestId || !projectOrTask || !remarks) {
-        throw new https_1.HttpsError("invalid-argument", "Missing required fields.");
-    }
-    if (workEfficiency < 0 || workEfficiency > 5 || easeOfWork < 0 || easeOfWork > 5) {
-        throw new https_1.HttpsError("invalid-argument", "Ratings must be between 0 and 5.");
-    }
-    const giverId = request.auth.uid;
-    const requestRef = db.collection("peerFeedbackRequests").doc(requestId);
-    try {
-        await db.runTransaction(async (transaction) => {
-            const requestDoc = await transaction.get(requestRef);
-            if (!requestDoc.exists) {
-                throw new https_1.HttpsError("not-found", "The feedback request does not exist.");
-            }
-            const requestData = requestDoc.data();
-            if (requestData.targetId !== giverId) {
-                throw new https_1.HttpsError("permission-denied", "You are not authorized to submit feedback for this request.");
-            }
-            if (requestData.status === "completed") {
-                throw new https_1.HttpsError("failed-precondition", "Feedback has already been submitted for this request.");
-            }
-            // Create a new feedback document in the 'givenPeerFeedback' collection
-            const newFeedback = {
-                giverId,
-                targetId: requestData.requesterId, // The person who asked for feedback is the target
-                projectOrTask,
-                workEfficiency,
-                easeOfWork,
-                remarks,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                type: 'requested',
-            };
-            transaction.set(db.collection("givenPeerFeedback").doc(), newFeedback);
-            // Mark the original request as completed
-            transaction.update(requestRef, { status: "completed" });
-        });
-        return { success: true };
-    }
-    catch (error) {
-        console.error("Error submitting peer feedback:", error);
-        if (error instanceof https_1.HttpsError) {
-            throw error;
-        }
-        throw new https_1.HttpsError("internal", "An unexpected error occurred while submitting feedback.");
-    }
-});
 // Function to get feedback received by the current user (anonymous)
 exports.getMyReceivedFeedback = (0, https_1.onCall)(async (request) => {
     const db = admin.firestore();
@@ -157,8 +53,7 @@ exports.getMyReceivedFeedback = (0, https_1.onCall)(async (request) => {
             workEfficiency: data.workEfficiency,
             easeOfWork: data.easeOfWork,
             remarks: data.remarks,
-            submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString(),
-            type: data.type,
+            submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString()
         };
     });
     return feedback;
@@ -187,8 +82,7 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)(async (request) => {
             workEfficiency: data.workEfficiency,
             easeOfWork: data.easeOfWork,
             remarks: data.remarks,
-            submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString(),
-            type: data.type,
+            submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString()
         };
     }));
     return feedback;
@@ -207,10 +101,15 @@ exports.givePeerFeedback = (0, https_1.onCall)(async (request) => {
     }
     const giverId = request.auth.uid;
     try {
-        // Check if feedback has already been given by this user to the target
+        // Check if feedback has already been given by this user to the target this month
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         const existingFeedbackQuery = await db.collection("givenPeerFeedback")
             .where("giverId", "==", giverId)
             .where("targetId", "==", targetId)
+            .where("createdAt", ">=", startOfMonth)
+            .where("createdAt", "<=", endOfMonth)
             .limit(1)
             .get();
         if (!existingFeedbackQuery.empty) {
@@ -223,8 +122,7 @@ exports.givePeerFeedback = (0, https_1.onCall)(async (request) => {
             workEfficiency,
             easeOfWork,
             remarks,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            type: 'direct',
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
         };
         await db.collection("givenPeerFeedback").add(feedback);
         return { success: true };

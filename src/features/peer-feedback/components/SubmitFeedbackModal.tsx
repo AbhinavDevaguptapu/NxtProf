@@ -20,17 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { db } from "@/integrations/firebase/client";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { FeedbackRequest } from "../hooks/usePendingRequests";
+import { Employee } from "../types";
+import RatingInput from "./RatingInput";
+import { useState } from "react";
 
 const functions = getFunctions();
-const submitPeerFeedback = httpsCallable(functions, 'peerFeedback-submitPeerFeedback');
+const givePeerFeedback = httpsCallable(functions, 'peerFeedback-givePeerFeedback');
 
 const formSchema = z.object({
     projectOrTask: z.string().min(3, "Project or task must be at least 3 characters."),
@@ -40,13 +39,15 @@ const formSchema = z.object({
 });
 
 interface SubmitFeedbackModalProps {
-    request: FeedbackRequest;
+    isOpen: boolean;
     onOpenChange: (open: boolean) => void;
+    targetEmployee: Employee;
     onFeedbackSubmitted: () => void;
 }
 
-const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: SubmitFeedbackModalProps) => {
+const SubmitFeedbackModal = ({ isOpen, onOpenChange, targetEmployee, onFeedbackSubmitted }: SubmitFeedbackModalProps) => {
     const { user } = useUserAuth();
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -62,49 +63,37 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
             toast.error("You must be logged in to submit feedback.");
             return;
         }
+        setIsSubmitting(true);
 
-        const feedbackCollection = collection(db, 'givenPeerFeedback');
-        const q = query(
-            feedbackCollection,
-            where('giverId', '==', user.uid),
-            where('targetId', '==', request.requesterId),
-            where('createdAt', '>', request.createdAt)
-        );
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            toast.error("You have already submitted feedback for this request.");
-            onFeedbackSubmitted();
-            return;
-        }
-
-        const numericValues = {
+        const payload = {
             ...values,
+            giverId: user.uid,
+            targetId: targetEmployee.id,
             workEfficiency: parseInt(values.workEfficiency, 10),
             easeOfWork: parseInt(values.easeOfWork, 10),
         };
 
-        const payload = {
-            requestId: request.id,
-            targetId: request.requesterId,
-            ...numericValues
-        };
-
-        await toast.promise(submitPeerFeedback(payload), {
-            loading: "Submitting your feedback...",
-            success: () => {
-                onFeedbackSubmitted();
-                return "Feedback submitted successfully!";
-            },
-            error: (err) => `Failed to submit: ${err.message}`,
-        });
+        try {
+            await toast.promise(givePeerFeedback(payload), {
+                loading: "Submitting your feedback...",
+                success: () => {
+                    onFeedbackSubmitted();
+                    return "Feedback submitted successfully!";
+                },
+                error: (err) => `Failed to submit: ${err.message}`,
+            });
+        } catch (error) {
+            console.error("Submission failed:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
-        <Dialog open={true} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Give Feedback to {request.requesterName}</DialogTitle>
+                    <DialogTitle className="text-2xl">Give Feedback to {targetEmployee.name}</DialogTitle>
                     <DialogDescription>
                         Your feedback will be submitted anonymously. Please be constructive and respectful.
                     </DialogDescription>
@@ -124,58 +113,16 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <RatingInput
                                 control={form.control}
                                 name="workEfficiency"
-                                render={({ field }) => (
-                                    <FormItem className="space-y-3">
-                                        <FormLabel>Work Efficiency</FormLabel>
-                                        <FormControl>
-                                            <RadioGroup
-                                                onValueChange={field.onChange}
-                                                value={field.value}
-                                                className="flex flex-wrap gap-4"
-                                            >
-                                                {[1, 2, 3, 4, 5].map(value => (
-                                                    <FormItem key={value} className="flex items-center space-x-2 space-y-0">
-                                                        <FormControl>
-                                                            <RadioGroupItem value={String(value)} />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal">{value}</FormLabel>
-                                                    </FormItem>
-                                                ))}
-                                            </RadioGroup>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                label="Work Efficiency"
                             />
-                            <FormField
+                            <RatingInput
                                 control={form.control}
                                 name="easeOfWork"
-                                render={({ field }) => (
-                                    <FormItem className="space-y-3">
-                                        <FormLabel>Ease of Collaboration</FormLabel>
-                                        <FormControl>
-                                            <RadioGroup
-                                                onValueChange={field.onChange}
-                                                value={field.value}
-                                                className="flex flex-wrap gap-4"
-                                            >
-                                                {[1, 2, 3, 4, 5].map(value => (
-                                                    <FormItem key={value} className="flex items-center space-x-2 space-y-0">
-                                                        <FormControl>
-                                                            <RadioGroupItem value={String(value)} />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal">{value}</FormLabel>
-                                                    </FormItem>
-                                                ))}
-                                            </RadioGroup>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                label="Ease of Collaboration"
                             />
                         </div>
                         <FormField
@@ -197,11 +144,15 @@ const SubmitFeedbackModal = ({ request, onOpenChange, onFeedbackSubmitted }: Sub
                         />
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Submitting...</span>
+                                    </>
+                                ) : (
+                                    "Submit Anonymously"
                                 )}
-                                Submit Anonymously
                             </Button>
                         </DialogFooter>
                     </form>
