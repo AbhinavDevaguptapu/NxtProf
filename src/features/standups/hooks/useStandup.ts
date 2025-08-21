@@ -65,7 +65,9 @@ export const useStandup = () => {
       try {
         const empSnapshot = await getDocs(collection(db, "employees"));
         setEmployees(
-          empSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
+          empSnapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
+            .filter(emp => emp.archived !== true)
         );
       } catch (error) {
         console.error("Error fetching employees:", error);

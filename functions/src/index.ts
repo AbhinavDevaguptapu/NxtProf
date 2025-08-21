@@ -52,7 +52,10 @@ export {
     addAdminRole,
     removeAdminRole,
     deleteEmployee,
+    archiveEmployee,
+    unarchiveEmployee,
     getEmployeesWithAdminStatus,
+    getArchivedEmployees,
 } from "./users";
 
 // Peer Feedback (exports all functions from the module as a single group)

@@ -85,6 +85,7 @@ export const AttendanceReport = ({
           setEmployees(
             empSnap.docs
               .map((d) => ({ id: d.id, ...d.data() } as Employee))
+              .filter(emp => emp.archived !== true)
               .sort((a, b) => a.name.localeCompare(b.name))
           );
         }

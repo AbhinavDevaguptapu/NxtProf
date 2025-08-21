@@ -88,6 +88,7 @@ export default function AuthPage() {
           hasCompletedSetup: false,
           employeeId: "",
           feedbackSheetUrl: "",
+          archived: false,
         });
       }
       navigate("/setup", { replace: true });
@@ -144,6 +145,7 @@ export default function AuthPage() {
           hasCompletedSetup: false,
           employeeId: "",
           feedbackSheetUrl: "",
+          archived: false,
         });
         await handleSuccessfulLogin(cred.user);
       }

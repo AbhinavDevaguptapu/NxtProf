@@ -74,6 +74,47 @@ export const deleteEmployee = onCall<{ uid?: string }>(async (request) => {
     }
 });
 
+export const archiveEmployee = onCall<{ uid?: string }>(async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can archive employees.");
+    }
+    const uid = request.data.uid;
+    if (!uid) {
+        throw new HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
+    }
+    if (request.auth.uid === uid) {
+        throw new HttpsError("permission-denied", "Admins cannot archive their own account.");
+    }
+
+    try {
+        await admin.auth().updateUser(uid, { disabled: true });
+        await admin.firestore().doc(`employees/${uid}`).update({ archived: true });
+        return { message: "Employee archived successfully." };
+    } catch (error: any) {
+        console.error("archiveEmployee error:", error);
+        throw new HttpsError("internal", error.message || "An unknown error occurred.");
+    }
+});
+
+export const unarchiveEmployee = onCall<{ uid?: string }>(async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can unarchive employees.");
+    }
+    const uid = request.data.uid;
+    if (!uid) {
+        throw new HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
+    }
+
+    try {
+        await admin.auth().updateUser(uid, { disabled: false });
+        await admin.firestore().doc(`employees/${uid}`).update({ archived: false });
+        return { message: "Employee unarchived successfully." };
+    } catch (error: any) {
+        console.error("unarchiveEmployee error:", error);
+        throw new HttpsError("internal", error.message || "An unknown error occurred.");
+    }
+});
+
 export const getEmployeesWithAdminStatus = onCall(async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can view the employee list.");
@@ -88,14 +129,34 @@ export const getEmployeesWithAdminStatus = onCall(async (request) => {
         );
 
         const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
-        const employeesWithStatus = employeesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            isAdmin: adminUids.has(doc.id),
-        }));
+        const employeesWithStatus = employeesSnapshot.docs
+            .filter(doc => doc.data().archived !== true) // Filter in code
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                isAdmin: adminUids.has(doc.id),
+            }));
         return employeesWithStatus;
     } catch (error: any) {
         console.error("Error fetching employees with admin status:", error);
         throw new HttpsError("internal", "Failed to fetch employee data.");
+    }
+});
+
+export const getArchivedEmployees = onCall(async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can view the archived employee list.");
+    }
+
+    try {
+        const employeesSnapshot = await admin.firestore().collection("employees").where("archived", "==", true).orderBy("name").get();
+        const employees = employeesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        return employees;
+    } catch (error: any) {
+        console.error("Error fetching archived employees:", error);
+        throw new HttpsError("internal", "Failed to fetch archived employee data.");
     }
 });

@@ -67,17 +67,21 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)(async (request) => {
     }
     const givenSnapshot = await db.collection("givenPeerFeedback").orderBy("createdAt", "desc").get();
     const feedback = await Promise.all(givenSnapshot.docs.map(async (doc) => {
-        var _a, _b;
+        var _a, _b, _c, _d;
         const data = doc.data();
         const [giverDoc, receiverDoc] = await Promise.all([
             db.collection("employees").doc(data.giverId).get(),
             db.collection("employees").doc(data.targetId).get()
         ]);
+        // Skip feedback if either giver or receiver is archived
+        if (((_a = giverDoc.data()) === null || _a === void 0 ? void 0 : _a.archived) === true || ((_b = receiverDoc.data()) === null || _b === void 0 ? void 0 : _b.archived) === true) {
+            return null;
+        }
         const timestamp = data.createdAt;
         return {
             id: doc.id,
-            giver: { id: data.giverId, name: ((_a = giverDoc.data()) === null || _a === void 0 ? void 0 : _a.name) || "Unknown" },
-            receiver: { id: data.targetId, name: ((_b = receiverDoc.data()) === null || _b === void 0 ? void 0 : _b.name) || "Unknown" },
+            giver: { id: data.giverId, name: ((_c = giverDoc.data()) === null || _c === void 0 ? void 0 : _c.name) || "Unknown" },
+            receiver: { id: data.targetId, name: ((_d = receiverDoc.data()) === null || _d === void 0 ? void 0 : _d.name) || "Unknown" },
             projectOrTask: data.projectOrTask,
             workEfficiency: data.workEfficiency,
             easeOfWork: data.easeOfWork,
@@ -85,7 +89,7 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)(async (request) => {
             submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString()
         };
     }));
-    return feedback;
+    return feedback.filter(item => item !== null);
 });
 exports.togglePeerFeedbackLock = (0, https_1.onCall)(async (request) => {
     var _a;

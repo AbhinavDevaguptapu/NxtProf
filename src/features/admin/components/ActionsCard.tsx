@@ -24,10 +24,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Edit, Trash2, ShieldCheck, ShieldOff, Loader2 } from 'lucide-react';
+import { Edit, Trash2, ShieldCheck, ShieldOff, Loader2, Archive } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/integrations/firebase/client';
+
+import { useAdminAuth } from '@/context/AdminAuthContext';
 
 interface Employee {
   id: string;
@@ -60,6 +62,7 @@ const updateEmployee = async (id: string, data: Partial<EditableEmployeeData>): 
 };
 
 export default function ActionsCard({ employee, onActionCompletes }: ActionsCardProps) {
+  const { admin } = useAdminAuth();
   const { toast } = useToast();
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -134,6 +137,22 @@ export default function ActionsCard({ employee, onActionCompletes }: ActionsCard
     } catch (err) {
       const error = err as Error;
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleArchiveEmployee = async () => {
+    setProcessingAction('archive');
+    try {
+      const functions = getFunctions();
+      const archiveFn = httpsCallable(functions, 'archiveEmployee');
+      await archiveFn({ uid: employee.id });
+      toast({ title: "Archived", description: `${employee.name} has been archived.`, className: "bg-green-500 text-white" });
+      onActionCompletes();
+    } catch (err) {
+      const error = err as Error;
+      toast({ title: "Archive failed", description: error.message, variant: "destructive" });
     } finally {
       setProcessingAction(null);
     }
@@ -220,6 +239,24 @@ export default function ActionsCard({ employee, onActionCompletes }: ActionsCard
             </AlertDialogContent>
           </AlertDialog>
         )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full justify-start gap-2" disabled={!!processingAction || employee.id === admin?.uid}>
+              {processingAction === 'archive' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+              Archive Employee
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to archive {employee.name}?</AlertDialogTitle>
+              <AlertDialogDescription>This action will move the employee to the archived list. They will not be able to log in until unarchived.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleArchiveEmployee}>Yes, Archive</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
 
       <CardFooter className="flex-col items-start gap-y-3 border-t px-6 py-4">

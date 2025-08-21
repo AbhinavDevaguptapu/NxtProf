@@ -767,6 +767,10 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           const doc = querySnapshot.docs[0];
+          if (doc.data().archived === true) {
+            setChartError("This employee is archived.");
+            return;
+          }
           setEmployeeData({
             name: doc.data().name,
             firebaseUid: doc.id, // This is the Document ID

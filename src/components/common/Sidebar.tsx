@@ -38,7 +38,8 @@ import {
     LucideIcon,
     Bot,
     UsersRound,
-    BookCheck
+    BookCheck,
+    Archive
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -66,6 +67,7 @@ const adminNavItems = [
     { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
     { id: "manage-employees", label: "Manage Employees", icon: Users },
+    { id: "archived-employees", label: "Archived Employees", icon: Archive },
     { id: "attendance", label: "Manage Attendance", icon: CalendarCheck },
 ]
 

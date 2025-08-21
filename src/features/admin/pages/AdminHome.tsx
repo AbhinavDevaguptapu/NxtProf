@@ -69,13 +69,14 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
         const tomorrow = new Date(today)
         tomorrow.setDate(tomorrow.getDate() + 1)
 
-        const [employeeSnapshot, standupSnapshot, learningHourSnapshot] = await Promise.all([
-          getCountFromServer(collection(db, "employees")),
+        const [employeeDocs, standupSnapshot, learningHourSnapshot] = await Promise.all([
+          getDocs(collection(db, "employees")),
           getDocs(query(collection(db, "standups"), where("scheduledTime", ">=", Timestamp.fromDate(today)), where("scheduledTime", "<", Timestamp.fromDate(tomorrow)), orderBy("scheduledTime", "desc"), limit(1))),
           getDocs(query(collection(db, "learning_hours"), where("scheduledTime", ">=", Timestamp.fromDate(today)), where("scheduledTime", "<", Timestamp.fromDate(tomorrow)), orderBy("scheduledTime", "desc"), limit(1)))
-        ])
+        ]);
 
-        setEmployeeCount(employeeSnapshot.data().count)
+        const activeEmployees = employeeDocs.docs.filter(doc => doc.data().archived !== true);
+        setEmployeeCount(activeEmployees.length);
 
         if (!standupSnapshot.empty) {
           const standupDoc = standupSnapshot.docs[0]

@@ -119,7 +119,7 @@ const AdminStandupDashboard: React.FC = () => {
     if (!todayStandup) return;
     (async () => {
       const snap = await getDocs(collection(db, "employees"));
-      setEmployees(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      setEmployees(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(emp => emp.archived !== true));
     })();
   }, [todayStandup]);
 

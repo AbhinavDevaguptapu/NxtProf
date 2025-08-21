@@ -39,8 +39,8 @@ export const useAvailableEmployees = () => {
 
                 const availableEmployees: Employee[] = [];
                 employeesSnapshot.forEach((doc) => {
-                    if (!alreadyGivenToIds.has(doc.id)) {
-                        const data = doc.data();
+                    const data = doc.data();
+                    if (!alreadyGivenToIds.has(doc.id) && data.archived !== true) {
                         if (data.name) {
                             availableEmployees.push({ id: doc.id, name: data.name });
                         }

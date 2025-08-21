@@ -13,6 +13,7 @@ export type Standup = {
 };
 
 export type Employee = {
+  archived: boolean;
   id: string;
   name: string;
   email: string;

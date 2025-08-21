@@ -53,6 +53,12 @@ export const adminGetAllPeerFeedback = onCall(async (request) => {
             db.collection("employees").doc(data.giverId).get(),
             db.collection("employees").doc(data.targetId).get()
         ]);
+
+        // Skip feedback if either giver or receiver is archived
+        if (giverDoc.data()?.archived === true || receiverDoc.data()?.archived === true) {
+            return null;
+        }
+
         const timestamp = data.createdAt as admin.firestore.Timestamp;
         return {
             id: doc.id,
@@ -66,7 +72,7 @@ export const adminGetAllPeerFeedback = onCall(async (request) => {
         };
     }));
 
-    return feedback;
+    return feedback.filter(item => item !== null);
 });
 
 export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(async (request) => {
