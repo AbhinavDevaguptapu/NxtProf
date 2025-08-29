@@ -60,3 +60,6 @@ export {
 
 // Peer Feedback (exports all functions from the module as a single group)
 export * as peerFeedback from "./peerFeedback";
+
+// Performance
+export { getEmployeePerformanceSummary } from "./performance";

@@ -1,0 +1,824 @@
+import React, { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MoreVertical, Edit, Archive, Trash2, Loader2, User, Star, Calendar, TrendingUp, Activity, ShieldCheck, ShieldOff } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import EmployeeAvatar from "./EmployeeAvatar";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { format, subMonths } from 'date-fns';
+import { Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/components/ui/use-toast";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/integrations/firebase/client';
+import { useAdminAuth } from '@/context/AdminAuthContext';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend, ChartDataLabels);
+
+// --- TYPE DEFINITIONS ---
+interface Employee {
+    id: string;
+    name: string;
+    email:string;
+    employeeId?: string;
+    feedbackSheetUrl?: string;
+    isAdmin?: boolean;
+    role?: string;
+}
+
+interface AttendanceStats {
+    present: number;
+    absent: number;
+    missed: number;
+    unavailable: number;
+}
+
+interface PerformanceData {
+    standupAttendance: AttendanceStats;
+    learningAttendance: AttendanceStats;
+    monthlyChart: { standupDays: number; learningDays: number; };
+    presenceChart: AttendanceStats & { presencePercentage: string; };
+    workingDays: number;
+}
+
+interface EditableEmployeeData {
+    name: string;
+    employeeId: string;
+    feedbackSheetUrl: string;
+}
+
+interface CallableResponse {
+    message: string;
+}
+
+// Firestore update function
+const updateEmployee = async (id: string, data: Partial<EditableEmployeeData>): Promise<void> => {
+    const employeeRef = doc(db, "employees", id);
+    await updateDoc(employeeRef, data);
+};
+
+
+// --- CHART COMPONENTS ---
+
+const PresencePieChart = ({ data, title }: { data: AttendanceStats, title: string }) => {
+    const allLabels = ['Present', 'Absent', 'Missed', 'Not Available'];
+    const allData = [data.present, data.absent, data.missed, data.unavailable];
+    const allColors = ['#059669', '#D97706', '#DC2626', '#4B5563'];
+
+    const filteredLabels = allLabels.filter((_, index) => allData[index] > 0);
+    const filteredData = allData.filter(value => value > 0);
+    const filteredColors = allColors.filter((_, index) => allData[index] > 0);
+
+    const chartData = {
+        labels: filteredLabels,
+        datasets: [{
+            data: filteredData,
+            backgroundColor: filteredColors,
+            borderColor: '#fff',
+            borderWidth: 2,
+            hoverOffset: 8
+        }],
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: title,
+                font: {
+                    size: 16,
+                    weight: 'bold' as 'bold'
+                },
+                padding: {
+                    bottom: 15
+                },
+            },
+            legend: {
+                position: 'bottom' as const,
+                labels: {
+                    padding: 20,
+                    font: {
+                        size: 14
+                    }
+                }
+            },
+            datalabels: {
+                display: true,
+                color: '#fff',
+                font: {
+                    size: 14,
+                    weight: 'bold' as 'bold'
+                },
+                formatter: (value) => {
+                    return value > 0 ? value : '';
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                titleColor: '#1f2937',
+                bodyColor: '#4b5563',
+                borderColor: '#e5e7eb',
+                borderWidth: 1,
+                padding: 12,
+                boxPadding: 6,
+                callbacks: {
+                    label: function (context: any) {
+                        let label = context.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed !== null) {
+                            label += context.parsed;
+                        }
+                        return label;
+                    }
+                }
+            }
+        }
+    };
+
+    if (filteredData.length === 0) {
+        return (
+            <div className="h-80 flex flex-col items-center justify-center text-center">
+                <div className="text-muted-foreground mb-2">{title}</div>
+                <p className="text-sm text-gray-500">No attendance data for this period.</p>
+            </div>
+        );
+    }
+
+    return <div className="h-80"><Pie data={chartData} options={options} /></div>;
+};
+
+// --- Feedback Tab ---
+
+interface Feedback {
+    date: string;
+    understanding: number;
+    instructor: number;
+    comment: string;
+}
+
+const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex items-center">
+        {Array.from({ length: 5 }, (_, i) => (
+            <Star
+                key={i}
+                className={`h-4 w-4 ${i < Math.round(rating) ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`}
+            />
+        ))}
+        <span className="ml-2 text-sm text-muted-foreground">{rating.toFixed(1)}</span>
+    </div>
+);
+
+const FeedbackTabContent = ({ employeeId, month }: { employeeId: string, month: string }) => {
+    const [feedback, setFeedback] = useState<Feedback[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchFeedback = async () => {
+            if (!employeeId || !month) return;
+            setLoading(true);
+            setError(null);
+            try {
+                const functions = getFunctions();
+                const getRawFeedback = httpsCallable<any, Feedback[]>(functions, 'getRawFeedback');
+                const result = await getRawFeedback({
+                    employeeId,
+                    timeFrame: 'monthly',
+                    date: `${month}-01`,
+                });
+                setFeedback(result.data);
+            } catch (err) {
+                console.error("Error fetching feedback:", err);
+                setError("Failed to load feedback.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchFeedback();
+    }, [employeeId, month]);
+
+    const averageRating = feedback.length > 0
+        ? feedback.reduce((acc, f) => acc + f.instructor, 0) / feedback.length
+        : 0;
+
+    if (loading) {
+        return (
+            <div className="p-6">
+                <Skeleton className="h-8 w-1/2 mb-2" />
+                <Skeleton className="h-4 w-1/3 mb-6" />
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-48" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-10 w-24" />
+                            <Skeleton className="h-6 w-40" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="py-12 text-center">
+                <div className="text-destructive mb-2">{error}</div>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                    Try Again
+                </Button>
+            </div>
+        );
+    }
+
+    if (feedback.length === 0) {
+        return (
+            <div className="p-6">
+                 <div className="mb-4">
+                    <h2 className="text-xl font-semibold">Qualitative Feedback</h2>
+                    <p className="text-sm text-muted-foreground">Feedback for {format(new Date(`${month}-01`), 'MMMM yyyy')}</p>
+                </div>
+                <div className="py-12 text-center border rounded-lg">
+                    <div className="text-muted-foreground mb-4">No feedback submitted for this month.</div>
+                    <Calendar className="h-12 w-12 text-muted-foreground opacity-40 mx-auto" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative">
+            <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 px-6 py-4 border-b">
+                <div className="mb-4">
+                    <h2 className="text-xl font-semibold">Qualitative Feedback</h2>
+                    <p className="text-sm text-muted-foreground">Feedback for {format(new Date(`${month}-01`), 'MMMM yyyy')}</p>
+                </div>
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-medium">Average Instructor Rating</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center gap-4">
+                        <div className="text-3xl font-bold text-gray-900">{averageRating.toFixed(2)}</div>
+                        <StarRating rating={averageRating} />
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="space-y-4 p-6">
+                <h3 className="font-medium text-gray-700">Feedback Sessions</h3>
+                {feedback.map((item, index) => (
+                    <Card key={index} className="overflow-hidden">
+                        <CardContent className="p-0">
+                            <div className="p-4 border-b border-gray-100 flex justify-between items-start">
+                                <div className="text-sm text-muted-foreground">
+                                    {format(new Date(item.date), 'MMM dd, yyyy')}
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <StarRating rating={item.instructor} />
+                                </div>
+                            </div>
+                            <div className="p-4">
+                                <p className="text-gray-800">{item.comment || "No comment provided."}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// --- HEADER COMPONENT ---
+const EmployeeDetailHeader = ({ employee, onActionComplete }: { employee: Employee, onActionComplete: () => void }) => {
+    const { admin } = useAdminAuth();
+    const { toast } = useToast();
+    const [processingAction, setProcessingAction] = useState<string | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editFormData, setEditFormData] = useState<EditableEmployeeData>({
+        name: '',
+        employeeId: '',
+        feedbackSheetUrl: '',
+    });
+
+    useEffect(() => {
+        if (employee) {
+            setEditFormData({
+                name: employee.name || '',
+                employeeId: employee.employeeId || '',
+                feedbackSheetUrl: employee.feedbackSheetUrl || '',
+            });
+        }
+    }, [employee]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setEditFormData((prev) => ({ ...prev, [id]: value }));
+    };
+
+    const handleUpdateEmployee = async () => {
+        if (!editFormData.name.trim()) {
+            toast({ title: "Validation Error", description: "Name cannot be empty.", variant: "destructive" });
+            return;
+        }
+        setProcessingAction('update');
+        try {
+            await updateEmployee(employee.id, editFormData);
+            toast({ title: "Success", description: `${employee.name}'s profile updated.`, className: "bg-green-500 text-white" });
+            onActionComplete();
+            setIsEditDialogOpen(false);
+        } catch (err) {
+            const error = err as Error;
+            toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setProcessingAction(null);
+        }
+    };
+
+    const handleRoleChange = async (action: 'promote' | 'demote') => {
+        setProcessingAction(action);
+        const fnName = action === 'promote' ? 'addAdminRole' : 'removeAdminRole';
+        try {
+            const functions = getFunctions();
+            const callable = httpsCallable<unknown, CallableResponse>(functions, fnName);
+            const result = await callable({ email: employee.email });
+            toast({ title: "Success", description: result.data.message, className: "bg-blue-500 text-white" });
+            onActionComplete();
+        } catch (err) {
+            const error = err as Error;
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        } finally {
+            setProcessingAction(null);
+        }
+    };
+
+    const handleDeleteEmployee = async () => {
+        setProcessingAction('delete');
+        try {
+            const functions = getFunctions();
+            const deleteFn = httpsCallable(functions, 'deleteEmployee');
+            await deleteFn({ uid: employee.id });
+            toast({ title: "Deleted", description: `${employee.name} has been removed.`, className: "bg-green-500 text-white" });
+            onActionComplete();
+        } catch (err) {
+            const error = err as Error;
+            toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+        } finally {
+            setProcessingAction(null);
+        }
+    };
+
+    const handleArchiveEmployee = async () => {
+        setProcessingAction('archive');
+        try {
+            const functions = getFunctions();
+            const archiveFn = httpsCallable(functions, 'archiveEmployee');
+            await archiveFn({ uid: employee.id });
+            toast({ title: "Archived", description: `${employee.name} has been archived.`, className: "bg-green-500 text-white" });
+            onActionComplete();
+        } catch (err) {
+            const error = err as Error;
+            toast({ title: "Archive failed", description: error.message, variant: "destructive" });
+        } finally {
+            setProcessingAction(null);
+        }
+    };
+
+    const actionButtons = (
+        <>
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                        <Edit className="h-4 w-4" /> Edit
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Edit {employee.name}</DialogTitle>
+                        <DialogDescription>
+                            Make changes to the employee's profile. Click save when you're done.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid w-full items-center gap-1.5">
+                            <Label htmlFor="name">Name</Label>
+                            <Input id="name" value={editFormData.name} onChange={handleInputChange} />
+                        </div>
+                        <div className="grid w-full items-center gap-1.5">
+                            <Label htmlFor="employeeId">Employee ID</Label>
+                            <Input id="employeeId" value={editFormData.employeeId} onChange={handleInputChange} />
+                        </div>
+                        <div className="grid w-full items-center gap-1.5">
+                            <Label htmlFor="feedbackSheetUrl">Feedback URL</Label>
+                            <Input id="feedbackSheetUrl" value={editFormData.feedbackSheetUrl} onChange={handleInputChange} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handleUpdateEmployee} disabled={processingAction === 'update'}>
+                            {processingAction === 'update' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2" disabled={!!processingAction || employee.id === admin?.uid}>
+                        {processingAction === 'archive' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                        Archive
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure you want to archive {employee.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>This action will move the employee to the archived list. They will not be able to log in until unarchived.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleArchiveEmployee}>Yes, Archive</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50" disabled={!!processingAction}>
+                        {processingAction === 'delete' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Delete
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. This will permanently delete {employee.name}'s account, profile, and all associated data.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteEmployee}>Yes, Permanently Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+
+    const dropdownMenuItems = (
+        <>
+            <DropdownMenuItem className="gap-2" onSelect={() => setIsEditDialogOpen(true)}>
+                <Edit className="h-4 w-4" /> Edit
+            </DropdownMenuItem>
+
+            {employee.isAdmin ? (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem className="gap-2 text-orange-600 focus:text-orange-700" onSelect={(e) => e.preventDefault()}>
+                            {processingAction === 'demote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                            Remove Admin
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Admin Rights?</AlertDialogTitle>
+                            <AlertDialogDescription>This will revoke admin privileges for {employee.name}.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRoleChange('demote')}>Yes, Remove Admin</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            ) : (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem className="gap-2 text-blue-600 focus:text-blue-700" onSelect={(e) => e.preventDefault()}>
+                            {processingAction === 'promote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                            Make Admin
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Make {employee.name} an Admin?</AlertDialogTitle>
+                            <AlertDialogDescription>This will grant admin privileges to {employee.email}.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRoleChange('promote')}>Promote to Admin</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <DropdownMenuItem className="gap-2" onSelect={(e) => e.preventDefault()} disabled={employee.id === admin?.uid}>
+                        <Archive className="h-4 w-4" /> Archive
+                    </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Archive {employee.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>This will move the employee to the archived list.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleArchiveEmployee}>Yes, Archive</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <DropdownMenuItem className="gap-2 text-red-600 focus:text-red-700" onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Permanently Delete {employee.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteEmployee}>Yes, Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+
+    return (
+        <div className="flex items-center justify-between gap-4 pb-6 border-b border-gray-200">
+            <div className="flex items-center gap-4">
+                <EmployeeAvatar name={employee.name} className="h-16 w-16 text-lg" />
+                <div>
+                    <h1 className="text-2xl font-semibold text-gray-900">{employee.name}</h1>
+                    <p className="text-muted-foreground">{employee.role || 'Employee'}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{employee.email}</p>
+                    {employee.employeeId && (
+                        <p className="text-sm text-muted-foreground">ID: {employee.employeeId}</p>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2">
+                    {actionButtons}
+                    {employee.isAdmin ? (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2 text-orange-600 hover:text-orange-600 border-orange-300 hover:bg-orange-50" disabled={!!processingAction}>
+                                    {processingAction === 'demote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                                    Remove Admin
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Remove Admin Rights?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will revoke admin privileges for {employee.name}.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleRoleChange('demote')}>Yes, Remove Admin</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    ) : (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2 text-blue-600 hover:text-blue-600 border-blue-300 hover:bg-blue-50" disabled={!!processingAction}>
+                                    {processingAction === 'promote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                    Make Admin
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Make {employee.name} an Admin?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will grant admin privileges to {employee.email}.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleRoleChange('promote')}>Promote to Admin</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="md:hidden">
+                            <MoreVertical className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                        {dropdownMenuItems}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </div>
+    );
+};
+
+// --- MONTH SELECTOR (Minimalist) ---
+const MonthSelector = ({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) => (
+    <div className="flex items-center gap-2">
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+        <Select value={value} onValueChange={onChange}>
+            <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select month" />
+            </SelectTrigger>
+            <SelectContent>
+                {options.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+            </SelectContent>
+        </Select>
+    </div>
+);
+
+// --- STATS CARDS (Minimalist) ---
+const StatCard = ({ title, value, icon: Icon, color = "text-gray-900" }: { title: string; value: number | string; icon?: any; color?: string }) => (
+    <Card className="overflow-hidden">
+        <CardContent className="p-4 flex items-center">
+            {Icon && <Icon className={`h-5 w-5 mr-3 ${color.replace('text-', 'text-')} opacity-70`} />}
+            <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
+                <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+            </div>
+        </CardContent>
+    </Card>
+);
+
+const StatCardSkeleton = () => (
+    <Card className="overflow-hidden">
+        <CardContent className="p-4 flex items-center">
+            <Skeleton className="h-5 w-5 mr-3 rounded-full" />
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-7 w-12" />
+            </div>
+        </CardContent>
+    </Card>
+);
+
+// --- MAIN COMPONENT ---
+interface EmployeeDetailViewProps {
+    employee: Employee;
+    onActionComplete: () => void;
+}
+
+export default function EmployeeDetailView({ employee, onActionComplete }: EmployeeDetailViewProps) {
+    const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+    const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchPerformanceData = async () => {
+            if (!employee.id || !selectedMonth) return;
+            setLoading(true);
+            setError(null);
+            try {
+                const functions = getFunctions();
+                const getPerformanceSummary = httpsCallable<any, PerformanceData>(functions, 'getEmployeePerformanceSummary');
+                const result = await getPerformanceSummary({ employeeId: employee.id, month: selectedMonth });
+                setPerformanceData(result.data);
+            } catch (err) {
+                console.error("Error fetching performance data:", err);
+                setError("Failed to load performance data. Please try again.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchPerformanceData();
+    }, [employee.id, selectedMonth]);
+
+    const monthOptions = Array.from({ length: 6 }, (_, i) => {
+        const d = subMonths(new Date(), i);
+        return { value: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') };
+    });
+
+    return (
+        <div className="space-y-8 py-4">
+            <EmployeeDetailHeader employee={employee} onActionComplete={onActionComplete} />
+
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-900">Performance Overview</h2>
+                <MonthSelector value={selectedMonth} onChange={setSelectedMonth} options={monthOptions} />
+            </div>
+
+            {loading ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton />
+                </div>
+            ) : error ? (
+                <Card className="p-6 text-center">
+                    <div className="text-destructive mb-2">{error}</div>
+                    <Button variant="outline" onClick={() => window.location.reload()}>
+                        Try Again
+                    </Button>
+                </Card>
+            ) : performanceData ? (
+                <>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <StatCard
+                            title="Working Days"
+                            value={performanceData.workingDays}
+                            icon={Calendar}
+                            color="text-gray-700"
+                        />
+                        <StatCard
+                            title="Overall Presence"
+                            value={`${performanceData.presenceChart.presencePercentage}%`}
+                            icon={User}
+                            color="text-green-600"
+                        />
+                        <StatCard
+                            title="Standup Attendance"
+                            value={`${Math.round((performanceData.standupAttendance.present / performanceData.workingDays) * 100)}%`}
+                            icon={Activity}
+                            color="text-blue-600"
+                        />
+                        <StatCard
+                            title="Learning Attendance"
+                            value={`${Math.round((performanceData.learningAttendance.present / performanceData.workingDays) * 100)}%`}
+                            icon={TrendingUp}
+                            color="text-purple-600"
+                        />
+                    </div>
+                </>
+            ) : null}
+
+            <Tabs defaultValue="performance" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="performance" className="flex items-center gap-2">
+                        <Activity className="h-4 w-4" /> Performance
+                    </TabsTrigger>
+                    <TabsTrigger value="feedback" className="flex items-center gap-2">
+                        <Star className="h-4 w-4" /> Feedback
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="performance" className="mt-2 space-y-6">
+                    {loading ? (
+                        <>
+                            <Card><CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
+                            <Card><CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
+                        </>
+                    ) : error ? (
+                        <Card className="p-6 text-center text-destructive">{error}</Card>
+                    ) : performanceData ? (
+                        <>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Presence Breakdown</CardTitle>
+                                    <CardDescription>Comparison of attendance distribution for different activities</CardDescription>
+                                </CardHeader>
+                                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <PresencePieChart data={performanceData.standupAttendance} title="Standup Attendance" />
+                                    <PresencePieChart data={performanceData.learningAttendance} title="Learning Hours Attendance" />
+                                </CardContent>
+                            </Card>
+                        </>
+                    ) : (
+                        <Card className="p-8 text-center">
+                            <div className="text-muted-foreground mb-4">No performance data available for this month.</div>
+                            <Calendar className="h-12 w-12 text-muted-foreground opacity-40 mx-auto" />
+                        </Card>
+                    )}
+                </TabsContent>
+                <TabsContent value="feedback" className="mt-2">
+                    <Card>
+                        <CardContent className="p-0">
+                            <FeedbackTabContent employeeId={employee.id} month={selectedMonth} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+        </div>
+    );
+}

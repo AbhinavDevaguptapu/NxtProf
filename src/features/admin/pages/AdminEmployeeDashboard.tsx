@@ -4,20 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Search, Menu, Users as UsersIcon, ServerCrash, UserPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import AdminEmployeeDetail from "./AdminEmployeeDetail";
-import AttendanceSummaryCard from "../components/AttendanceSummaryCard";
-import ActionsCard from "../components/ActionsCard";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EmployeeDetailView from "../components/EmployeeDetailView";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import EmployeeAvatar from "../components/EmployeeAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 
 // --- Types ---
 interface Employee {
     id: string;
-    name:string;
+    name: string;
     email: string;
     employeeId?: string;
     feedbackSheetUrl?: string;
@@ -42,10 +38,10 @@ function useEmployees() {
             const result = await getEmployees();
             const data = result.data as Employee[];
             if (!Array.isArray(data)) throw new Error("Unexpected response format");
-            
+
             setEmployees(data);
-            // Reselect the current user if they still exist, otherwise select the first.
-            setSelected(prev => data.find(emp => emp.id === prev?.id) || data[0] || null);
+            // Reselect the current user if they still exist.
+            setSelected(prev => data.find(emp => emp.id === prev?.id) || null);
         } catch (err) {
             console.error("Error loading employees:", err);
             setError("Could not load employee data. Please try again.");
@@ -146,7 +142,7 @@ const EmployeeList: React.FC<{
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar">
+            <div className="flex-1 overflow-y-auto">
                 {loading ? (
                     <div className="p-2 space-y-1">
                         {Array.from({ length: 8 }).map((_, i) => <EmployeeListItemSkeleton key={i} />)}
@@ -209,7 +205,7 @@ const ContentPlaceholder: React.FC<{
         <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center text-center text-muted-foreground max-w-sm">
                 <div className="mb-4 rounded-full bg-muted p-3">
-                     <Icon className={cn("h-8 w-8 text-muted-foreground/70", className)} />
+                    <Icon className={cn("h-8 w-8 text-muted-foreground/70", className)} />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">{title}</h2>
                 <p className="mt-2 text-sm">{description}</p>
@@ -232,54 +228,7 @@ const DashboardContent: React.FC<{
     }
 
     return (
-        <div className="space-y-6">
-            {/* Main Content Header (Desktop) */}
-            <div className="hidden lg:flex items-center gap-4">
-                <EmployeeAvatar name={employee.name} className="h-16 w-16" />
-                <div className="min-w-0">
-                    <div className="flex items-center gap-3">
-                       <h1 className="text-2xl font-bold truncate">{employee.name}</h1>
-                       {employee.isAdmin && (
-                            <span className="px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 rounded-full">
-                                Admin
-                            </span>
-                        )}
-                    </div>
-                    <p className="text-muted-foreground truncate">{employee.email}</p>
-                </div>
-            </div>
-
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 lg:gap-8">
-                {/* Left Column: Feedback Details */}
-                <div className="lg:col-span-3 order-2 lg:order-1 mt-6 lg:mt-0">
-                    <AdminEmployeeDetail employeeId={employee.id} />
-                </div>
-
-                {/* Right Column: Summary & Actions */}
-                <div className="lg:col-span-2 order-1 lg:order-2">
-                    <Card>
-                        <CardContent className="p-0">
-                            <Tabs defaultValue="summary">
-                                <TabsList className="grid w-full grid-cols-2 rounded-b-none rounded-t-lg">
-                                    <TabsTrigger value="summary">Summary</TabsTrigger>
-                                    <TabsTrigger value="actions">Actions</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="summary" className="p-4">
-                                    <AttendanceSummaryCard employeeId={employee.id} />
-                                </TabsContent>
-                                <TabsContent value="actions" className="p-4">
-                                    <ActionsCard
-                                        employee={employee}
-                                        onActionCompletes={onActionComplete}
-                                    />
-                                </TabsContent>
-                            </Tabs>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </div>
+        <EmployeeDetailView employee={employee} onActionComplete={onActionComplete} />
     );
 };
 
@@ -297,7 +246,7 @@ const MobileHeader: React.FC<{
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetTrigger asChild>
                     <Button variant="outline" size="icon" aria-label="Open employee menu">
-                        <Menu className="h-5 w-5"/>
+                        <Menu className="h-5 w-5" />
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-80 p-0">
@@ -353,7 +302,7 @@ const AdminEmployeeDashboard: React.FC = () => {
     const contentKey = selectedEmployee ? selectedEmployee.id : viewState;
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground">
+        <div className="flex h-screen bg-background text-foreground overflow-hidden">
             {/* Sidebar for large screens */}
             <aside className="hidden lg:block w-80 flex-shrink-0 border-r bg-background">
                 <EmployeeList

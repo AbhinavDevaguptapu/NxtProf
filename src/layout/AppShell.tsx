@@ -11,7 +11,6 @@ import FeedbackPage from '@/features/feedback/pages/FeedbackPage';
 import LearningHours from '@/features/learning-hours/pages/LearningHours';
 import OnboardingVideoPage from '@/features/onboarding/pages/OnBoardingPage';
 import AdminEmployeeDashboard from '@/features/admin/pages/AdminEmployeeDashboard';
-import AdminEmployeeDetail from '@/features/admin/pages/AdminEmployeeDetail';
 import TaskAnalyzerPage from '@/features/task-analyzer/pages/TaskAnalyzerPage';
 import PeerFeedbackPage from '@/features/peer-feedback/pages/PeerFeedbackPage';
 import AdminPeerFeedback from '@/features/admin/pages/AdminPeerFeedback';
@@ -86,12 +85,6 @@ export default function AppShell() {
     const renderContent = () => {
         const { view, context } = activeView;
 
-        if (view === 'employee-detail') {
-            return admin
-                ? <AdminEmployeeDetail employeeId={context as string} />
-                : <AccessDenied />;
-        }
-
         const viewMap: Record<string, React.ComponentType<{ setActiveView: (view: ViewState) => void }>> = {
             'home': admin ? AdminHome : UserHome,
             'standups': StandupsPage,
@@ -114,10 +107,21 @@ export default function AppShell() {
         return <ComponentToRender setActiveView={handleSetActiveView} />;
     };
 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
     return (
         <div className="flex min-h-screen w-full">
-            <Sidebar activeView={activeView.view} setActiveView={handleSetActiveView} />
-            <div className="flex flex-col flex-1 w-full lg:pl-72">
+            <Sidebar
+                activeView={activeView.view}
+                setActiveView={handleSetActiveView}
+                isOpen={isSidebarOpen}
+                setIsOpen={setIsSidebarOpen}
+            />
+            <div
+                className={`flex flex-col flex-1 w-full transition-all duration-300 ease-in-out ${
+                    isSidebarOpen ? 'lg:pl-72' : 'lg:pl-0'
+                }`}
+            >
                 <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pb-8 pt-24 lg:pt-8 text-lg md:text-base">
                     <AnimatePresence mode="wait">
                         <motion.div

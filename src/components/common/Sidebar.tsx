@@ -39,7 +39,8 @@ import {
     Bot,
     UsersRound,
     BookCheck,
-    Archive
+    Archive,
+    ChevronLeft
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -75,10 +76,14 @@ const adminNavItems = [
 interface SidebarProps {
     activeView: ViewType
     setActiveView: (view: ViewState) => void
+    isOpen: boolean
+    setIsOpen: (isOpen: boolean) => void
 }
 
 interface SidebarContentProps extends SidebarProps {
     onItemClick?: () => void
+    isOpen: boolean
+    setIsOpen: (isOpen: boolean) => void
 }
 
 // --- Reusable Sub-Components ---
@@ -212,8 +217,10 @@ const SidebarContent = ({ activeView, setActiveView, onItemClick }: SidebarConte
     )
 }
 
-export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
+export const Sidebar = ({ activeView, setActiveView, isOpen, setIsOpen }: SidebarProps) => {
     const [mobileOpen, setMobileOpen] = useState(false)
+
+    const toggleSidebar = () => setIsOpen(!isOpen)
 
     return (
         <>
@@ -240,15 +247,35 @@ export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
                                 activeView={activeView}
                                 setActiveView={setActiveView}
                                 onItemClick={() => setMobileOpen(false)}
+                                isOpen={isOpen}
+                                setIsOpen={setIsOpen}
                             />
                         </SheetContent>
                     </Sheet>
                 </div>
             </header>
 
-            <aside className="hidden lg:flex flex-col w-72 h-screen fixed left-0 top-0 z-10">
-                <SidebarContent activeView={activeView} setActiveView={setActiveView} />
-            </aside>
+            <div className="hidden lg:block">
+                <aside
+                    className={`flex flex-col w-72 h-screen fixed left-0 top-0 z-20 transition-transform duration-300 ease-in-out ${
+                        isOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
+                >
+                    <SidebarContent activeView={activeView} setActiveView={setActiveView} isOpen={isOpen} setIsOpen={setIsOpen} />
+                </aside>
+                <button
+                    onClick={toggleSidebar}
+                    className="fixed top-1/2 z-30 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-300 ease-in-out"
+                    style={{
+                        left: isOpen ? 'calc(18rem - 12px)' : '12px',
+                        transform: 'translateY(-50%)',
+                    }}
+                    aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                    aria-expanded={isOpen}
+                >
+                    {isOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+            </div>
         </>
     )
 }
