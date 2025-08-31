@@ -30,11 +30,11 @@ export const scheduleDailyStandup = onSchedule({
     const todayDocId = formatInTimeZone(now, TIME_ZONE, 'yyyy-MM-dd');
     const standupRef = db.collection("standups").doc(todayDocId);
 
-    // CORRECT: Create the 10:30 AM IST date object correctly
+    // Set standup time to 8:45 AM IST
     // 1. Get today's date string in IST
     const dateString = formatInTimeZone(now, TIME_ZONE, 'yyyy-MM-dd');
-    // 2. Create the full timestamp string for 11:10 AM IST
-    const standupTimeInZone = zonedTimeToUtc(`${dateString}T09:00:00`, TIME_ZONE);
+    // 2. Create the full timestamp string for 8:45 AM IST
+    const standupTimeInZone = zonedTimeToUtc(`${dateString}T08:45:00`, TIME_ZONE);
 
     try {
         await standupRef.set({
@@ -42,7 +42,7 @@ export const scheduleDailyStandup = onSchedule({
             scheduledTime: admin.firestore.Timestamp.fromDate(standupTimeInZone),
             scheduledBy: "System Automation",
         });
-        console.log(`Successfully scheduled standup for ${todayDocId} at 09:00 AM IST`);
+        console.log(`Successfully scheduled standup for ${todayDocId} at 08:45 AM IST`);
     } catch (error) {
         console.error(`Error scheduling standup for ${todayDocId}:`, error);
     }
@@ -50,7 +50,7 @@ export const scheduleDailyStandup = onSchedule({
 
 // Function to automatically start the standup
 export const startScheduledStandup = onSchedule({
-    schedule: "every mon,tue,wed,thu,fri,sat 09:00",
+    schedule: "every mon,tue,wed,thu,fri,sat 08:45",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();
@@ -82,7 +82,7 @@ export const startScheduledStandup = onSchedule({
 
 // Function to automatically end the standup
 export const endActiveStandup = onSchedule({
-    schedule: "every mon,tue,wed,thu,fri,sat 09:15",
+    schedule: "every mon,tue,wed,thu,fri,sat 09:00",
     timeZone: TIME_ZONE,
 }, async () => {
     const db = admin.firestore();

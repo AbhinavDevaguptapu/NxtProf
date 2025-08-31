@@ -70,7 +70,7 @@ export const ScheduleStandupForm = ({
     }
   };
 
-  const timeSuggestions = ["09:00" , "09:05", "09:10", "09:15"];
+  const timeSuggestions = ["08:45" , "08:50", "08:55", "09:00"];
 
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>

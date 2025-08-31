@@ -37,7 +37,7 @@ export const StandupNotScheduledView = () => {
                 <CalendarClock className="h-4 w-4" />
                 <AlertTitle>Standup Automation</AlertTitle>
                 <AlertDescription>
-                    Standups are automatically scheduled for 9:00 AM every day, except Sundays.
+                    Standups are automatically scheduled for 8:45 AM every day, except Sundays.
                     The session will start automatically.
                 </AlertDescription>
             </Alert>
