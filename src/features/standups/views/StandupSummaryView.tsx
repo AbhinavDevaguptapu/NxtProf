@@ -70,12 +70,14 @@ const ActiveViewLayout = () => (
 );
 
 const EndedViewLayout = ({ standup, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees, finalSearchQuery, setFinalSearchQuery }: StandupSummaryViewProps) => {
+    const activeEmployees = employees.filter(emp => !emp.archived);
+
     const summaryStats = {
-        Present: Object.values(savedAttendance).filter((a) => a.status === "Present").length,
-        Absent: Object.values(savedAttendance).filter((a) => a.status === "Absent").length,
-        Missed: Object.values(savedAttendance).filter((a) => a.status === "Missed").length,
-        'Not Available': Object.values(savedAttendance).filter((a) => a.status === "Not Available").length,
-        'Total Team': employees.length,
+        Present: Object.values(savedAttendance).filter(a => a.status === "Present").length,
+        Absent: Object.values(savedAttendance).filter(a => a.status === "Absent").length,
+        Missed: Object.values(savedAttendance).filter(a => a.status === "Missed").length,
+        'Not Available': Object.values(savedAttendance).filter(a => a.status === "Not Available").length,
+        'Total Team': activeEmployees.length,
     };
 
     const StandupCompletedCard = (

@@ -14,6 +14,7 @@ export type LearningHour = {
 };
 
 export type Employee = {
+    archived: boolean;
     id: string;
     name: string;
     email: string;

@@ -25,10 +25,9 @@ export const useLearningHourAttendance = (
 
     const fetchInitialData = useCallback(async () => {
         try {
-            const empSnapshot = await getDocs(collection(db, "employees"));
+            const empSnapshot = await getDocs(query(collection(db, "employees"), where("archived", "!=", true)));
             const fetchedEmployees = empSnapshot.docs
-                .map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
-                .filter(emp => emp.archived !== true);
+                .map((doc) => ({ id: doc.id, ...doc.data() } as Employee));
             setEmployees(fetchedEmployees);
 
             if (learningHour?.status === "active") {

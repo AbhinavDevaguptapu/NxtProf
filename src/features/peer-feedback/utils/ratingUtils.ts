@@ -1,6 +1,7 @@
 import { Feedback } from "../types";
 
 export interface OverallRating {
+    finalRating: ReactNode;
     averageRating: number;
     starRating: number;
     totalEntries: number;

@@ -63,11 +63,10 @@ export const useStandup = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const empSnapshot = await getDocs(collection(db, "employees"));
+        const empSnapshot = await getDocs(query(collection(db, "employees"), where("archived", "!=", true)));
         setEmployees(
           empSnapshot.docs
             .map((doc) => ({ id: doc.id, ...doc.data() } as Employee))
-            .filter(emp => emp.archived !== true)
         );
       } catch (error) {
         console.error("Error fetching employees:", error);

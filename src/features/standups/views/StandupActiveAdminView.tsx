@@ -96,6 +96,8 @@ export const StandupActiveAdminView = ({
             return () => clearInterval(intervalId);
         }
     }, [standup]);
+
+    const activeEmployees = activeFilteredEmployees.filter(emp => !emp.archived);
     
     return (
     <motion.div
@@ -183,8 +185,8 @@ export const StandupActiveAdminView = ({
                 initial="hidden"
                 animate="visible"
             >
-                {activeFilteredEmployees.length > 0 ? (
-                    activeFilteredEmployees.map((emp) => (
+                {activeEmployees.length > 0 ? (
+                    activeEmployees.map((emp) => (
                         <motion.div key={emp.id} variants={itemVariants}>
                             <AttendanceCard
                                 employee={emp}

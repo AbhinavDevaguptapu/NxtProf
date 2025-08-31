@@ -41,7 +41,9 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ReasonModal } from "./ReasonModal";
 
-type Employee = { id: string; name: string; email: string; employeeId: string };
+type Employee = {
+  archived: boolean; id: string; name: string; email: string; employeeId: string 
+};
 type AttendanceStatus = "Present" | "Absent" | "Missed" | "Not Available";
 type AttendanceRecord = {
   employee_id: string;
