@@ -240,14 +240,22 @@ export const useStandup = () => {
   }, [finalFilter, employees, savedAttendance, finalSearchQuery]);
 
   const sessionStats = useMemo(() => {
-    const total = employees.length;
-    const values = Object.values(tempAttendance);
+    let present = 0, absent = 0, missed = 0, notAvailable = 0;
+    employees.forEach(emp => {
+      const status = tempAttendance[emp.id] || "Missed";
+      switch (status) {
+        case "Present": present++; break;
+        case "Absent": absent++; break;
+        case "Not Available": notAvailable++; break;
+        default: missed++; break;
+      }
+    });
     return {
-      total,
-      present: values.filter((s) => s === "Present").length,
-      absent: values.filter((s) => s === "Absent").length,
-      missed: values.filter((s) => s === "Missed").length,
-      notAvailable: values.filter((s) => s === "Not Available").length,
+      total: employees.length,
+      present,
+      absent,
+      missed,
+      notAvailable,
     };
   }, [tempAttendance, employees]);
 

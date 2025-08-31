@@ -83,11 +83,10 @@ export const AttendanceReport = ({
       setLoading(true);
       try {
         if (employees.length === 0) {
-          const empSnap = await getDocs(collection(db, "employees"));
+          const empSnap = await getDocs(query(collection(db, "employees"), where("archived", "!=", true)));
           setEmployees(
             empSnap.docs
               .map((d) => ({ id: d.id, ...d.data() } as Employee))
-              .filter(emp => emp.archived !== true)
               .sort((a, b) => a.name.localeCompare(b.name))
           );
         }
@@ -218,19 +217,24 @@ export const AttendanceReport = ({
   };
 
   const dailyStats = useMemo(() => {
-    const data = editing
-      ? editedAtt
-      : Object.fromEntries(
-        Object.entries(attendance).map(([k, v]) => [k, v.status])
-      );
-    const values = Object.values(data);
-    return {
-      present: values.filter((s) => s === "Present").length,
-      absent: values.filter((s) => s === "Absent").length,
-      missed: values.filter((s) => s === "Missed").length,
-      notAvailable: values.filter((s) => s === "Not Available").length,
-    };
-  }, [attendance, editing, editedAtt]);
+    const sourceData = editing ? editedAtt : attendance;
+    let present = 0, absent = 0, missed = 0, notAvailable = 0;
+
+    employees.forEach(emp => {
+      const record = sourceData[emp.id];
+      const status = editing ? (record as unknown as AttendanceStatus) : (record as AttendanceRecord)?.status;
+
+      switch (status) {
+        case "Present": present++; break;
+        case "Absent": absent++; break;
+        case "Not Available": notAvailable++; break;
+        case "Missed": missed++; break;
+        default: missed++; break;
+      }
+    });
+
+    return { present, absent, missed, notAvailable };
+  }, [attendance, editing, editedAtt, employees]);
 
   return (
     <>

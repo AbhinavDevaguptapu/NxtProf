@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, getDocs, query, where, writeBatch, doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, writeBatch, doc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/integrations/firebase/client';
 import { useToast } from '@/components/ui/use-toast';
 import type { Employee, AttendanceRecord, AttendanceStatus, LearningHour } from '../types';
@@ -67,15 +67,48 @@ export const useLearningHourAttendance = (
         fetchInitialData();
     }, [fetchInitialData]);
 
-    const saveAbsenceReason = (employeeId: string, reason: string) => {
+    const saveAbsenceReason = async (employeeId: string, reason: string) => {
         if (!reason.trim()) {
-            toast({ title: "Reason is required.", variant: "destructive" });
+            toast({ title: "Reason is required", variant: "destructive" });
             return;
         }
-        setAbsenceReasons(prev => ({ ...prev, [employeeId]: reason }));
-        setTempAttendance(prev => ({ ...prev, [employeeId]: "Not Available" }));
+        const newAbsenceReasons = { ...absenceReasons, [employeeId]: reason };
+        const newTempAttendance = { ...tempAttendance, [employeeId]: "Not Available" as AttendanceStatus };
+        
+        setAbsenceReasons(newAbsenceReasons);
+        setTempAttendance(newTempAttendance);
         setEditingAbsence(null);
-        toast({ title: "Absence reason saved." });
+
+        try {
+            const learningHourRef = doc(db, "learning_hours", todayDocId);
+            await updateDoc(learningHourRef, {
+                absenceReasons: newAbsenceReasons,
+                tempAttendance: newTempAttendance,
+            });
+            toast({ title: "Absence Recorded" });
+        } catch (error) {
+            console.error("Error saving absence reason:", error);
+            toast({ title: "Error saving status", variant: "destructive" });
+            // Revert optimistic update on failure
+            setAbsenceReasons(absenceReasons);
+            setTempAttendance(tempAttendance);
+        }
+    };
+
+    const handleSetTempAttendance = async (employeeId: string, status: AttendanceStatus) => {
+        const newTempAttendance = { ...tempAttendance, [employeeId]: status };
+        setTempAttendance(newTempAttendance);
+        try {
+            const learningHourRef = doc(db, "learning_hours", todayDocId);
+            await updateDoc(learningHourRef, {
+                tempAttendance: newTempAttendance,
+            });
+        } catch (error) {
+            console.error("Error updating temp attendance:", error);
+            toast({ title: "Error saving status", variant: "destructive" });
+            // Revert optimistic update on failure
+            setTempAttendance(tempAttendance);
+        }
     };
 
     const saveAttendance = async () => {
@@ -171,6 +204,7 @@ export const useLearningHourAttendance = (
         absenceReasons,
         saveAbsenceReason,
         saveAttendance,
+        handleSetTempAttendance,
         sessionStats,
         fetchInitialData,
         finalFilter,

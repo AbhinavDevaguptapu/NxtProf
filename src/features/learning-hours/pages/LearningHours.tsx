@@ -205,7 +205,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
     const { 
         employees, 
         tempAttendance, 
-        setTempAttendance, 
+        handleSetTempAttendance,
         savedAttendance, 
         editingAbsence, 
         setEditingAbsence, 
@@ -436,7 +436,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                             {activeFilteredEmployees.length > 0 ? (
                                 activeFilteredEmployees.map((emp) => (
                                     <motion.div key={emp.id} variants={itemVariants}>
-                                        <AttendanceCard employee={emp} status={tempAttendance[emp.id] || 'Missed'} reason={absenceReasons[emp.id]} onSetStatus={(id, status) => setTempAttendance(p => ({ ...p, [id]: status }))} onMarkUnavailable={setEditingAbsence} isInteractive={true} />
+                                        <AttendanceCard employee={emp} status={tempAttendance[emp.id] || 'Missed'} reason={absenceReasons[emp.id]} onSetStatus={handleSetTempAttendance} onMarkUnavailable={setEditingAbsence} isInteractive={true} />
                                     </motion.div>
                                 ))
                             ) : (
