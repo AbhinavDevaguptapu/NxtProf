@@ -14,24 +14,19 @@ interface ReceivedFeedbackListProps {
 }
 
 const ReceivedFeedbackList = ({ feedback, isLoading }: ReceivedFeedbackListProps) => {
-    const [selectedMonth, setSelectedMonth] = useState<string>('all');
+    const [selectedMonth, setSelectedMonth] = useState<string>('');
 
     const availableMonths = useMemo(() => {
         const months = new Set<string>();
         feedback.forEach(item => {
             months.add(format(parseISO(item.submittedAt), 'yyyy-MM'));
         });
-        const sortedMonths = Array.from(months).sort((a, b) => b.localeCompare(a));
-        const currentMonth = format(new Date(), 'yyyy-MM');
-        if (sortedMonths.includes(currentMonth)) {
-            setSelectedMonth(currentMonth);
-        }
-        return sortedMonths;
+        return Array.from(months).sort((a, b) => b.localeCompare(a));
     }, [feedback]);
 
     const filteredFeedback = useMemo(() => {
-        if (selectedMonth === 'all') {
-            return feedback;
+        if (!selectedMonth) {
+            return [];
         }
         return feedback.filter(item => format(parseISO(item.submittedAt), 'yyyy-MM') === selectedMonth);
     }, [feedback, selectedMonth]);
@@ -66,17 +61,18 @@ const ReceivedFeedbackList = ({ feedback, isLoading }: ReceivedFeedbackListProps
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h3 className="text-lg font-semibold">Overall Rating</h3>
-                    <p className="text-sm text-muted-foreground">
-                        <span className="font-bold text-primary">{overallRating.averageRating.toFixed(2)}</span> average | <span className="font-bold text-primary">{overallRating.starRating} ★</span> star rating from {overallRating.totalEntries} entries.
-                    </p>
+                    {selectedMonth && (
+                        <p className="text-sm text-muted-foreground">
+                            <span className="font-bold text-primary">{overallRating.averageRating.toFixed(2)}</span> average | <span className="font-bold text-primary">{overallRating.starRating} ★</span> star rating from {overallRating.totalEntries} entries.
+                        </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                         <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Filter by month" />
+                            <SelectValue placeholder="Select a month" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Months</SelectItem>
                             {availableMonths.map(month => (
                                 <SelectItem key={month} value={month}>
                                     {format(parseISO(`${month}-01`), 'MMMM yyyy')}
@@ -86,13 +82,33 @@ const ReceivedFeedbackList = ({ feedback, isLoading }: ReceivedFeedbackListProps
                     </Select>
                 </div>
             </div>
-            <ScrollArea className="h-[400px] w-full">
-                <div className="space-y-4">
-                    {filteredFeedback.map((item) => (
-                        <FeedbackCard key={item.id} item={item} />
-                    ))}
+            {!selectedMonth ? (
+                <div className="text-center text-muted-foreground py-12">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-4" />
+                    <h3 className="text-lg font-semibold">Please select a month</h3>
+                    <p className="mt-2 text-sm">
+                        Select a month from the dropdown to view your feedback.
+                    </p>
                 </div>
-            </ScrollArea>
+            ) : (
+                <ScrollArea className="h-[400px] w-full">
+                    <div className="space-y-4">
+                        {filteredFeedback.length > 0 ? (
+                            filteredFeedback.map((item) => (
+                                <FeedbackCard key={item.id} item={item} />
+                            ))
+                        ) : (
+                            <div className="text-center text-muted-foreground py-12">
+                                <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-4" />
+                                <h3 className="text-lg font-semibold">No Feedback for this month</h3>
+                                <p className="mt-2 text-sm">
+                                    It looks like you haven't received any feedback for this month.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            )}
         </div>
     );
 };
