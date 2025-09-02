@@ -32,7 +32,7 @@ export const AdminAttendanceView = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
-  const { isCoAdmin } = useUserAuth();
+  const { isAdmin, isCoAdmin } = useUserAuth();
 
   const handleSync = async (sessionType: SessionType) => {
     setIsSyncing(true);
@@ -124,7 +124,7 @@ export const AdminAttendanceView = () => {
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 onClick={() => handleSync("standups")}
-                disabled={isSyncing || !isCoAdmin}
+                disabled={isSyncing || (!isAdmin && !isCoAdmin)}
                 className="w-full"
               >
                 {isSyncing ? (
@@ -137,7 +137,7 @@ export const AdminAttendanceView = () => {
               </Button>
               <Button
                 onClick={() => handleSync("learning_hours")}
-                disabled={isSyncing || !isCoAdmin}
+                disabled={isSyncing || (!isAdmin && !isCoAdmin)}
                 className="w-full"
               >
                 {isSyncing ? (
