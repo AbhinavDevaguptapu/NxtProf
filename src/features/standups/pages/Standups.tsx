@@ -21,7 +21,8 @@ const pageAnimationProps = {
 export default function StandupsPage() {
   const {
     user,
-    admin,
+    isAdmin,
+    isCoAdmin,
     isLoadingPage,
     standup,
     isUpdatingStatus,
@@ -73,7 +74,7 @@ export default function StandupsPage() {
           />
         );
       case "active":
-        if (admin) {
+        if (isAdmin || isCoAdmin) {
           return (
             <StandupActiveAdminView
               standup={standup}

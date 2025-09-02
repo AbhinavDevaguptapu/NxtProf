@@ -40,7 +40,8 @@ import {
     UsersRound,
     BookCheck,
     Archive,
-    ChevronLeft
+    ChevronLeft,
+    ShieldCheck
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -57,7 +58,7 @@ const userNavItems = [
     { id: "attendance", label: "Attendance", icon: CalendarCheck },
     { id: "peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "onboardingKit", label: "Onboarding Kit", icon: Box },
-]
+];
 
 const adminNavItems = [
     { id: "home", label: "Dashboard", icon: Home },
@@ -122,7 +123,7 @@ const NavItem = ({
 )
 
 const UserProfile = ({ onProfileClick, onLogout }: { onProfileClick: () => void, onLogout: () => void }) => {
-    const { user } = useUserAuth()
+    const { user, isAdmin, isCoAdmin } = useUserAuth()
     const { admin } = useAdminAuth()
 
     return (
@@ -141,11 +142,13 @@ const UserProfile = ({ onProfileClick, onLogout }: { onProfileClick: () => void,
                                 </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col items-start min-w-0 flex-1 text-left">
-                                <span className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                                    {user?.displayName || "User"}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                                        {user?.displayName || "User"}
+                                    </span>
+                                </div>
                                 <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                    {admin ? "Administrator" : "Team Member"}
+                                    {isAdmin ? "Administrator" : isCoAdmin ? "Co-Administrator" : "Team Member"}
                                 </span>
                             </div>
                         </div>
@@ -154,8 +157,13 @@ const UserProfile = ({ onProfileClick, onLogout }: { onProfileClick: () => void,
                 <DropdownMenuContent className="w-56" align="end" side="top" forceMount>
                     <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-semibold leading-none">{user?.displayName}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold leading-none">{user?.displayName}</p>
+                            </div>
                             <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                            <p className="text-xs leading-none text-muted-foreground">
+                                {isAdmin ? "Administrator" : isCoAdmin ? "Co-Administrator" : "Team Member"}
+                            </p>
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -257,9 +265,8 @@ export const Sidebar = ({ activeView, setActiveView, isOpen, setIsOpen }: Sideba
 
             <div className="hidden lg:block">
                 <aside
-                    className={`flex flex-col w-72 h-screen fixed left-0 top-0 z-20 transition-transform duration-300 ease-in-out ${
-                        isOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
+                    className={`flex flex-col w-72 h-screen fixed left-0 top-0 z-20 transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"
+                        }`}
                 >
                     <SidebarContent activeView={activeView} setActiveView={setActiveView} isOpen={isOpen} setIsOpen={setIsOpen} />
                 </aside>

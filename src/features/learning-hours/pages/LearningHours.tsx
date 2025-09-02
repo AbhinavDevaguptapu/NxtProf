@@ -5,13 +5,12 @@ import React, { useState, useMemo, FC } from "react";
 
 // Auth Hooks
 import { useUserAuth } from "@/context/UserAuthContext";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, Bot, UserMinus, UserX, Check, Search } from "lucide-react";
+import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, UserMinus, UserX, Check, Search, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // Feature Components & Hooks
@@ -37,11 +36,9 @@ const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity
 const itemVariants: Variants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 const transition = { type: "spring" as const, stiffness: 400, damping: 30 };
 
-import { ViewState, ViewType } from "@/layout/AppShell";
-
 // --- HELPER COMPONENTS ---
 
-const FilterControls: FC<{ currentFilter: string; onFilterChange: (filter: any) => void, layoutId: string }> = ({ currentFilter, onFilterChange, layoutId }) => (
+export const FilterControls: FC<{ currentFilter: string; onFilterChange: (filter: any) => void, layoutId: string }> = ({ currentFilter, onFilterChange, layoutId }) => (
     <LayoutGroup id={layoutId}>
         <div className="inline-flex flex-wrap items-center bg-muted p-1 rounded-lg">
             {(['all', 'Present', 'Absent', 'Missed', 'Not Available'] as const).map(filter => {
@@ -63,7 +60,7 @@ const FilterControls: FC<{ currentFilter: string; onFilterChange: (filter: any) 
     </LayoutGroup>
 );
 
-const EmptyState: FC<{ filter: string }> = ({ filter }) => (
+export const EmptyState: FC<{ filter: string }> = ({ filter }) => (
     <motion.div className="col-span-full flex flex-col items-center justify-center text-center p-10 bg-muted/50 rounded-lg" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
         <h3 className="text-xl font-semibold">No Members Found</h3>
@@ -106,7 +103,7 @@ const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter
                 <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-6 h-6" /></div>
                 <div>
                     <CardTitle className="text-lg font-bold">Session Completed</CardTitle>
-                    <CardDescription>{`Concluded at ${learningHour.endedAt ? format(learningHour.endedAt.toDate(), "p") : "N/A"}`}</CardDescription>
+                    <CardDescription>{`Concluded at ${learningHour.endedAt ? format(learningHour.endedAt.toDate(), "PPP") : "N/A"}`}</CardDescription>
                 </div>
             </CardHeader>
             {learningHour.startedAt && learningHour.endedAt && (
@@ -185,34 +182,26 @@ const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter
     );
 };
 
-
 // --- MAIN PAGE COMPONENT ---
-interface LearningHoursPageProps {
-    setActiveView: (view: ViewState) => void;
-}
-
-export default function LearningHours({ setActiveView }: LearningHoursPageProps) {
-    const { user } = useUserAuth();
-    const { admin } = useAdminAuth();
+export default function LearningHours() {
+    const { user, isAdmin, isCoAdmin } = useUserAuth();
     const { toast } = useToast();
 
     const { learningHour, isLoading, isUpdating, sessionTime, todayDocId, startSession } = useLearningHourSession();
-    
-    // FIX: Declare activeFilter state before it is used in the useLearningHourAttendance hook.
-    // This resolves the "block-scoped variable used before declaration" error.
+
     const [activeFilter, setActiveFilter] = useState<AttendanceStatus | 'all'>('all');
 
-    const { 
-        employees, 
-        tempAttendance, 
+    const {
+        employees,
+        tempAttendance,
         handleSetTempAttendance,
-        savedAttendance, 
-        editingAbsence, 
-        setEditingAbsence, 
-        absenceReasons, 
-        saveAbsenceReason, 
-        saveAttendance, 
-        sessionStats, 
+        savedAttendance,
+        editingAbsence,
+        setEditingAbsence,
+        absenceReasons,
+        saveAbsenceReason,
+        saveAttendance,
+        sessionStats,
         fetchInitialData,
         finalFilter,
         setFinalFilter,
@@ -222,8 +211,6 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         activeFilteredEmployees,
         activeSearchQuery,
         setActiveSearchQuery,
-    // FIX: Pass the activeFilter state down to the useLearningHourAttendance hook.
-    // This ensures the hook re-calculates the filtered list whenever the activeFilter changes.
     } = useLearningHourAttendance(learningHour, todayDocId, activeFilter);
     const { learningPoints, isLoading: isLoadingPoints, addLearningPoint, updateLearningPoint, deleteLearningPoint } = useLearningPoints(todayDocId);
 
@@ -242,11 +229,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         const endSessionFunction = httpsCallable(functions, 'endLearningSessionAndLockPoints');
 
         try {
-            // 1. Save the attendance from client state to Firestore.
             await saveAttendance();
-
-            // 2. Call the cloud function to finalize the session (e.g., set status to 'ended').
-            // The real-time listener will then pick up this change and trigger the correct data fetch.
             await endSessionFunction({ sessionId: todayDocId });
 
             toast({ title: "Success", description: "Session ended and points have been locked." });
@@ -264,89 +247,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         addLearningPoint(data);
     };
 
-    const renderContent = () => {
-        if (isLoading) {
-            return (
-                <motion.div key="loading" className="flex-grow flex items-center justify-center" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                </motion.div>
-            );
-        }
-
-        // --- USER VIEW ---
-        if (!admin) {
-            const isSessionEnded = learningHour?.status === 'ended';
-            return (
-                <motion.div key="user-view" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-                    <SessionStatusBanner learningHour={learningHour} />
-
-                    <div className="flex flex-col lg:flex-row gap-8 items-start mt-8">
-                        <div className="w-full lg:flex-1">
-                            <LearningPointsList
-                                points={learningPoints}
-                                isLoading={isLoadingPoints}
-                                onAddPoint={handleAddPoint}
-                                onUpdatePoint={updateLearningPoint}
-                                onDeletePoint={deleteLearningPoint}
-                                isDayLocked={isSessionEnded}
-                            />
-                        </div>
-
-                        <AnimatePresence>
-                            {isSessionEnded && (
-                                <motion.div
-                                    className="w-full lg:w-1/3 lg:sticky lg:top-24 space-y-6"
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.3 }}
-                                >
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Final Roster</CardTitle>
-                                            <CardDescription>
-                                                 Showing {finalFilteredEmployees.length} of {employees.length} members.
-                                             </CardDescription>
-                                             <div className="relative mt-2">
-                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                 <Input
-                                                     placeholder="Search..."
-                                                     value={finalSearchQuery}
-                                                     onChange={(e) => setFinalSearchQuery(e.target.value)}
-                                                     className="pl-10"
-                                                 />
-                                             </div>
-                                         </CardHeader>
-                                         <CardContent>
-                                             <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="user-final-filter" />
-                                             <motion.div
-                                                 key={finalFilter + finalSearchQuery}
-                                                 className="space-y-4 mt-4 max-h-96 overflow-y-auto pr-2"
-                                                 variants={containerVariants}
-                                                 initial="hidden"
-                                                 animate="visible"
-                                             >
-                                                {finalFilteredEmployees.length > 0 ? (
-                                                    finalFilteredEmployees.map((emp) => (
-                                                        <motion.div key={emp.id} variants={itemVariants}>
-                                                            <AttendanceCard employee={emp} status={savedAttendance[emp.id]?.status || 'Missed'} reason={savedAttendance[emp.id]?.reason} onSetStatus={() => { }} onMarkUnavailable={() => { }} isInteractive={false} />
-                                                        </motion.div>
-                                                    ))
-                                                ) : (
-                                                    <EmptyState filter={finalFilter} />
-                                                )}
-                                            </motion.div>
-                                        </CardContent>
-                                    </Card>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </motion.div>
-            );
-        }
-
-        // --- ADMIN VIEW ---
+    const renderAdminContent = () => {
         if (!learningHour || isRescheduling) {
             return (
                 <motion.div key="schedule" className="flex-grow flex items-center justify-center p-4" variants={pageVariants} initial="initial" animate="animate" exit="exit">
@@ -369,7 +270,7 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                             </div>
                             <CardTitle className="text-3xl font-extrabold text-gray-900">Learning Session</CardTitle>
                             <CardDescription className="text-gray-600 text-md mt-2">
-                                Scheduled for <span className="font-semibold text-black">{format(learningHour.scheduledTime.toDate(), 'p')}</span> today.
+                                Scheduled for <span className="font-semibold text-black">{format(learningHour.scheduledTime.toDate(), "PPP")}</span> today.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-2">
@@ -456,7 +357,6 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                 try {
                     const res = await syncLearningPointsToSheet(todayDocId);
                     toast({ title: "Sync complete", description: `${res.appended} rows appended.` });
-                    // force-refresh session doc to get synced:true
                     await fetchInitialData();
                 } catch (e: any) {
                     console.error(e);
@@ -468,7 +368,6 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
 
             return (
                 <>
-                    {/* SYNC BUTTON */}
                     <div className="mb-6">
                         <Button
                             onClick={handleSync}
@@ -481,7 +380,6 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
                         </Button>
                     </div>
 
-                    {/* existing ended-view layout */}
                     <EndedViewLayout
                         learningHour={learningHour}
                         savedAttendance={savedAttendance}
@@ -497,12 +395,104 @@ export default function LearningHours({ setActiveView }: LearningHoursPageProps)
         }
 
         return null;
+    }
+
+    const renderUserContent = () => {
+        const isSessionEnded = learningHour?.status === 'ended';
+        return (
+            <motion.div key="user-view" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <SessionStatusBanner learningHour={learningHour} />
+
+                <div className="flex flex-col lg:flex-row gap-8 items-start mt-8">
+                    <div className="w-full lg:flex-1">
+                        <LearningPointsList
+                            points={learningPoints}
+                            isLoading={isLoadingPoints}
+                            onAddPoint={handleAddPoint}
+                            onUpdatePoint={updateLearningPoint}
+                            onDeletePoint={deleteLearningPoint}
+                            isDayLocked={isSessionEnded}
+                        />
+                    </div>
+
+                    <AnimatePresence>
+                        {isSessionEnded && (
+                            <motion.div
+                                className="w-full lg:w-1/3 lg:sticky lg:top-24 space-y-6"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Final Roster</CardTitle>
+                                        <CardDescription>
+                                            Showing {finalFilteredEmployees.length} of {employees.length} members.
+                                        </CardDescription>
+                                        <div className="relative mt-2">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Search..."
+                                                value={finalSearchQuery}
+                                                onChange={(e) => setFinalSearchQuery(e.target.value)}
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <FilterControls currentFilter={finalFilter} onFilterChange={setFinalFilter} layoutId="user-final-filter" />
+                                        <motion.div
+                                            key={finalFilter + finalSearchQuery}
+                                            className="space-y-4 mt-4 max-h-96 overflow-y-auto pr-2"
+                                            variants={containerVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                        >
+                                            {finalFilteredEmployees.length > 0 ? (
+                                                finalFilteredEmployees.map((emp) => (
+                                                    <motion.div key={emp.id} variants={itemVariants}>
+                                                        <AttendanceCard employee={emp} status={savedAttendance[emp.id]?.status || 'Missed'} reason={savedAttendance[emp.id]?.reason} onSetStatus={() => { }} onMarkUnavailable={() => { }} isInteractive={false} />
+                                                    </motion.div>
+                                                ))
+                                            ) : (
+                                                <EmptyState filter={finalFilter} />
+                                            )}
+                                        </motion.div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </motion.div>
+        );
+    }
+
+    const renderContent = () => {
+        if (isLoading) {
+            return (
+                <motion.div key="loading" className="flex-grow flex items-center justify-center" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </motion.div>
+            );
+        }
+
+        if (isAdmin || isCoAdmin) {
+            return renderAdminContent();
+        } else {
+            return renderUserContent();
+        }
     };
 
     return (
         <>
             <div className="mb-6">
-                <h1 className="text-3xl font-bold tracking-tight">Learning Hours</h1>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-3xl font-bold tracking-tight">Learning Hours</h1>
+                    </div>
+                </div>
                 <p className="text-muted-foreground">Manage and view daily learning sessions.</p>
             </div>
             <AnimatePresence mode="wait">

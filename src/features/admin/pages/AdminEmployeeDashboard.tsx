@@ -18,6 +18,7 @@ interface Employee {
     employeeId?: string;
     feedbackSheetUrl?: string;
     isAdmin?: boolean;
+    isCoAdmin?: boolean;
 }
 
 type ViewState = "loading" | "empty" | "error" | "data";
@@ -102,6 +103,11 @@ const EmployeeListItem: React.FC<{
         {employee.isAdmin && (
             <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 rounded-full">
                 Admin
+            </span>
+        )}
+        {employee.isCoAdmin && (
+            <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300 rounded-full">
+                Co-Admin
             </span>
         )}
     </button>

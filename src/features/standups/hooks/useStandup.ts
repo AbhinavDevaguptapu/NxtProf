@@ -14,12 +14,10 @@ import {
 import { db } from "@/integrations/firebase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 import type { Standup, Employee, AttendanceRecord, AttendanceStatus } from "../types";
 
 export const useStandup = () => {
-  const { user } = useUserAuth();
-  const { admin } = useAdminAuth();
+  const { user, isAdmin, isCoAdmin } = useUserAuth();
   const { toast } = useToast();
 
   const [isLoadingPage, setIsLoadingPage] = useState(true);
@@ -155,6 +153,8 @@ export const useStandup = () => {
       await updateDoc(doc(db, "standups", todayDocId), {
         status: "ended",
         endedAt: serverTimestamp(),
+        tempAttendance: tempAttendance,
+        absenceReasons: absenceReasons,
       });
       toast({ title: "Standup Ended", description: "Attendance has been saved." });
     } catch (error) {
@@ -261,7 +261,8 @@ export const useStandup = () => {
 
   return {
     user,
-    admin,
+    isAdmin,
+    isCoAdmin,
     isLoadingPage,
     standup,
     isUpdatingStatus,

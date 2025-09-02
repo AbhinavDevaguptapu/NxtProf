@@ -45,12 +45,14 @@ export {
 } from "./standups";
 
 // Task Analysis
-export { analyzeTask, getSubsheetNames, getSheetData } from "./taskAnalysis";
+export { analyzeTask, getLearningPointsForEmployee } from "./taskAnalysis";
 
 // User Management
 export {
     addAdminRole,
     removeAdminRole,
+    addCoAdminRole,
+    removeCoAdminRole,
     deleteEmployee,
     archiveEmployee,
     unarchiveEmployee,

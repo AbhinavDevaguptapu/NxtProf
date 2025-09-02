@@ -3,9 +3,8 @@
  */
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { google } from "googleapis";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getSheetsAuth, getGeminiKey } from "./utils";
+import { getGeminiKey } from "./utils";
 
 export const analyzeTask = onCall<{ prompt: string }>(
     { timeoutSeconds: 120, memory: "512MiB", secrets: ["GEMINI_KEY"] },
@@ -36,141 +35,52 @@ export const analyzeTask = onCall<{ prompt: string }>(
     }
 );
 
-export const getSubsheetNames = onCall<{}>(
-    async (request): Promise<any[]> => {
-        if (!request.auth) {
-            throw new HttpsError("unauthenticated", "Authentication is required.");
-        }
 
-        const SPREADSHEET_ID = "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
-        const isAdmin = request.auth.token.isAdmin === true;
-
-        try {
-            const sheets = google.sheets({ version: "v4", auth: getSheetsAuth() });
-            const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-
-            if (!meta.data.sheets) return [];
-
-            const allSheetNames = meta.data.sheets
-                .map(sheet => sheet.properties?.title || "")
-                .filter(Boolean);
-
-            const employeeSheets = allSheetNames
-                .map(name => {
-                    const parts = name.split('|').map(p => p.trim());
-                    if (parts.length !== 2) return null;
-                    return { name: parts[0], id: parts[1], sheetName: name };
-                })
-                .filter(Boolean) as { name: string; id: string; sheetName: string }[];
-
-            employeeSheets.sort((a, b) => a.name.localeCompare(b.name));
-
-            if (isAdmin) {
-                return employeeSheets;
-            } else {
-                const userDoc = await admin.firestore().collection("employees").doc(request.auth.uid).get();
-                const employeeId = userDoc.data()?.employeeId;
-
-                if (!employeeId) {
-                    throw new HttpsError("not-found", "Could not find an employee ID for the current user.");
-                }
-
-                const userSheet = employeeSheets.find(sheet => sheet.id === employeeId);
-
-                return userSheet ? [userSheet] : [];
-            }
-        } catch (error: any) {
-            console.error("Error in getSubsheetNames:", error);
-            throw new HttpsError("internal", "Failed to retrieve sheet names.", error.message);
-        }
-    }
-);
-
-export const getSheetData = onCall<{ sheetName: string }>(
-    { secrets: ["SHEETS_SA_KEY"] },
+export const getLearningPointsForEmployee = onCall<{ employeeId: string }>(
     async (request) => {
         if (!request.auth) {
             throw new HttpsError("unauthenticated", "Authentication is required.");
         }
 
-        const { sheetName } = request.data;
-        if (!sheetName) {
-            throw new HttpsError("invalid-argument", "A sheet name is required.");
+        const { employeeId } = request.data;
+        if (!employeeId) {
+            throw new HttpsError("invalid-argument", "An employee ID is required.");
         }
 
-        const isAdmin = request.auth.token.isAdmin === true;
-
-        if (!isAdmin) {
-            const userDoc = await admin.firestore().collection("employees").doc(request.auth.uid).get();
-            const employeeId = userDoc.data()?.employeeId;
-            const sheetId = sheetName.split('|').pop()?.trim();
-
-            if (!employeeId || sheetId !== employeeId) {
-                throw new HttpsError("permission-denied", "You do not have permission to access this sheet.");
-            }
-        }
-
-        const SPREADSHEET_ID = "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
 
         try {
-            const sheets = google.sheets({ version: "v4", auth: getSheetsAuth() });
-            const range = `${sheetName}!A:J`;
-            const resp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-            const rows = resp.data.values;
+            const learningPointsSnapshot = await admin.firestore()
+                .collection("learning_points")
+                .where("userId", "==", employeeId)
+                .get();
 
-            if (!rows || rows.length < 2) return [];
 
-            const REQUIRED_HEADERS = {
-                date: 'Date',
-                task: 'Task in the Day (As in Day Plan)',
-                taskFrameworkCategory: 'Task Framework Category',
-                pointType: 'Point Type',
-                situation: 'Situation (S)',
-                behavior: 'Behavior (B)',
-                impact: 'Impact (I)',
-                action: 'Action Item (A)',
-            };
+            const learningPoints = learningPointsSnapshot.docs.map((doc) => {
+                const data = doc.data();
+                const date = data.date instanceof admin.firestore.Timestamp
+                    ? data.date.toDate().toLocaleDateString('en-CA')
+                    : data.date || '';
 
-            const headers = rows[0].map(h => h.toLowerCase().trim());
-            const dataRows = rows.slice(1);
+                return {
+                    id: doc.id,
+                    date,
+                    task: data.task_name || '',
+                    taskFrameworkCategory: data.framework_category || '',
+                    pointType: data.point_type || '',
+                    situation: data.situation || '',
+                    behavior: data.behavior || '',
+                    impact: data.impact || '',
+                    action: data.action_item || '',
+                };
+            });
 
-            const headerMapping = {
-                date: headers.indexOf(REQUIRED_HEADERS.date.toLowerCase()),
-                task: headers.indexOf(REQUIRED_HEADERS.task.toLowerCase()),
-                taskFrameworkCategory: headers.indexOf(REQUIRED_HEADERS.taskFrameworkCategory.toLowerCase()),
-                pointType: headers.indexOf(REQUIRED_HEADERS.pointType.toLowerCase()),
-                situation: headers.indexOf(REQUIRED_HEADERS.situation.toLowerCase()),
-                behavior: headers.indexOf(REQUIRED_HEADERS.behavior.toLowerCase()),
-                impact: headers.indexOf(REQUIRED_HEADERS.impact.toLowerCase()),
-                action: headers.indexOf(REQUIRED_HEADERS.action.toLowerCase()),
-            };
-
-            const missingHeaders = Object.entries(headerMapping)
-                .filter(([, idx]) => idx === -1)
-                .map(([key]) => REQUIRED_HEADERS[key as keyof typeof REQUIRED_HEADERS]);
-
-            if (missingHeaders.length > 0) {
-                throw new HttpsError("failed-precondition", `The sheet is missing required columns: ${missingHeaders.join(', ')}.`);
+            return learningPoints;
+        } catch (error) {
+            console.error(`Error fetching learning points for employee ${employeeId}:`, error);
+            if (error instanceof HttpsError) {
+                throw error;
             }
-
-            const tasks = dataRows.map((row, index) => ({
-                id: `${sheetName}-${index}`,
-                date: row[headerMapping.date] || '',
-                task: row[headerMapping.task] || '',
-                taskFrameworkCategory: row[headerMapping.taskFrameworkCategory] || '',
-                pointType: row[headerMapping.pointType] || '',
-                situation: row[headerMapping.situation] || '',
-                behavior: row[headerMapping.behavior] || '',
-                impact: row[headerMapping.impact] || '',
-                action: row[headerMapping.action] || '',
-            }))
-                .filter(task => task.date || task.task);
-
-            return tasks;
-
-        } catch (error: any) {
-            console.error(`Error in getSheetData for sheet ${sheetName}:`, error);
-            throw new HttpsError("internal", "Failed to retrieve and parse sheet data.", error.message);
+            throw new HttpsError("internal", "An unexpected error occurred while fetching learning points.");
         }
     }
 );

@@ -46,8 +46,8 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    if (request.auth.token.isAdmin !== true) {
-        throw new https_1.HttpsError("permission-denied", "Only admins can end a session.");
+    if (request.auth.token.isAdmin !== true && request.auth.token.isCoAdmin !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins or co-admins can end a session.");
     }
     const { sessionId } = request.data;
     if (!sessionId) {

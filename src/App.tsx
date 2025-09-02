@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AdminAuthProvider, useAdminAuth } from "@/context/AdminAuthContext";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import ProtectedRoute from "@/components/routes/ProtectedRoute";
+import CoAdminProtectedRoute from "@/components/routes/CoAdminProtectedRoute";
 import AuthPage from "@/features/auth/pages/AuthPage";
 import AdminLogin from "@/features/auth/pages/AdminLogin";
 import EmployeeSetup from "@/features/auth/pages/EmployeeSetup";
@@ -63,7 +64,7 @@ const AppContent = () => {
           )
         }
       />
-      <Route path="/daily-observations" element={<ProtectedRoute><DailyObservationsPage /></ProtectedRoute>} />
+      <Route path="/daily-observations" element={<CoAdminProtectedRoute><DailyObservationsPage /></CoAdminProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

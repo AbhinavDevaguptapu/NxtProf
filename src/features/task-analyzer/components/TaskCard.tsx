@@ -48,7 +48,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       case AnalysisStatus.SKIPPED:
         return (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-            <p className="font-semibold">Analysis Skipped</p>
+            <p className="font-semibold">Analysis Skipped for R3 Points</p>
             <p className="text-xs text-muted-foreground mt-1">This task was not analyzed.</p>
           </div>
         );
@@ -73,7 +73,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-sm text-muted-foreground italic mb-4">{analysis.rationale}</p>
+              <p className="text-sm text-muted-foreground italic font-bold mb-4">{analysis.rationale}</p>
 
               <div className="bg-muted/50 p-3 rounded-lg mb-4 border">
                   <h4 className="flex items-center text-xs font-semibold uppercase text-muted-foreground mb-2">

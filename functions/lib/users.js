@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeAdminRole = exports.addAdminRole = void 0;
+exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = void 0;
 /**
  * @file User and role management Cloud Functions.
  */
@@ -82,6 +82,51 @@ exports.removeAdminRole = (0, https_1.onCall)(async (request) => {
         }
         console.error("removeAdminRole error:", err);
         throw new https_1.HttpsError("internal", "Could not remove admin role.");
+    }
+});
+exports.addCoAdminRole = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!request.auth)
+        throw new https_1.HttpsError("unauthenticated", "Login required.");
+    const caller = request.auth.token;
+    if (caller.isAdmin !== true)
+        throw new https_1.HttpsError("permission-denied", "Admins only.");
+    const email = (_a = request.data.email) === null || _a === void 0 ? void 0 : _a.trim();
+    if (!email)
+        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
+    try {
+        const user = await admin.auth().getUserByEmail(email);
+        await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isCoAdmin: true }));
+        return { message: `${email} is now a Co-Admin.` };
+    }
+    catch (err) {
+        if (err.code === "auth/user-not-found") {
+            throw new https_1.HttpsError("not-found", "User not found.");
+        }
+        console.error("addCoAdminRole error:", err);
+        throw new https_1.HttpsError("internal", "Could not set Co-Admin role.");
+    }
+});
+exports.removeCoAdminRole = (0, https_1.onCall)(async (request) => {
+    var _a, _b;
+    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can modify roles.");
+    }
+    const email = (_b = request.data.email) === null || _b === void 0 ? void 0 : _b.trim();
+    if (!email) {
+        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
+    }
+    try {
+        const user = await admin.auth().getUserByEmail(email);
+        await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isCoAdmin: false }));
+        return { message: `Co-Admin role removed for ${email}.` };
+    }
+    catch (err) {
+        if (err.code === "auth/user-not-found") {
+            throw new https_1.HttpsError("not-found", "User not found.");
+        }
+        console.error("removeCoAdminRole error:", err);
+        throw new https_1.HttpsError("internal", "Could not remove Co-Admin role.");
     }
 });
 exports.deleteEmployee = (0, https_1.onCall)(async (request) => {
@@ -149,18 +194,25 @@ exports.unarchiveEmployee = (0, https_1.onCall)(async (request) => {
 });
 exports.getEmployeesWithAdminStatus = (0, https_1.onCall)(async (request) => {
     var _a;
-    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
-        throw new https_1.HttpsError("permission-denied", "Only admins can view the employee list.");
+    const caller = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.token;
+    if (!(caller === null || caller === void 0 ? void 0 : caller.isAdmin) && !(caller === null || caller === void 0 ? void 0 : caller.isCoAdmin)) {
+        throw new https_1.HttpsError("permission-denied", "Only admins and co-admins can view the employee list.");
     }
     try {
         const listUsersResult = await admin.auth().listUsers(1000);
-        const adminUids = new Set(listUsersResult.users
-            .filter(u => { var _a; return ((_a = u.customClaims) === null || _a === void 0 ? void 0 : _a.isAdmin) === true; })
-            .map(u => u.uid));
+        const adminUids = new Set();
+        const coAdminUids = new Set();
+        listUsersResult.users.forEach(u => {
+            var _a, _b;
+            if ((_a = u.customClaims) === null || _a === void 0 ? void 0 : _a.isAdmin)
+                adminUids.add(u.uid);
+            if ((_b = u.customClaims) === null || _b === void 0 ? void 0 : _b.isCoAdmin)
+                coAdminUids.add(u.uid);
+        });
         const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
         const employeesWithStatus = employeesSnapshot.docs
             .filter(doc => doc.data().archived !== true) // Filter in code
-            .map(doc => (Object.assign(Object.assign({ id: doc.id }, doc.data()), { isAdmin: adminUids.has(doc.id) })));
+            .map(doc => (Object.assign(Object.assign({ id: doc.id }, doc.data()), { isAdmin: adminUids.has(doc.id), isCoAdmin: coAdminUids.has(doc.id) })));
         return employeesWithStatus;
     }
     catch (error) {

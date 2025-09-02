@@ -74,8 +74,11 @@ type LearningPointFormProps = {
 };
 
 // --- COMPONENT ---
+import { useUserAuth } from '@/context/UserAuthContext';
+
 export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: LearningPointFormProps) => {
     const { toast } = useToast();
+    const { isAdmin, isCoAdmin } = useUserAuth();
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -280,7 +283,7 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
 
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                            <Button type="submit">Save Point</Button>
+                            <Button type="submit" disabled={isAdmin}>Save Point</Button>
                         </DialogFooter>
                     </form>
                 </Form>

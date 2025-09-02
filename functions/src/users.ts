@@ -6,7 +6,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { DecodedIdToken } from "firebase-admin/auth";
 
 interface RoleManagementData { email: string; }
-interface CustomDecodedIdToken extends DecodedIdToken { isAdmin?: boolean; }
+interface CustomDecodedIdToken extends DecodedIdToken { isAdmin?: boolean; isCoAdmin?: boolean; }
 
 export const addAdminRole = onCall<RoleManagementData>(async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Login required.");
@@ -47,6 +47,48 @@ export const removeAdminRole = onCall<RoleManagementData>(async (request) => {
         }
         console.error("removeAdminRole error:", err);
         throw new HttpsError("internal", "Could not remove admin role.");
+    }
+});
+
+export const addCoAdminRole = onCall<RoleManagementData>(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Login required.");
+    const caller = request.auth.token as CustomDecodedIdToken;
+    if (caller.isAdmin !== true) throw new HttpsError("permission-denied", "Admins only.");
+
+    const email = request.data.email?.trim();
+    if (!email) throw new HttpsError("invalid-argument", "Provide a valid email.");
+
+    try {
+        const user = await admin.auth().getUserByEmail(email);
+        await admin.auth().setCustomUserClaims(user.uid, { ...user.customClaims, isCoAdmin: true });
+        return { message: `${email} is now a Co-Admin.` };
+    } catch (err: any) {
+        if (err.code === "auth/user-not-found") {
+            throw new HttpsError("not-found", "User not found.");
+        }
+        console.error("addCoAdminRole error:", err);
+        throw new HttpsError("internal", "Could not set Co-Admin role.");
+    }
+});
+
+export const removeCoAdminRole = onCall<RoleManagementData>(async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can modify roles.");
+    }
+    const email = request.data.email?.trim();
+    if (!email) {
+        throw new HttpsError("invalid-argument", "Provide a valid email.");
+    }
+    try {
+        const user = await admin.auth().getUserByEmail(email);
+        await admin.auth().setCustomUserClaims(user.uid, { ...user.customClaims, isCoAdmin: false });
+        return { message: `Co-Admin role removed for ${email}.` };
+    } catch (err: any) {
+        if (err.code === "auth/user-not-found") {
+            throw new HttpsError("not-found", "User not found.");
+        }
+        console.error("removeCoAdminRole error:", err);
+        throw new HttpsError("internal", "Could not remove Co-Admin role.");
     }
 });
 
@@ -116,17 +158,19 @@ export const unarchiveEmployee = onCall<{ uid?: string }>(async (request) => {
 });
 
 export const getEmployeesWithAdminStatus = onCall(async (request) => {
-    if (request.auth?.token.isAdmin !== true) {
-        throw new HttpsError("permission-denied", "Only admins can view the employee list.");
+    const caller = request.auth?.token as CustomDecodedIdToken | undefined;
+    if (!caller?.isAdmin && !caller?.isCoAdmin) {
+        throw new HttpsError("permission-denied", "Only admins and co-admins can view the employee list.");
     }
 
     try {
         const listUsersResult = await admin.auth().listUsers(1000);
-        const adminUids = new Set(
-            listUsersResult.users
-                .filter(u => u.customClaims?.isAdmin === true)
-                .map(u => u.uid)
-        );
+        const adminUids = new Set();
+        const coAdminUids = new Set();
+        listUsersResult.users.forEach(u => {
+            if (u.customClaims?.isAdmin) adminUids.add(u.uid);
+            if (u.customClaims?.isCoAdmin) coAdminUids.add(u.uid);
+        });
 
         const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
         const employeesWithStatus = employeesSnapshot.docs
@@ -135,6 +179,7 @@ export const getEmployeesWithAdminStatus = onCall(async (request) => {
                 id: doc.id,
                 ...doc.data(),
                 isAdmin: adminUids.has(doc.id),
+                isCoAdmin: coAdminUids.has(doc.id),
             }));
         return employeesWithStatus;
     } catch (error: any) {

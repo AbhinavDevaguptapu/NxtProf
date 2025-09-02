@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import AnalysisPage from '../components/AnalysisPage';
-import { useAdminAuth } from "@/context/AdminAuthContext";
+import { useUserAuth } from "@/context/UserAuthContext";
 import { Loader2, Users } from 'lucide-react';
 import { Employee } from '../types';
-import { getSubsheetNames } from '../services/sheetService';
+import { getEmployees } from '../services/employeeService';
 import { Card, CardContent } from '@/components/ui/card';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ViewState, ViewType } from '@/layout/AppShell';
 
 interface TaskAnalyzerPageProps {
@@ -13,34 +14,37 @@ interface TaskAnalyzerPageProps {
 }
 
 const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) => {
-  const { admin } = useAdminAuth();
+  const { user, userProfile, isAdmin, isCoAdmin } = useUserAuth();
 
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [employeeSheets, setEmployeeSheets] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchEmployeeData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const sheets = await getSubsheetNames();
-        setEmployeeSheets(sheets);
-
-        if (!admin && sheets.length > 0) {
-          setSelectedEmployee(sheets[0]);
-        }
-      } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : 'Failed to fetch employee data.';
-        setError(errorMessage.includes('permission-denied') ? 'permission-denied' : errorMessage);
-      } finally {
-        setIsLoading(false);
+  const fetchEmployeeData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (isAdmin || isCoAdmin) {
+        const employees = await getEmployees();
+        setEmployeeSheets(employees);
+      } else if (user) {
+        // Regular users see their own analysis directly.
+        setSelectedEmployee({ id: user.uid, name: user?.displayName || 'My Analysis', sheetName: '' });
       }
-    };
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to fetch employee data.';
+      setError(errorMessage.includes('permission-denied') ? 'permission-denied' : errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchEmployeeData();
-  }, [admin]);
+  useEffect(() => {
+    if (userProfile) {
+      fetchEmployeeData();
+    }
+  }, [isAdmin, isCoAdmin, userProfile]);
 
   const handleEmployeeSelect = (employee: Employee | null) => {
     setSelectedEmployee(employee);
@@ -48,10 +52,10 @@ const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) =>
 
   const renderContent = () => {
     if (error) {
-      return <ErrorDisplay message={error} onRetry={() => window.location.reload()} />;
+      return <ErrorDisplay message={error} onRetry={fetchEmployeeData} />;
     }
 
-    if (admin) {
+    if (isAdmin || isCoAdmin) {
       return (
         <AnalysisPage
           isAdminView
@@ -82,11 +86,19 @@ const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) =>
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col">
+      <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Task Analysis</h1>
+          <p className="text-muted-foreground">Select an employee and date to view their analysis.</p>
+        </div>
+      </div>
       {isLoading ? (
-        <div className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="mt-4 text-muted-foreground">Fetching employee data...</p>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-2/3" />
           </div>
         </div>
       ) : (

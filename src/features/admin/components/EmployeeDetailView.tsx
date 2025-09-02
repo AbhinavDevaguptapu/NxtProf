@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MoreVertical, Edit, Archive, Trash2, Loader2, User, Star, Calendar, TrendingUp, Activity, ShieldCheck, ShieldOff } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import EmployeeAvatar from "./EmployeeAvatar";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { format, subMonths } from 'date-fns';
@@ -49,6 +49,7 @@ interface Employee {
     employeeId?: string;
     feedbackSheetUrl?: string;
     isAdmin?: boolean;
+    isCoAdmin?: boolean;
     role?: string;
 }
 
@@ -364,9 +365,23 @@ const EmployeeDetailHeader = ({ employee, onActionComplete }: { employee: Employ
         }
     };
 
-    const handleRoleChange = async (action: 'promote' | 'demote') => {
+    const handleRoleChange = async (action: 'promote' | 'demote' | 'promoteCoAdmin' | 'demoteCoAdmin') => {
         setProcessingAction(action);
-        const fnName = action === 'promote' ? 'addAdminRole' : 'removeAdminRole';
+        let fnName = '';
+        switch (action) {
+            case 'promote':
+                fnName = 'addAdminRole';
+                break;
+            case 'demote':
+                fnName = 'removeAdminRole';
+                break;
+            case 'promoteCoAdmin':
+                fnName = 'addCoAdminRole';
+                break;
+            case 'demoteCoAdmin':
+                fnName = 'removeCoAdminRole';
+                break;
+        }
         try {
             const functions = getFunctions();
             const callable = httpsCallable<unknown, CallableResponse>(functions, fnName);
@@ -413,232 +428,243 @@ const EmployeeDetailHeader = ({ employee, onActionComplete }: { employee: Employ
         }
     };
 
-    const actionButtons = (
-        <>
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                        <Edit className="h-4 w-4" /> Edit
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Edit {employee.name}</DialogTitle>
-                        <DialogDescription>
-                            Make changes to the employee's profile. Click save when you're done.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid w-full items-center gap-1.5">
-                            <Label htmlFor="name">Name</Label>
-                            <Input id="name" value={editFormData.name} onChange={handleInputChange} />
+    const renderActionButtons = (isDropdown: boolean) => {
+        const props: any = {};
+        if (isDropdown) {
+            props.onSelect = (e: Event) => e.preventDefault();
+        }
+
+        const TriggerComponent = isDropdown ? DropdownMenuItem : Button;
+
+        return (
+            <>
+                {/* Edit Action */}
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogTrigger asChild>
+                        <TriggerComponent
+                            variant={isDropdown ? undefined : "outline"}
+                            size={isDropdown ? undefined : "sm"}
+                            className="gap-2"
+                        >
+                            <Edit className="h-4 w-4" /> Edit
+                        </TriggerComponent>
+                    </DialogTrigger>
+                    <DialogContent>
+                        {/* ... Edit dialog content is unchanged ... */}
+                        <DialogHeader>
+                            <DialogTitle>Edit {employee.name}</DialogTitle>
+                            <DialogDescription>
+                                Make changes to the employee's profile. Click save when you're done.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid w-full items-center gap-1.5">
+                                <Label htmlFor="name">Name</Label>
+                                <Input id="name" value={editFormData.name} onChange={handleInputChange} />
+                            </div>
+                            <div className="grid w-full items-center gap-1.5">
+                                <Label htmlFor="employeeId">Employee ID</Label>
+                                <Input id="employeeId" value={editFormData.employeeId} onChange={handleInputChange} />
+                            </div>
+                            <div className="grid w-full items-center gap-1.5">
+                                <Label htmlFor="feedbackSheetUrl">Feedback URL</Label>
+                                <Input id="feedbackSheetUrl" value={editFormData.feedbackSheetUrl} onChange={handleInputChange} />
+                            </div>
                         </div>
-                        <div className="grid w-full items-center gap-1.5">
-                            <Label htmlFor="employeeId">Employee ID</Label>
-                            <Input id="employeeId" value={editFormData.employeeId} onChange={handleInputChange} />
-                        </div>
-                        <div className="grid w-full items-center gap-1.5">
-                            <Label htmlFor="feedbackSheetUrl">Feedback URL</Label>
-                            <Input id="feedbackSheetUrl" value={editFormData.feedbackSheetUrl} onChange={handleInputChange} />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button onClick={handleUpdateEmployee} disabled={processingAction === 'update'}>
-                            {processingAction === 'update' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save Changes
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        <DialogFooter>
+                            <Button onClick={handleUpdateEmployee} disabled={processingAction === 'update'}>
+                                {processingAction === 'update' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2" disabled={!!processingAction || employee.id === admin?.uid}>
-                        {processingAction === 'archive' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
-                        Archive
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure you want to archive {employee.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>This action will move the employee to the archived list. They will not be able to log in until unarchived.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleArchiveEmployee}>Yes, Archive</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                {/* Admin/Co-Admin Role Actions */}
+                {employee.isAdmin ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <TriggerComponent {...props} className="gap-2 text-orange-600 focus:text-orange-700" variant={isDropdown ? undefined : "outline"} size={isDropdown ? undefined : "sm"}>
+                                {processingAction === 'demote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                                Remove Admin
+                            </TriggerComponent>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Remove Admin Rights?</AlertDialogTitle>
+                                <AlertDialogDescription>This will revoke admin privileges for {employee.name}.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRoleChange('demote')}>Yes, Remove Admin</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <TriggerComponent {...props} className="gap-2 text-blue-600 focus:text-blue-700" variant={isDropdown ? undefined : "outline"} size={isDropdown ? undefined : "sm"}>
+                                {processingAction === 'promote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                Make Admin
+                            </TriggerComponent>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Make {employee.name} an Admin?</AlertDialogTitle>
+                                <AlertDialogDescription>This will grant admin privileges to {employee.email}.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRoleChange('promote')}>Promote to Admin</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
 
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50" disabled={!!processingAction}>
-                        {processingAction === 'delete' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        Delete
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone. This will permanently delete {employee.name}'s account, profile, and all associated data.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteEmployee}>Yes, Permanently Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
-    );
+                {/* Co-Admin Management */}
+                {employee.isCoAdmin ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <TriggerComponent {...props} className="gap-2 text-orange-600 focus:text-orange-700" variant={isDropdown ? undefined : "outline"} size={isDropdown ? undefined : "sm"}>
+                                {processingAction === 'demoteCoAdmin' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                                Remove Co-Admin
+                            </TriggerComponent>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Remove Co-Admin Rights?</AlertDialogTitle>
+                                <AlertDialogDescription>This will revoke co-admin privileges for {employee.name}. They'll retain standard employee access.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRoleChange('demoteCoAdmin')}>Yes, Remove Co-Admin</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <TriggerComponent {...props} className="gap-2 text-orange-600 focus:text-orange-700" variant={isDropdown ? undefined : "outline"} size={isDropdown ? undefined : "sm"}>
+                                {processingAction === 'promoteCoAdmin' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                {employee.isAdmin ? "Also Co-Admin" : "Make Co-Admin"}
+                            </TriggerComponent>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{employee.isAdmin ? "Add Co-Admin Rights?" : `Make ${employee.name} a Co-Admin?`}</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    {employee.isAdmin ?
+                                        `This will grant ${employee.name} co-admin privileges in addition to their admin role.` :
+                                        `This will grant co-admin privileges to ${employee.email}, allowing them to manage both sessions and their own learning points.`
+                                    }
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRoleChange('promoteCoAdmin')}>
+                                    {employee.isAdmin ? "Add Rights" : "Promote to Co-Admin"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
 
-    const dropdownMenuItems = (
-        <>
-            <DropdownMenuItem className="gap-2" onSelect={() => setIsEditDialogOpen(true)}>
-                <Edit className="h-4 w-4" /> Edit
-            </DropdownMenuItem>
+                {/* Separator for dropdown */}
+                {isDropdown && <DropdownMenuSeparator />}
 
-            {employee.isAdmin ? (
+                {/* Archive Action */}
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="gap-2 text-orange-600 focus:text-orange-700" onSelect={(e) => e.preventDefault()}>
-                            {processingAction === 'demote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
-                            Remove Admin
-                        </DropdownMenuItem>
+                        <TriggerComponent
+                            {...props}
+                            className="gap-2"
+                            variant={isDropdown ? undefined : "outline"}
+                            size={isDropdown ? undefined : "sm"}
+                            disabled={employee.id === admin?.uid}
+                        >
+                            <Archive className="h-4 w-4" /> Archive
+                        </TriggerComponent>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Remove Admin Rights?</AlertDialogTitle>
-                            <AlertDialogDescription>This will revoke admin privileges for {employee.name}.</AlertDialogDescription>
+                            <AlertDialogTitle>Archive {employee.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>This will move the employee to the archived list.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRoleChange('demote')}>Yes, Remove Admin</AlertDialogAction>
+                            <AlertDialogAction onClick={handleArchiveEmployee}>Yes, Archive</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            ) : (
+
+                {/* Delete Action */}
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="gap-2 text-blue-600 focus:text-blue-700" onSelect={(e) => e.preventDefault()}>
-                            {processingAction === 'promote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                            Make Admin
-                        </DropdownMenuItem>
+                        <TriggerComponent
+                            {...props}
+                            className="gap-2 text-red-600 focus:text-red-700"
+                            variant={isDropdown ? undefined : "outline"}
+                            size={isDropdown ? undefined : "sm"}
+                        >
+                            <Trash2 className="h-4 w-4" /> Delete
+                        </TriggerComponent>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Make {employee.name} an Admin?</AlertDialogTitle>
-                            <AlertDialogDescription>This will grant admin privileges to {employee.email}.</AlertDialogDescription>
+                            <AlertDialogTitle>Permanently Delete {employee.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRoleChange('promote')}>Promote to Admin</AlertDialogAction>
+                            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteEmployee}>Yes, Delete</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            )}
-
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <DropdownMenuItem className="gap-2" onSelect={(e) => e.preventDefault()} disabled={employee.id === admin?.uid}>
-                        <Archive className="h-4 w-4" /> Archive
-                    </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Archive {employee.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>This will move the employee to the archived list.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleArchiveEmployee}>Yes, Archive</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <DropdownMenuItem className="gap-2 text-red-600 focus:text-red-700" onSelect={(e) => e.preventDefault()}>
-                        <Trash2 className="h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Permanently Delete {employee.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteEmployee}>Yes, Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
-    );
+            </>
+        );
+    };
 
     return (
-        <div className="flex items-center justify-between gap-4 pb-6 border-b border-gray-200">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b">
             <div className="flex items-center gap-4">
                 <EmployeeAvatar name={employee.name} className="h-16 w-16 text-lg" />
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">{employee.name}</h1>
-                    <p className="text-muted-foreground">{employee.role || 'Employee'}</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <h1 className="text-2xl font-bold text-gray-900">{employee.name}</h1>
+                        {employee.isAdmin && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                Admin
+                            </span>
+                        )}
+                        {employee.isCoAdmin && !employee.isAdmin && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold border border-orange-200">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                Co-Admin
+                            </span>
+                        )}
+                    </div>
                     <p className="text-sm text-muted-foreground mt-1">{employee.email}</p>
                     {employee.employeeId && (
-                        <p className="text-sm text-muted-foreground">ID: {employee.employeeId}</p>
+                        <p className="text-xs text-muted-foreground">ID: {employee.employeeId}</p>
                     )}
                 </div>
             </div>
-            <div className="flex items-center gap-2">
-                <div className="hidden md:flex items-center gap-2">
-                    {actionButtons}
-                    {employee.isAdmin ? (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-2 text-orange-600 hover:text-orange-600 border-orange-300 hover:bg-orange-50" disabled={!!processingAction}>
-                                    {processingAction === 'demote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
-                                    Remove Admin
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Remove Admin Rights?</AlertDialogTitle>
-                                    <AlertDialogDescription>This will revoke admin privileges for {employee.name}.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleRoleChange('demote')}>Yes, Remove Admin</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    ) : (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-2 text-blue-600 hover:text-blue-600 border-blue-300 hover:bg-blue-50" disabled={!!processingAction}>
-                                    {processingAction === 'promote' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                                    Make Admin
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Make {employee.name} an Admin?</AlertDialogTitle>
-                                    <AlertDialogDescription>This will grant admin privileges to {employee.email}.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleRoleChange('promote')}>Promote to Admin</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+                {/* Desktop Buttons */}
+                <div className="hidden md:flex items-center gap-2 flex-wrap">
+                    {renderActionButtons(false)}
                 </div>
+
+                {/* Mobile Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="md:hidden">
+                        <Button variant="ghost" size="icon" className="md:hidden ml-auto">
                             <MoreVertical className="h-5 w-5" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                        {dropdownMenuItems}
+                    <DropdownMenuContent align="end" className="w-56">
+                        {renderActionButtons(true)}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

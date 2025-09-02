@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getSheetData} from '../services/sheetService';
+import { getLearningPointsForEmployee } from '../services/employeeService';
 import { analyzeTask } from '../services/geminiService';
 import { Task, TaskData, Employee } from '../types';
+import { Skeleton } from '@/components/ui/skeleton';
 import TaskCard from './TaskCard';
 
 // Local definition for AnalysisStatus since types.ts is not found
@@ -60,10 +61,10 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
       setProcessingMessage(`Fetching tasks for ${selectedEmployee.name}...`);
 
       try {
-        const taskData: TaskData[] = await getSheetData(selectedEmployee.sheetName);
+        const taskData: TaskData[] = await getLearningPointsForEmployee(selectedEmployee.id);
 
         if (taskData.length === 0) {
-          setError('No tasks found in the sheet.');
+          setError('No learning points found for this employee.');
           setAllTasks([]);
           setUniqueDates([]);
           return;
@@ -98,6 +99,12 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
   }, [selectedEmployee]);
 
   useEffect(() => {
+    if (selectedEmployee && onEmployeeSelect) {
+      onEmployeeSelect(selectedEmployee);
+    }
+  }, [selectedEmployee, onEmployeeSelect]);
+
+  useEffect(() => {
     const processTasksForDate = async () => {
       if (!selectedDate) {
         setAnalyzedTasks([]);
@@ -111,7 +118,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
 
       for (let i = 0; i < tasksToProcess.length; i++) {
         const task = tasksToProcess[i];
-        
+
         if (task.taskData.pointType !== 'R1' && task.taskData.pointType !== 'R2') {
           setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: AnalysisStatus.SKIPPED } : t));
           continue; // Skip to the next task
@@ -144,6 +151,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
   const progress = totalToAnalyze > 0 ? ((analyzedCount + failedCount) / totalToAnalyze) * 100 : 0;
 
   const handleEmployeeSelect = (employeeId: string) => {
+    if (employeeId === selectedEmployee?.id) return;
     const employee = employees.find(e => e.id === employeeId);
     if (employee && onEmployeeSelect) {
       onEmployeeSelect(employee);
@@ -152,12 +160,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Task Analysis {isAdminView && selectedEmployee ? `for ${employeeName}` : ''}</h1>
-          <p className="text-muted-foreground">{isAdminView ? 'Select an employee and date to view their analysis.' : 'Select a date to view your analysis.'}</p>
-        </div>
-        <div className="flex flex-col md:flex-row gap-2 pt-2">
+      <div className="flex flex-col md:flex-row justify-start md:items-start gap-4">
+        <div className="flex flex-col md:flex-row gap-2 pt-2 w-full md:w-auto">
           {isAdminView && (
             <Select onValueChange={handleEmployeeSelect} value={selectedEmployee?.id || ''}>
               <SelectTrigger className="w-full md:w-[240px]">
@@ -172,35 +176,44 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
             </Select>
           )}
           <Select onValueChange={setSelectedDate} value={selectedDate} disabled={isProcessing || !selectedEmployee}>
-              <SelectTrigger className="w-full md:w-[240px]">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="-- Select a date --" />
-              </SelectTrigger>
-              <SelectContent>
-                  {uniqueDates.map(date => (
-                      <SelectItem key={date} value={date}>{date}</SelectItem>
-                  ))}
-              </SelectContent>
+            <SelectTrigger className="w-full md:w-[240px]">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="-- Select a date --" />
+            </SelectTrigger>
+            <SelectContent>
+              {uniqueDates.map(date => (
+                <SelectItem key={date} value={date}>{date}</SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
       </div>
 
       {isLoading && (
-        <div className="flex flex-col items-center justify-center h-64">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">{processingMessage || 'Loading tasks...'}</p>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-2/3" />
+          </div>
         </div>
       )}
 
-      {error && <ErrorDisplay message={error} onRetry={onBack} />}
+      {error && <ErrorDisplay message={error} onRetry={() => {
+        if (selectedEmployee) {
+          // This is a bit of a hack, but it will re-trigger the fetch
+          onEmployeeSelect?.(selectedEmployee);
+        }
+      }} />}
 
       {!isLoading && !error && !selectedEmployee && isAdminView && (
         <Card className="h-full flex items-center justify-center border-2 border-dashed">
-            <CardContent className="text-center py-10">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h2 className="text-xl font-semibold mt-4">Select an Employee</h2>
-                <p className="text-muted-foreground mt-1">Choose an employee from the dropdown above to begin.</p>
-            </CardContent>
+          <CardContent className="text-center py-10">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto" />
+            <h2 className="text-xl font-semibold mt-4">Select an Employee</h2>
+            <p className="text-muted-foreground mt-1">Choose an employee from the dropdown above to begin.</p>
+          </CardContent>
         </Card>
       )}
 
@@ -211,35 +224,35 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
               <TaskTable tasks={tasksForSelectedDate} selectedDate={selectedDate} />
 
               {(isProcessing || analyzedTasks.length > 0) && (
-                  <Card>
+                <Card>
                   <CardHeader>
-                      <CardTitle>Analysis for {selectedDate}</CardTitle>
-                      <CardDescription>{processingMessage}</CardDescription>
+                    <CardTitle>Analysis for {selectedDate}</CardTitle>
+                    <CardDescription>{processingMessage}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                      <div className="flex items-center space-x-4 mb-4">
+                    <div className="flex items-center space-x-4 mb-4">
                       <div className="flex items-center text-green-500">
-                          <CheckCircle className="w-5 h-5 mr-1.5" />
-                          <span>Analyzed: {analyzedCount}/{totalToAnalyze}</span>
+                        <CheckCircle className="w-5 h-5 mr-1.5" />
+                        <span>Analyzed: {analyzedCount}/{totalToAnalyze}</span>
                       </div>
                       {failedCount > 0 && (
-                          <div className="flex items-center text-red-500">
+                        <div className="flex items-center text-red-500">
                           <XCircle className="w-5 h-5 mr-1.5" />
                           <span>Failed: {failedCount}</span>
-                          </div>
+                        </div>
                       )}
-                      </div>
-                      {(isProcessing || progress < 100) && <Progress value={progress} />}
+                    </div>
+                    {(isProcessing || progress < 100) && <Progress value={progress} />}
                   </CardContent>
-                  </Card>
+                </Card>
               )}
 
               <div className="space-y-6">
-                  {analyzedTasks.map((task, index) => (
+                {analyzedTasks.map((task, index) => (
                   <div key={task.id} className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
-                      <TaskCard task={task} />
+                    <TaskCard task={task} />
                   </div>
-                  ))}
+                ))}
               </div>
             </>
           ) : (

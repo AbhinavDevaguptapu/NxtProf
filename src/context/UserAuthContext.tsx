@@ -49,6 +49,7 @@ export interface UserProfile extends DocumentData {
     employeeId?: string;
     hasCompletedSetup?: boolean;
     isAdmin?: boolean;
+    isCoAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -58,6 +59,7 @@ interface AuthContextType {
     initialized: boolean;
     logout: () => Promise<void>;
     isAdmin: boolean;
+    isCoAdmin: boolean;
 }
 
 const UserAuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,6 +68,7 @@ export const UserAuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [isCoAdmin, setIsCoAdmin] = useState(false);
 
     // loadingAuth covers onAuthStateChanged; loadingProfile covers Firestore snapshot
     const [loadingAuth, setLoadingAuth] = useState(true);
@@ -86,9 +89,11 @@ export const UserAuthProvider = ({ children }: { children: ReactNode }) => {
                 if (currentUser) {
                     currentUser.getIdTokenResult().then((idTokenResult) => {
                         setIsAdmin(!!idTokenResult.claims.isAdmin);
+                        setIsCoAdmin(!!idTokenResult.claims.isCoAdmin);
                     });
                 } else {
                     setIsAdmin(false);
+                    setIsCoAdmin(false);
                 }
 
                 setLoadingAuth(false);
@@ -155,6 +160,7 @@ export const UserAuthProvider = ({ children }: { children: ReactNode }) => {
                 initialized,
                 logout,
                 isAdmin,
+                isCoAdmin,
             }}
         >
             {children}

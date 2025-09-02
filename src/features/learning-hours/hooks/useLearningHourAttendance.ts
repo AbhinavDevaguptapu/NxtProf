@@ -150,8 +150,6 @@ export const useLearningHourAttendance = (
     const activeFilteredEmployees = useMemo(() => {
         let filtered = employees;
 
-        // FIX: Use the 'activeFilter' passed into the hook, not the 'finalFilter' state.
-        // This was the core of the bug. The component's active filter state was not being used for filtering.
         if (activeFilter !== "all") {
             filtered = filtered.filter(
                 (emp) => (tempAttendance[emp.id] || "Missed") === activeFilter
@@ -168,8 +166,6 @@ export const useLearningHourAttendance = (
         }
 
         return filtered;
-    // FIX: Add 'activeFilter' to the dependency array.
-    // This ensures the list is re-calculated whenever the filter changes.
     }, [activeFilter, employees, tempAttendance, activeSearchQuery]);
 
     const finalFilteredEmployees = useMemo(() => {
