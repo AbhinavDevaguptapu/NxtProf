@@ -40,7 +40,7 @@ const date_fns_1 = require("date-fns");
 if (admin.apps.length === 0) {
     admin.initializeApp();
 }
-exports.getEmployeePerformanceSummary = (0, https_1.onCall)(async (request) => {
+exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
     }
@@ -49,7 +49,7 @@ exports.getEmployeePerformanceSummary = (0, https_1.onCall)(async (request) => {
     }
     const { employeeId, month } = request.data;
     if (!employeeId || !month) {
-        throw new https_1.HttpsError("invalid-argument", "employeeId and month (YYYY-MM) are required.");
+        throw new https_1.HttpsError("invalid-argument", "Both employee and month parameters are required.");
     }
     const db = admin.firestore();
     const targetMonth = (0, date_fns_1.parseISO)(month + "-01");

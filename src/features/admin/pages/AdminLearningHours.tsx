@@ -8,11 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, ChevronsUpDown, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { LearningPoint } from '@/features/learning-hours/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { httpsCallable, getFunctions } from 'firebase/functions';
+import { useToast } from '@/components/ui/use-toast';
+import { useAdminAuth } from '@/context/AdminAuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/integrations/firebase/client';
 
 const PointDetails = ({ point }: { point: LearningPoint }) => {
     const detailCard = "bg-muted/50 p-4 rounded-lg";
@@ -86,10 +91,93 @@ const AdminLearningHours = () => {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
     const [openRowId, setOpenRowId] = useState<string | null>(null);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [isDateSynced, setIsDateSynced] = useState<boolean>(false);
+    const { toast } = useToast();
+    const { admin } = useAdminAuth();
+
+    const checkSyncStatus = async () => {
+        if (!admin) return;
+
+        try {
+            const dateString = format(date, 'yyyy-MM-dd');
+            const docRef = doc(db, 'learning_hours', dateString);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setIsDateSynced(data.synced === true);
+            } else {
+                // If no document exists, then it's not synced
+                setIsDateSynced(false);
+            }
+        } catch (error) {
+            console.error("Error checking sync status:", error);
+            setIsDateSynced(false);
+        }
+    };
+
+    const handleSyncByDate = async () => {
+        if (!date) {
+            toast({
+                title: "Date Required",
+                description: "Please select a date to sync.",
+                variant: "destructive"
+            });
+            return;
+        }
+        setIsSyncing(true);
+        try {
+            const syncFunction = httpsCallable(getFunctions(), 'syncLearningHoursByDate');
+            const dateString = format(date, 'yyyy-MM-dd');
+            const result = await syncFunction({ date: dateString }) as any;
+
+            const message = result.data.message;
+
+            if (message === "This session is already synced.") {
+                toast({
+                    title: "Already Synced",
+                    description: `Learning hours for ${format(date, "PPP")} are already synced.`
+                });
+            } else if (message === "No locked learning points found for this session. Marked as synced.") {
+                toast({
+                    title: "No Points to Sync",
+                    description: `No learning points found for ${format(date, "PPP")}. Marked as synced.`
+                });
+            } else if (message?.includes("Synced successfully")) {
+                toast({
+                    title: "Sync Successful",
+                    description: `Learning hours synced for ${format(date, "PPP")}.`
+                });
+            } else {
+                toast({
+                    title: "Sync Completed",
+                    description: message || `Learning hours processed for ${format(date, "PPP")}.`
+                });
+            }
+            refetch(); // Refresh the learning points data after sync
+            setIsDateSynced(true); // Mark as synced after successful sync
+        } catch (error) {
+            console.error("Failed to sync learning hours by date:", error);
+            toast({
+                title: "Sync Failed",
+                description: "Failed to sync learning hours. Please check the console for more details.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     useEffect(() => {
         refetch();
     }, [date, refetch]);
+
+    useEffect(() => {
+        if (admin) {
+            checkSyncStatus();
+        }
+    }, [date, admin]);
 
     const employeeMap = useMemo(() => {
         return employees.reduce((acc, emp) => {
@@ -108,11 +196,16 @@ const AdminLearningHours = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Today's Learning Points</CardTitle>
+                <CardTitle>
+                    {format(date, "PPP") === format(new Date(), "PPP") ? "Today's" : format(date, "PPPP")} Learning Points
+                    {admin && isDateSynced && <span className="text-sm text-green-600 font-normal ml-2">✓ Synced</span>}
+                </CardTitle>
                 <CardDescription>
-                    Here are all the learning points submitted today. You can filter them by employee.
+                    Here are all the learning points submitted on {format(date, "PPP")}.
+                    {admin && ` Sync status: ${isDateSynced ? "Already synced to spreadsheet" : "Not synced yet"}.`}
+                    You can filter them by employee.
                 </CardDescription>
-                <div className="pt-4 flex gap-4">
+                <div className="pt-4 flex gap-4 items-end">
                     <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                         <PopoverTrigger asChild>
                             <Button
@@ -151,6 +244,16 @@ const AdminLearningHours = () => {
                             ))}
                         </SelectContent>
                     </Select>
+                    {admin && (
+                        <Button
+                            onClick={handleSyncByDate}
+                            disabled={isSyncing || isDateSynced}
+                            variant={isDateSynced ? "secondary" : "default"}
+                        >
+                            {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isDateSynced ? "Already Synced" : "Sync by Date"}
+                        </Button>
+                    )}
                 </div>
             </CardHeader>
             <CardContent>

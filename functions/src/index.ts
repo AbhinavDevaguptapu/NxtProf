@@ -28,6 +28,7 @@ export {
 export {
     syncLearningPointsToSheet,
     autoSyncLearningPoints,
+    syncLearningHoursByDate,
 } from "./syncLearningHours";
 
 // Daily Observations

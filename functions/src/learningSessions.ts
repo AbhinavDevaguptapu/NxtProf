@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { isUserAdmin } from "./utils";
 
 
 interface EndSessionData {
@@ -16,13 +17,13 @@ export const endLearningSessionAndLockPoints = onCall<EndSessionData>(async (req
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    if (request.auth.token.isAdmin !== true && request.auth.token.isCoAdmin !== true) {
+    if (!isUserAdmin(request.auth)) {
         throw new HttpsError("permission-denied", "Only admins or co-admins can end a session.");
     }
 
     const { sessionId } = request.data;
     if (!sessionId) {
-        throw new HttpsError("invalid-argument", "A valid 'sessionId' must be provided.");
+        throw new HttpsError("invalid-argument", "A valid session ID must be provided.");
     }
 
     try {
@@ -57,19 +58,58 @@ export const endLearningSessionAndLockPoints = onCall<EndSessionData>(async (req
     }
 });
 
-export const getLearningPointsByDate = onCall(async (request) => {
+export const getLearningPointsByDate = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
 
     const { date } = request.data || {};
 
+    // Date validation and sanitization
+    let targetDate: Date;
+    if (date) {
+        // Validate and sanitize the client-provided date
+        if (typeof date !== "string") {
+            throw new HttpsError("invalid-argument", "Invalid date format.");
+        }
+
+        const sanitizedDateStr = date.trim();
+
+        // Validate date format (YYYY-MM-DD)
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!datePattern.test(sanitizedDateStr)) {
+            throw new HttpsError("invalid-argument", "Invalid date format. Use YYYY-MM-DD.");
+        }
+
+        targetDate = new Date(sanitizedDateStr + "T00:00:00.000Z");
+
+        // Validate the date is not NaN and is reasonable
+        if (isNaN(targetDate.getTime())) {
+            throw new HttpsError("invalid-argument", "Invalid date provided.");
+        }
+
+        // Prevent access to future dates (prevent enumeration attacks)
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (targetDate > tomorrow) {
+            throw new HttpsError("invalid-argument", "Cannot access data for future dates.");
+        }
+
+        // Prevent access to dates too far in the past (prevent abuse)
+        const oneYearAgo = new Date(now);
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        if (targetDate < oneYearAgo) {
+            throw new HttpsError("invalid-argument", "Cannot access data older than one year.");
+        }
+    } else {
+        // Use server-side current date if no date provided
+        targetDate = new Date();
+    }
+
     const db = admin.firestore();
-    
-    // If a date is provided, use it. Otherwise, default to the current date.
-    const targetDate = date ? new Date(date) : new Date();
-    
-    // Determine the start and end of the day in UTC.
+
+    // Determine the start and end of the day in UTC using server-validated date.
     const startDate = new Date(targetDate);
     startDate.setUTCHours(0, 0, 0, 0);
 
@@ -77,11 +117,12 @@ export const getLearningPointsByDate = onCall(async (request) => {
     endDate.setUTCDate(startDate.getUTCDate() + 1);
 
     try {
-        const learningPointsQuery = db.collection("learning_points")
+        const baseQuery = db.collection("learning_points")
             .where("createdAt", ">=", startDate)
             .where("createdAt", "<", endDate);
 
-        const snapshot = await learningPointsQuery.get();
+        // Allow all users to see all learning points for today's learning
+        const snapshot = await baseQuery.get();
 
         if (snapshot.empty) {
             return [];

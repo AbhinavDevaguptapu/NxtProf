@@ -4,17 +4,6 @@ export const TASK_FRAMEWORK_MD = `
 ## Task Framework
 A systematic approach to do any task in an excellent way.
 
-### Elements in Task Framework
-* Commitment
-* Objective
-* Timeframe
-* Quality
-* ELP
-* Efficiency and Creativity
-* Task Review
-
----
-
 ## Commitment
 Completion without any excuses.
 
@@ -192,52 +181,55 @@ Time intervals at which you're going to review should be decided while preparing
 ---
 
 ## Growth Mindset
+A belief that our abilities and intelligence can be developed through dedication, effort, and learning from mistakes. It is the opposite of a fixed mindset, which assumes abilities are static.
+
+### Why is a Growth Mindset essential for the Task Framework?
+* **Embraces Challenges:** Views difficult tasks not as threats, but as opportunities to learn and grow, which strengthens Commitment.
+* **Persists Through Setbacks:** Sees failure not as a sign of inability but as a necessary part of the learning process, crucial for navigating complex ELPs and meeting Timeframes.
+* **Values Effort:** Understands that effort and deliberate practice are the pathways to mastery, leading to higher Quality and Efficiency.
+* **Learns from Feedback:** Actively seeks and incorporates feedback during Task Reviews to improve the process and the outcome.
+
+### Cultivating a Growth Mindset
+* Acknowledge and embrace imperfections.
+* View challenges as opportunities.
+* Replace the word "failing" with "learning".
+* Focus on the process over the end result.
+* Value effort and dedication over "talent".
+
+---
 
 ## Outcome vs Output
+A critical distinction for understanding the true purpose of any task.
 
-## Reporting
+### Output
+* The tangible, measurable result of completing a task or a series of tasks.
+* It is what you *produce*.
+* *Example: A 50-page market research report.*
+
+### Outcome
+* The value, impact, or change that the output creates.
+* It is the *why* behind the task and what you *achieve*.
+* *Example: The leadership team making an informed decision to enter a new market based on the insights from the report.*
+
+### Why focus on the Outcome?
+* **Ensures Purposeful Work:** Focusing on the outcome aligns your efforts with the bigger picture, ensuring your work has a real impact. It is the core of a clear Objective.
+* **Defines True Quality:** The quality of an output is ultimately judged by how well it achieves the desired outcome.
+* **Prevents Wasted Effort:** Producing a perfect output that doesn't lead to the desired outcome is a waste of resources.
+
+---
 
 ## Being Organized
+The practice of systematically arranging tasks, information, and resources to achieve objectives efficiently. It's the foundation upon which the entire Task Framework is built.
 
-## Learning Hour
-The practice of analyzing the way we execute things. It helps us increase our performance day by day.
+### The Impact of Being Organized
+* **Clarity and Focus:** Reduces mental clutter, allowing you to focus on the task at hand.
+* **Supports ELP:** A well-organized person can create a more effective Execution Level Plan (ELP) by easily identifying subtasks, dependencies, and resources.
+* **Upholds Commitment:** Eliminates the chaos and stress that lead to procrastination and broken commitments. A key reason people can't stay committed is being disorganised.
+* **Enhances Efficiency:** Prevents time from being wasted searching for information or figuring out what to do next.
 
-### How to do a Learning Hour
-At the end of the day or twice a day, analyse the tasks that you have done on that day and list down the following points:
-* Round 1: Improvements
-* Round 2: Best Practices
-* Round 3: Appreciation / Praise
-
-### Our focus during R1 - Improvements
-* **Problem** - The mistake that happened
-* **Core Point Missed** - The core/underlying reason why the mistake happened
-* **Action Items** - Specific steps that you are going to take to not repeat the same mistake
-
-### Attitude during R1 - When you list improvements
-* Look for as many improvement areas as possible
-* Come up with specific action items
-
-### Our focus during R2 - Best Practices
-* The points that worked out well in your execution
-
-### Our focus during R3 - Appreciation / Praise
- 
-* Self-Praise - Acknowledge something you did well today
-* Peer-Praise - Recognize someone who helped you or made your day easier
-* Gratitude - Express thanks for support, resources, or insights received
-
-### Implementation of action items from learning hour
-* **Every day**
-    * Refer to the action items in the morning
-    * Include one-time action item in the day plan
-* **Every week**
-    * Identify Patterns
-    * Check if you are implementing your action items
-
-### Key Points
-* Analyse your actions but don't judge yourself
-* Act on Action Items
-* Use only Task framework language
-* Don't worry about the mistakes, feel happy about the progress you're going to make
-* Celebrate successes—big or small—and acknowledge the support you received
+### Key Practices for Staying Organized
+* **Prioritize Tasks:** Use methods like the Eisenhower Matrix (Urgent/Important) to decide what to work on first.
+* **Use a System:** Employ tools like calendars for timeframes, to-do lists for tasks, and note-taking apps for information.
+* **Maintain a Clean Workspace:** Both physical and digital workspaces should be clutter-free to promote focus.
+* **Break It Down:** Deconstruct large projects into smaller, manageable subtasks, as outlined in the ELP.
 `;

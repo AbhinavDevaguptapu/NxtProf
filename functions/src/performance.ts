@@ -11,7 +11,7 @@ interface PerformanceRequest {
     month: string; // YYYY-MM format
 }
 
-export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(async (request) => {
+export const getEmployeePerformanceSummary = onCall<PerformanceRequest>({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Authentication is required.");
     }
@@ -21,7 +21,7 @@ export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(async (r
 
     const { employeeId, month } = request.data;
     if (!employeeId || !month) {
-        throw new HttpsError("invalid-argument", "employeeId and month (YYYY-MM) are required.");
+        throw new HttpsError("invalid-argument", "Both employee and month parameters are required.");
     }
 
     const db = admin.firestore();

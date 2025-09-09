@@ -33,25 +33,15 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = void 0;
+exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.syncLearningHoursByDate = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const googleapis_1 = require("googleapis");
-const google_auth_library_1 = require("google-auth-library");
 const admin = __importStar(require("firebase-admin"));
 const date_fns_1 = require("date-fns");
-const LEARNING_HOURS_SPREADSHEET_ID = "1RIEItNyirXEN_apxmYOlWaV5-rrTxJucyz6-kDu9dWA";
+const utils_1 = require("./utils");
 // Sheets client with service account
 function getSheetsClient() {
-    const saRaw = process.env.SHEETS_SA_KEY;
-    if (!saRaw)
-        throw new https_1.HttpsError("internal", "SHEETS_SA_KEY env var not configured.");
-    const sa = JSON.parse(saRaw);
-    const auth = new google_auth_library_1.JWT({
-        email: sa.client_email,
-        key: sa.private_key,
-        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
-    return googleapis_1.google.sheets({ version: "v4", auth });
+    return googleapis_1.google.sheets({ version: "v4", auth: (0, utils_1.getSheetsAuth)() });
 }
 // Reusable core logic for syncing
 async function _syncLearningPoints(sessionId) {
@@ -61,7 +51,7 @@ async function _syncLearningPoints(sessionId) {
     const sessionRef = db.doc(`learning_hours/${sessionId}`);
     const sessionSnap = await sessionRef.get();
     if (!sessionSnap.exists) {
-        throw new https_1.HttpsError("not-found", `Learning-hour session document not found for ID: ${sessionId}.`);
+        throw new https_1.HttpsError("not-found", "Session not found.");
     }
     const sessionData = sessionSnap.data();
     if (sessionData.status !== "ended") {
@@ -100,7 +90,7 @@ async function _syncLearningPoints(sessionId) {
     // 3. Prepare sheets meta
     const sheets = getSheetsClient();
     const meta = await sheets.spreadsheets.get({
-        spreadsheetId: LEARNING_HOURS_SPREADSHEET_ID,
+        spreadsheetId: (0, utils_1.getLearningHoursSpreadsheetId)(),
     });
     const allSheets = meta.data.sheets || [];
     const sheetLookup = {};
@@ -127,7 +117,7 @@ async function _syncLearningPoints(sessionId) {
         const sheetName = sheetLookup[employeeId].title;
         // 4a. Existing rows to skip duplicates
         const existingResp = await sheets.spreadsheets.values.get({
-            spreadsheetId: LEARNING_HOURS_SPREADSHEET_ID,
+            spreadsheetId: (0, utils_1.getLearningHoursSpreadsheetId)(),
             range: `${sheetName}!A:J`,
         });
         const existingRows = (_a = existingResp.data.values) !== null && _a !== void 0 ? _a : [];
@@ -157,7 +147,7 @@ async function _syncLearningPoints(sessionId) {
         });
         if (rowsToAppend.length > 0) {
             await sheets.spreadsheets.values.append({
-                spreadsheetId: LEARNING_HOURS_SPREADSHEET_ID,
+                spreadsheetId: (0, utils_1.getLearningHoursSpreadsheetId)(),
                 range: `${sheetName}!A:J`,
                 valueInputOption: "USER_ENTERED",
                 requestBody: { values: rowsToAppend },
@@ -176,24 +166,65 @@ async function _syncLearningPoints(sessionId) {
         appended: totalAppended,
     };
 }
-// Cloud function: syncLearningPointsToSheet
-exports.syncLearningPointsToSheet = (0, https_1.onCall)({
+// Cloud function: syncLearningHoursByDate
+exports.syncLearningHoursByDate = (0, https_1.onCall)({
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
+    cors: true
 }, async (request) => {
     // 1. Auth check
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Authentication required.");
     }
-    if (request.auth.token.isAdmin !== true) {
+    if (!(0, utils_1.isUserAdmin)(request.auth)) {
+        throw new https_1.HttpsError("permission-denied", "Only admins may run this sync.");
+    }
+    const { date } = request.data;
+    // Input validation and sanitization
+    if (!date || typeof date !== "string") {
+        throw new https_1.HttpsError("invalid-argument", "A valid date is required.");
+    }
+    const sanitizedDate = date.trim();
+    if (sanitizedDate.length === 0 || sanitizedDate.length > 100) {
+        throw new https_1.HttpsError("invalid-argument", "Invalid date format.");
+    }
+    // Check for valid date format (YYYY-MM-DD)
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (!datePattern.test(sanitizedDate)) {
+        throw new https_1.HttpsError("invalid-argument", "Invalid date format. Use YYYY-MM-DD.");
+    }
+    return await _syncLearningPoints(sanitizedDate);
+});
+// Cloud function: syncLearningPointsToSheet
+exports.syncLearningPointsToSheet = (0, https_1.onCall)({
+    timeoutSeconds: 300,
+    memory: "512MiB",
+    secrets: ["SHEETS_SA_KEY"],
+    cors: true
+}, async (request) => {
+    // 1. Auth check
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication required.");
+    }
+    if (!(0, utils_1.isUserAdmin)(request.auth)) {
         throw new https_1.HttpsError("permission-denied", "Only admins may run this sync.");
     }
     const { sessionId } = request.data;
-    if (!sessionId) {
+    // Input validation and sanitization
+    if (!sessionId || typeof sessionId !== "string") {
         throw new https_1.HttpsError("invalid-argument", "A valid sessionId is required.");
     }
-    return await _syncLearningPoints(sessionId);
+    const sanitizedSessionId = sessionId.trim();
+    if (sanitizedSessionId.length === 0 || sanitizedSessionId.length > 100) {
+        throw new https_1.HttpsError("invalid-argument", "Invalid sessionId format.");
+    }
+    // Check for valid format (e.g., date format like YYYY-MM-DD)
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (!datePattern.test(sanitizedSessionId)) {
+        throw new https_1.HttpsError("invalid-argument", "Invalid sessionId format.");
+    }
+    return await _syncLearningPoints(sanitizedSessionId);
 });
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const functions = __importStar(require("firebase-functions"));

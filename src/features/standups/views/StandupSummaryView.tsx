@@ -72,11 +72,13 @@ const ActiveViewLayout = () => (
 const EndedViewLayout = ({ standup, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees, finalSearchQuery, setFinalSearchQuery }: StandupSummaryViewProps) => {
     const activeEmployees = employees.filter(emp => !emp.archived);
 
+    const activeEmployeeIds = new Set(activeEmployees.map(emp => emp.id));
+
     const summaryStats = {
-        Present: Object.values(savedAttendance).filter(a => a.status === "Present").length,
-        Absent: Object.values(savedAttendance).filter(a => a.status === "Absent").length,
-        Missed: Object.values(savedAttendance).filter(a => a.status === "Missed").length,
-        'Not Available': Object.values(savedAttendance).filter(a => a.status === "Not Available").length,
+        Present: Object.values(savedAttendance).filter(a => a.status === "Present" && activeEmployeeIds.has(a.employee_id)).length,
+        Absent: Object.values(savedAttendance).filter(a => a.status === "Absent" && activeEmployeeIds.has(a.employee_id)).length,
+        Missed: Object.values(savedAttendance).filter(a => a.status === "Missed" && activeEmployeeIds.has(a.employee_id)).length,
+        'Not Available': Object.values(savedAttendance).filter(a => a.status === "Not Available" && activeEmployeeIds.has(a.employee_id)).length,
         'Total Team': activeEmployees.length,
     };
 

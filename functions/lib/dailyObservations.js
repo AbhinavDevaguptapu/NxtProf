@@ -87,7 +87,7 @@ const verifyObservationOwnership = async (id, uid) => {
 /**
  * Adds a new observation to the Firestore database.
  */
-exports.addObservation = (0, https_1.onCall)(async (request) => {
+exports.addObservation = (0, https_1.onCall)({ cors: true }, async (request) => {
     ensureAuthenticated(request);
     const validation = observationSchema.safeParse(request.data);
     if (!validation.success) {
@@ -119,7 +119,7 @@ exports.addObservation = (0, https_1.onCall)(async (request) => {
 /**
  * Updates an existing observation.
  */
-exports.updateObservation = (0, https_1.onCall)(async (request) => {
+exports.updateObservation = (0, https_1.onCall)({ cors: true }, async (request) => {
     ensureAuthenticated(request);
     const validation = updateObservationSchema.safeParse(request.data);
     if (!validation.success) {
@@ -146,7 +146,7 @@ exports.updateObservation = (0, https_1.onCall)(async (request) => {
 /**
  * Deletes an observation from the Firestore database.
  */
-exports.deleteObservation = (0, https_1.onCall)(async (request) => {
+exports.deleteObservation = (0, https_1.onCall)({ cors: true }, async (request) => {
     ensureAuthenticated(request);
     const { id } = request.data;
     const { uid } = request.auth;

@@ -2,6 +2,10 @@ export interface AnalysisResult {
   matchPercentage: number;
   status: "Meets criteria" | "Needs improvement";
   rationale: string;
+  correctedSituation: string | null;
+  correctedBehavior: string | null;
+  correctedImpact: string | null;
+  correctedActionItem: string | null;
 }
 
 export enum AnalysisStatus {

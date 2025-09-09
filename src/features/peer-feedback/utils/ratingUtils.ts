@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Feedback } from "../types";
 
 export interface OverallRating {
@@ -17,7 +18,7 @@ const RATING_THRESHOLDS: { threshold: number; stars: number }[] = [
 
 export const calculateOverallRating = (feedback: Feedback[]): OverallRating => {
     if (feedback.length === 0) {
-        return { averageRating: 0, starRating: 0, totalEntries: 0 };
+        return { finalRating: "N/A", averageRating: 0, starRating: 0, totalEntries: 0 };
     }
 
     const totalRatings = feedback.reduce((acc, item) => acc + item.workEfficiency + item.easeOfWork, 0);
@@ -28,6 +29,7 @@ export const calculateOverallRating = (feedback: Feedback[]): OverallRating => {
     )?.stars ?? 0;
 
     return {
+        finalRating: averageRating.toFixed(2),
         averageRating,
         starRating,
         totalEntries: feedback.length,

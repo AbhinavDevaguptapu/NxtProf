@@ -5,8 +5,8 @@ import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { google } from "googleapis";
-import { JWT } from "google-auth-library";
 import * as functions from "firebase-functions";
+import { getAttendanceSpreadsheetId, getSheetsAuth, isUserAdmin } from "./utils";
 
 interface SyncToSheetData {
     date: string;
@@ -19,7 +19,7 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
         throw new HttpsError("invalid-argument", "Missing 'date' or 'sessionType'.");
     }
 
-    const SPREADSHEET_ID = "1mMTTdmpGNwqJy9co4tcExdj6FZ0nvEZOhLLhW8yMNn4";
+    const SPREADSHEET_ID = getAttendanceSpreadsheetId();
     const db = admin.firestore();
 
     const collectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
@@ -54,14 +54,7 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
     });
 
     try {
-        const saRaw = process.env.SHEETS_SA_KEY!;
-        const sa = JSON.parse(saRaw);
-        const jwt = new JWT({
-            email: sa.client_email,
-            key: sa.private_key,
-            scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-        });
-        const sheets = google.sheets({ version: "v4", auth: jwt });
+        const sheets = google.sheets({ version: "v4", auth: getSheetsAuth() });
 
         const spreadsheetMeta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
         const allSheets = spreadsheetMeta.data.sheets;
@@ -127,20 +120,13 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
 }
 
 export const syncAttendanceToSheet = onCall<SyncToSheetData>(
-    { timeoutSeconds: 120, memory: "256MiB", secrets: ["SHEETS_SA_KEY"] },
+    { timeoutSeconds: 120, memory: "256MiB", secrets: ["SHEETS_SA_KEY"], cors: true },
     async (request) => {
-        const callerUid = request.auth?.uid;
-        if (!callerUid) {
+        if (!request.auth) {
             throw new HttpsError("unauthenticated", "Authentication is required.");
         }
-        try {
-            const userRecord = await admin.auth().getUser(callerUid);
-            if (userRecord.customClaims?.isAdmin !== true) {
-                throw new HttpsError("permission-denied", "Must be an admin to run this operation.");
-            }
-        } catch (error) {
-            console.error("Admin check failed:", error);
-            throw new HttpsError("internal", "Could not verify user permissions.");
+        if (!isUserAdmin(request.auth)) {
+            throw new HttpsError("permission-denied", "Must be an admin to run this operation.");
         }
 
         return await _syncAttendanceToSheet(request.data);

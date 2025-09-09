@@ -69,7 +69,7 @@ const verifyObservationOwnership = async (id: string, uid: string) => {
 /**
  * Adds a new observation to the Firestore database.
  */
-export const addObservation = onCall(async (request) => {
+export const addObservation = onCall({ cors: true }, async (request) => {
   ensureAuthenticated(request);
 
   const validation = observationSchema.safeParse(request.data);
@@ -106,7 +106,7 @@ export const addObservation = onCall(async (request) => {
 /**
  * Updates an existing observation.
  */
-export const updateObservation = onCall(async (request) => {
+export const updateObservation = onCall({ cors: true }, async (request) => {
   ensureAuthenticated(request);
 
   const validation = updateObservationSchema.safeParse(request.data);
@@ -136,7 +136,7 @@ export const updateObservation = onCall(async (request) => {
 /**
  * Deletes an observation from the Firestore database.
  */
-export const deleteObservation = onCall(async (request) => {
+export const deleteObservation = onCall({ cors: true }, async (request) => {
   ensureAuthenticated(request);
 
   const { id } = request.data;

@@ -8,15 +8,50 @@ import { parse, isValid } from "date-fns";
 // Helper function to securely get the Gemini API Key
 export function getGeminiKey(): string {
     const key = process.env.GEMINI_KEY;
-    if (!key) throw new Error("GEMINI_KEY not set in environment.");
-    return key;
+    if (!key || typeof key !== "string" || key.trim().length === 0) {
+        throw new HttpsError("internal", "AI services are temporarily unavailable.");
+    }
+    return key.trim();
+}
+
+// Helper function to securely get the Attendance Spreadsheet ID
+export function getAttendanceSpreadsheetId(): string {
+    const id = process.env.ATTENDANCE_SPREADSHEET_ID;
+    if (!id || typeof id !== "string" || id.trim().length === 0) {
+        throw new HttpsError("internal", "Reporting services are temporarily unavailable.");
+    }
+    return id.trim();
+}
+
+// Helper function to securely get the Learning Hours Spreadsheet ID
+export function getLearningHoursSpreadsheetId(): string {
+    const id = process.env.LEARNING_HOURS_SPREADSHEET_ID;
+    if (!id || typeof id !== "string" || id.trim().length === 0) {
+        throw new HttpsError("internal", "Reporting services are temporarily unavailable.");
+    }
+    return id.trim();
 }
 
 // Helper function to create a Google Sheets API auth client
 export function getSheetsAuth(): JWT {
-    const saRaw = process.env.SHEETS_SA_KEY!;
-    if (!saRaw) throw new HttpsError("internal", "Service Account key is not configured.");
-    const sa = JSON.parse(saRaw);
+    const saRaw = process.env.SHEETS_SA_KEY;
+    if (!saRaw || typeof saRaw !== "string" || saRaw.trim().length === 0) {
+        throw new HttpsError("internal", "Reporting services are temporarily unavailable.");
+    }
+
+    let sa;
+    try {
+        sa = JSON.parse(saRaw.trim());
+    } catch (error) {
+        console.error("Invalid Service Account key format:", error);
+        throw new HttpsError("internal", "Reporting services are temporarily unavailable.");
+    }
+
+    // Validate required fields
+    if (!sa.client_email || !sa.private_key) {
+        throw new HttpsError("internal", "Reporting services are temporarily unavailable.");
+    }
+
     return new JWT({
         email: sa.client_email,
         key: sa.private_key,
@@ -39,3 +74,65 @@ export function parseDynamicDate(dateString: string): Date {
     console.warn(`Unrecognized date format: "${dateString}"`);
     return new Date(NaN);
 }
+
+/**
+ * Utility function to check if a user has admin or co-admin privileges
+ * Standardizes admin role validation across all functions
+ */
+export function isUserAdmin(auth: any): boolean {
+    if (!auth || !auth.token) return false;
+    return auth.token.isAdmin === true || auth.token.isCoAdmin === true;
+};
+
+/**
+ * Utility function to check if a user has admin privileges only (not co-admin)
+ */
+export function isUserSuperAdmin(auth: any): boolean {
+    if (!auth || !auth.token) return false;
+    return auth.token.isAdmin === true;
+};
+
+/**
+ * Validates and sanitizes a client-provided date string
+ * Prevents timestamp manipulation attacks by enforcing server-side validation
+ */
+export function validateAndSanitizeDate(dateStr: string | undefined, allowFuture: boolean = false): Date | null {
+    if (!dateStr || typeof dateStr !== "string") {
+        return null; // Will use server current date
+    }
+
+    const sanitizedDateStr = dateStr.trim();
+
+    // Validate date format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+    const datePattern = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
+    if (!datePattern.test(sanitizedDateStr)) {
+        throw new HttpsError("invalid-argument", "Invalid date format.");
+    }
+
+    const targetDate = new Date(sanitizedDateStr);
+
+    // Validate the date is not NaN and is reasonable
+    if (isNaN(targetDate.getTime())) {
+        throw new HttpsError("invalid-argument", "Invalid date provided.");
+    }
+
+    const now = new Date();
+
+    if (!allowFuture) {
+        // Prevent access to future dates by default
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (targetDate > tomorrow) {
+            throw new HttpsError("invalid-argument", "Cannot access data for future dates.");
+        }
+    }
+
+    // Prevent access to dates too far in the past (prevent abuse)
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    if (targetDate < oneYearAgo) {
+        throw new HttpsError("invalid-argument", "Cannot access data older than one year.");
+    }
+
+    return targetDate;
+};

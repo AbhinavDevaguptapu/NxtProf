@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEmployeePerformanceSummary = exports.peerFeedback = exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = exports.getLearningPointsForEmployee = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
+exports.getEmployeePerformanceSummary = exports.peerFeedback = exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = exports.getLearningPointsForEmployee = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.syncLearningHoursByDate = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file serves as the main entry point for all backend serverless logic.
@@ -59,6 +59,7 @@ Object.defineProperty(exports, "getLearningPointsByDate", { enumerable: true, ge
 var syncLearningHours_1 = require("./syncLearningHours");
 Object.defineProperty(exports, "syncLearningPointsToSheet", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningPointsToSheet; } });
 Object.defineProperty(exports, "autoSyncLearningPoints", { enumerable: true, get: function () { return syncLearningHours_1.autoSyncLearningPoints; } });
+Object.defineProperty(exports, "syncLearningHoursByDate", { enumerable: true, get: function () { return syncLearningHours_1.syncLearningHoursByDate; } });
 // Daily Observations
 var dailyObservations_1 = require("./dailyObservations");
 Object.defineProperty(exports, "addObservation", { enumerable: true, get: function () { return dailyObservations_1.addObservation; } });

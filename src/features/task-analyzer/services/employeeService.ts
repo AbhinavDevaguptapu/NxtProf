@@ -38,6 +38,6 @@ export const getLearningPointsForEmployee = async (employeeId: string): Promise<
     return result.data;
   } catch (error) {
     console.error("Error calling getLearningPointsForEmployee cloud function:", error);
-    throw new Error(`Failed to fetch learning points for employee "${employeeId}". Please try again.`);
+    throw new Error("Failed to fetch learning points. Please try again.");
   }
 };

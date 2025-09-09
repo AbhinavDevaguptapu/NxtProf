@@ -84,9 +84,15 @@ async function getFilteredFeedbackData(requestData: FeedbackRequestData): Promis
 }
 
 export const getFeedbackChartData = onCall<FeedbackRequestData>(
-    { timeoutSeconds: 60, memory: "256MiB", secrets: ["SHEETS_SA_KEY"] },
+    { timeoutSeconds: 60, memory: "256MiB", secrets: ["SHEETS_SA_KEY"], cors: true },
     async (request) => {
         if (!request.auth) throw new HttpsError("unauthenticated", "Authentication required.");
+
+        // Authorization check: users can only access their own feedback data unless they're admins
+        const isAdmin = request.auth.token.isAdmin === true || request.auth.token.isCoAdmin === true;
+        if (!isAdmin && request.auth.uid !== request.data.employeeId) {
+            throw new HttpsError("permission-denied", "You can only access your own feedback data.");
+        }
 
         const filteredData = await getFilteredFeedbackData(request.data);
         const totalFeedbacks = filteredData.length;
@@ -146,9 +152,15 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
 );
 
 export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
-    { timeoutSeconds: 120, memory: "512MiB", secrets: ["GEMINI_KEY", "SHEETS_SA_KEY"] },
+    { timeoutSeconds: 120, memory: "512MiB", secrets: ["GEMINI_KEY", "SHEETS_SA_KEY"], cors: true },
     async (request) => {
         if (!request.auth) throw new HttpsError("unauthenticated", "Authentication required.");
+
+        // Authorization check: users can only access their own feedback data unless they're admins
+        const isAdmin = request.auth.token.isAdmin === true || request.auth.token.isCoAdmin === true;
+        if (!isAdmin && request.auth.uid !== request.data.employeeId) {
+            throw new HttpsError("permission-denied", "You can only access your own feedback data.");
+        }
 
         const filteredData = await getFilteredFeedbackData(request.data);
 
@@ -160,16 +172,26 @@ export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
         }
 
         try {
-            const model = new GoogleGenerativeAI(getGeminiKey()).getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = new GoogleGenerativeAI(getGeminiKey()).getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `From the following list of verbatim feedback comments, perform an analysis. Return a valid JSON object with two keys: "positiveFeedback" and "improvementAreas". For "positiveFeedback", return an array of up to 3 objects, where each object has a "quote" key (the verbatim positive comment) and a "keywords" key (an array of 1-3 relevant keywords from the quote). For "improvementAreas", return an array of up to 3 objects, where each object has a "theme" key (a summarized topic like 'Pacing' or 'Interaction') and a "suggestion" key (a concise, actionable suggestion for the instructor). If the comments do not contain explicit areas for improvement, analyze the context and provide general best-practice suggestions that could still enhance performance. If there are no comments that fit a category, return an empty array for that key. Comments: """${comments.join("\n")}"""`;
             const aiRes = await model.generateContent(prompt);
             const aiTxt = aiRes.response.text();
             const js = aiTxt.slice(aiTxt.indexOf("{"), aiTxt.lastIndexOf("}") + 1);
-            const obj = JSON.parse(js);
-            return {
-                positiveFeedback: obj.positiveFeedback || [],
-                improvementAreas: obj.improvementAreas || [],
-            };
+
+            try {
+                const obj = JSON.parse(js);
+                return {
+                    positiveFeedback: obj.positiveFeedback || [],
+                    improvementAreas: obj.improvementAreas || [],
+                };
+            } catch (parseError) {
+                console.error("Failed to parse AI response as JSON:", parseError);
+                console.error("AI Response text:", aiTxt);
+                return {
+                    positiveFeedback: [],
+                    improvementAreas: [],
+                };
+            }
         } catch (e) {
             console.error("AI processing error:", e);
             throw new HttpsError("internal", "Failed to generate AI summary.");
@@ -178,10 +200,16 @@ export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
 );
 
 export const getRawFeedback = onCall<FeedbackRequestData>(
-    { timeoutSeconds: 60, memory: "256MiB", secrets: ["SHEETS_SA_KEY"] },
+    { timeoutSeconds: 60, memory: "256MiB", secrets: ["SHEETS_SA_KEY"], cors: true },
     async (request) => {
         if (!request.auth) {
             throw new HttpsError("unauthenticated", "Authentication required.");
+        }
+
+        // Authorization check: users can only access their own feedback data unless they're admins
+        const isAdmin = request.auth.token.isAdmin === true || request.auth.token.isCoAdmin === true;
+        if (!isAdmin && request.auth.uid !== request.data.employeeId) {
+            throw new HttpsError("permission-denied", "You can only access your own feedback data.");
         }
 
         const filteredData = await getFilteredFeedbackData(request.data);

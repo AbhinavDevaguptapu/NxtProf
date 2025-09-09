@@ -1,4 +1,3 @@
-
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 
@@ -13,7 +12,7 @@ interface GivenPeerFeedback {
 }
 
 // Function to get feedback received by the current user (anonymous)
-export const getMyReceivedFeedback = onCall(async (request) => {
+export const getMyReceivedFeedback = onCall({ cors: true }, async (request) => {
     const db = admin.firestore();
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "You must be logged in to view your feedback.");
@@ -21,7 +20,7 @@ export const getMyReceivedFeedback = onCall(async (request) => {
     const myId = request.auth.uid;
 
     const givenSnapshot = await db.collection("givenPeerFeedback").where("targetId", "==", myId).orderBy("createdAt", "desc").get();
-    
+
     const feedback = givenSnapshot.docs.map(doc => {
         const data = doc.data() as GivenPeerFeedback;
         const timestamp = data.createdAt as admin.firestore.Timestamp;
@@ -39,14 +38,14 @@ export const getMyReceivedFeedback = onCall(async (request) => {
 });
 
 // Function for admins to get all feedback (not anonymous)
-export const adminGetAllPeerFeedback = onCall(async (request) => {
+export const adminGetAllPeerFeedback = onCall({ cors: true }, async (request) => {
     const db = admin.firestore();
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can access this information.");
     }
 
     const givenSnapshot = await db.collection("givenPeerFeedback").orderBy("createdAt", "desc").get();
-    
+
     const feedback = await Promise.all(givenSnapshot.docs.map(async (doc) => {
         const data = doc.data() as GivenPeerFeedback;
         const [giverDoc, receiverDoc] = await Promise.all([
@@ -75,7 +74,7 @@ export const adminGetAllPeerFeedback = onCall(async (request) => {
     return feedback.filter(item => item !== null);
 });
 
-export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(async (request) => {
+export const togglePeerFeedbackLock = onCall<{ lock: boolean }>({ cors: true }, async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can toggle the peer feedback lock.");
     }
@@ -92,7 +91,11 @@ export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(async (request) 
     }
 });
 
-export const getPeerFeedbackLockStatus = onCall(async () => {
+export const getPeerFeedbackLockStatus = onCall({ cors: true }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Authentication is required.");
+    }
+
     const db = admin.firestore();
     const lockRef = db.collection("moduleLocks").doc("peerFeedback");
 
@@ -108,7 +111,7 @@ export const getPeerFeedbackLockStatus = onCall(async () => {
     }
 });
 
-export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string; workEfficiency: number; easeOfWork: number; remarks: string; }>(async (request) => {
+export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string; workEfficiency: number; easeOfWork: number; remarks: string; }>({ cors: true }, async (request) => {
     const db = admin.firestore();
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "You must be logged in to give feedback.");
@@ -116,12 +119,33 @@ export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string
 
     const { targetId, projectOrTask, workEfficiency, easeOfWork, remarks } = request.data;
 
-    if (!targetId || !projectOrTask || !remarks) {
-        throw new HttpsError("invalid-argument", "Missing required fields.");
+    // Input validation and sanitization
+    if (!targetId || typeof targetId !== "string" || targetId.trim().length === 0) {
+        throw new HttpsError("invalid-argument", "Valid targetId is required.");
+    }
+    if (!projectOrTask || typeof projectOrTask !== "string") {
+        throw new HttpsError("invalid-argument", "Valid projectOrTask is required.");
+    }
+    if (!remarks || typeof remarks !== "string") {
+        throw new HttpsError("invalid-argument", "Valid remarks are required.");
+    }
+    if (typeof workEfficiency !== "number" || typeof easeOfWork !== "number") {
+        throw new HttpsError("invalid-argument", "Ratings must be valid numbers.");
     }
 
+    // Sanitize inputs
+    const sanitizedTargetId = targetId.trim();
+    const sanitizedProjectOrTask = projectOrTask.trim().substring(0, 255); // Limit length
+    const sanitizedRemarks = remarks.trim().substring(0, 1000); // Limit length
+
+    // Validate rating ranges
     if (workEfficiency < 0 || workEfficiency > 5 || easeOfWork < 0 || easeOfWork > 5) {
         throw new HttpsError("invalid-argument", "Ratings must be between 0 and 5.");
+    }
+
+    // Validate lengths
+    if (sanitizedTargetId.length > 128 || sanitizedProjectOrTask.length === 0 || sanitizedRemarks.length === 0) {
+        throw new HttpsError("invalid-argument", "Input validation failed.");
     }
 
     const giverId = request.auth.uid;
@@ -134,34 +158,46 @@ export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string
             throw new HttpsError("failed-precondition", "Feedback submissions are temporarily disabled.");
         }
 
-        // Check if feedback has already been given by this user to the target this month
+        // Prevent race conditions with transaction-based duplicate check and creation
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-        const existingFeedbackQuery = await db.collection("givenPeerFeedback")
-            .where("giverId", "==", giverId)
-            .where("targetId", "==", targetId)
-            .where("createdAt", ">=", startOfMonth)
-            .where("createdAt", "<=", endOfMonth)
-            .limit(1)
-            .get();
+        try {
+            await db.runTransaction(async (transaction) => {
+                // Check for existing feedback within transaction
+                const existingFeedbackQuery = db.collection("givenPeerFeedback")
+                    .where("giverId", "==", giverId)
+                    .where("targetId", "==", sanitizedTargetId)
+                    .where("createdAt", ">=", startOfMonth)
+                    .limit(1);
 
-        if (!existingFeedbackQuery.empty) {
-            throw new HttpsError("failed-precondition", "You have already given feedback to this user.");
+                const existingDocSnapshot = await transaction.get(existingFeedbackQuery);
+
+                if (!existingDocSnapshot.empty) {
+                    throw new Error("DUPLICATE_FEEDBACK");
+                }
+
+                // Create the feedback document
+                const feedbackRef = db.collection("givenPeerFeedback").doc();
+                const feedback: GivenPeerFeedback = {
+                    giverId,
+                    targetId: sanitizedTargetId,
+                    projectOrTask: sanitizedProjectOrTask,
+                    workEfficiency,
+                    easeOfWork,
+                    remarks: sanitizedRemarks,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                };
+
+                transaction.set(feedbackRef, feedback);
+            });
+        } catch (transactionError: any) {
+            if (transactionError.message === "DUPLICATE_FEEDBACK") {
+                throw new HttpsError("failed-precondition", "You have already given feedback to this user this month.");
+            }
+            // Re-throw other transaction errors
+            throw transactionError;
         }
-
-        const feedback: GivenPeerFeedback = {
-            giverId,
-            targetId,
-            projectOrTask,
-            workEfficiency,
-            easeOfWork,
-            remarks,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        await db.collection("givenPeerFeedback").add(feedback);
         return { success: true };
     } catch (error) {
         console.error("Error giving peer feedback:", error);

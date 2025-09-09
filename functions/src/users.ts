@@ -4,11 +4,12 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { DecodedIdToken } from "firebase-admin/auth";
+import { isUserAdmin } from "./utils";
 
 interface RoleManagementData { email: string; }
 interface CustomDecodedIdToken extends DecodedIdToken { isAdmin?: boolean; isCoAdmin?: boolean; }
 
-export const addAdminRole = onCall<RoleManagementData>(async (request) => {
+export const addAdminRole = onCall<RoleManagementData>({ cors: true }, async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Login required.");
     const caller = request.auth.token as CustomDecodedIdToken;
     if (caller.isAdmin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -29,7 +30,7 @@ export const addAdminRole = onCall<RoleManagementData>(async (request) => {
     }
 });
 
-export const removeAdminRole = onCall<RoleManagementData>(async (request) => {
+export const removeAdminRole = onCall<RoleManagementData>({ cors: true }, async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can modify roles.");
     }
@@ -50,7 +51,7 @@ export const removeAdminRole = onCall<RoleManagementData>(async (request) => {
     }
 });
 
-export const addCoAdminRole = onCall<RoleManagementData>(async (request) => {
+export const addCoAdminRole = onCall<RoleManagementData>({ cors: true }, async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Login required.");
     const caller = request.auth.token as CustomDecodedIdToken;
     if (caller.isAdmin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -71,7 +72,7 @@ export const addCoAdminRole = onCall<RoleManagementData>(async (request) => {
     }
 });
 
-export const removeCoAdminRole = onCall<RoleManagementData>(async (request) => {
+export const removeCoAdminRole = onCall<RoleManagementData>({ cors: true }, async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can modify roles.");
     }
@@ -92,7 +93,7 @@ export const removeCoAdminRole = onCall<RoleManagementData>(async (request) => {
     }
 });
 
-export const deleteEmployee = onCall<{ uid?: string }>(async (request) => {
+export const deleteEmployee = onCall<{ uid?: string }>({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
@@ -102,7 +103,7 @@ export const deleteEmployee = onCall<{ uid?: string }>(async (request) => {
     }
 
     // A user can delete their own account, or an admin can delete any account.
-    if (request.auth.uid !== uid && request.auth.token.isAdmin !== true) {
+    if (request.auth.uid !== uid && !isUserAdmin(request.auth)) {
         throw new HttpsError("permission-denied", "You do not have permission to delete this account.");
     }
 
@@ -116,7 +117,7 @@ export const deleteEmployee = onCall<{ uid?: string }>(async (request) => {
     }
 });
 
-export const archiveEmployee = onCall<{ uid?: string }>(async (request) => {
+export const archiveEmployee = onCall<{ uid?: string }>({ cors: true }, async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can archive employees.");
     }
@@ -138,7 +139,7 @@ export const archiveEmployee = onCall<{ uid?: string }>(async (request) => {
     }
 });
 
-export const unarchiveEmployee = onCall<{ uid?: string }>(async (request) => {
+export const unarchiveEmployee = onCall<{ uid?: string }>({ cors: true }, async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can unarchive employees.");
     }
@@ -157,7 +158,7 @@ export const unarchiveEmployee = onCall<{ uid?: string }>(async (request) => {
     }
 });
 
-export const getEmployeesWithAdminStatus = onCall(async (request) => {
+export const getEmployeesWithAdminStatus = onCall({ cors: true }, async (request) => {
     const caller = request.auth?.token as CustomDecodedIdToken | undefined;
     if (!caller?.isAdmin && !caller?.isCoAdmin) {
         throw new HttpsError("permission-denied", "Only admins and co-admins can view the employee list.");
@@ -188,7 +189,7 @@ export const getEmployeesWithAdminStatus = onCall(async (request) => {
     }
 });
 
-export const getArchivedEmployees = onCall(async (request) => {
+export const getArchivedEmployees = onCall({ cors: true }, async (request) => {
     if (request.auth?.token.isAdmin !== true) {
         throw new HttpsError("permission-denied", "Only admins can view the archived employee list.");
     }

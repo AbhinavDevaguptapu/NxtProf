@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const utils_1 = require("./utils");
 /**
  * Ends a learning session and locks all associated learning points.
  * This function is callable only by an admin.
@@ -46,12 +47,12 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    if (request.auth.token.isAdmin !== true && request.auth.token.isCoAdmin !== true) {
+    if (!(0, utils_1.isUserAdmin)(request.auth)) {
         throw new https_1.HttpsError("permission-denied", "Only admins or co-admins can end a session.");
     }
     const { sessionId } = request.data;
     if (!sessionId) {
-        throw new https_1.HttpsError("invalid-argument", "A valid 'sessionId' must be provided.");
+        throw new https_1.HttpsError("invalid-argument", "A valid session ID must be provided.");
     }
     try {
         const batch = db.batch();
@@ -79,24 +80,59 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
         throw new https_1.HttpsError("internal", "An unexpected error occurred while ending the session.");
     }
 });
-exports.getLearningPointsByDate = (0, https_1.onCall)(async (request) => {
+exports.getLearningPointsByDate = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
     const { date } = request.data || {};
+    // Date validation and sanitization
+    let targetDate;
+    if (date) {
+        // Validate and sanitize the client-provided date
+        if (typeof date !== "string") {
+            throw new https_1.HttpsError("invalid-argument", "Invalid date format.");
+        }
+        const sanitizedDateStr = date.trim();
+        // Validate date format (YYYY-MM-DD)
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!datePattern.test(sanitizedDateStr)) {
+            throw new https_1.HttpsError("invalid-argument", "Invalid date format. Use YYYY-MM-DD.");
+        }
+        targetDate = new Date(sanitizedDateStr + "T00:00:00.000Z");
+        // Validate the date is not NaN and is reasonable
+        if (isNaN(targetDate.getTime())) {
+            throw new https_1.HttpsError("invalid-argument", "Invalid date provided.");
+        }
+        // Prevent access to future dates (prevent enumeration attacks)
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (targetDate > tomorrow) {
+            throw new https_1.HttpsError("invalid-argument", "Cannot access data for future dates.");
+        }
+        // Prevent access to dates too far in the past (prevent abuse)
+        const oneYearAgo = new Date(now);
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        if (targetDate < oneYearAgo) {
+            throw new https_1.HttpsError("invalid-argument", "Cannot access data older than one year.");
+        }
+    }
+    else {
+        // Use server-side current date if no date provided
+        targetDate = new Date();
+    }
     const db = admin.firestore();
-    // If a date is provided, use it. Otherwise, default to the current date.
-    const targetDate = date ? new Date(date) : new Date();
-    // Determine the start and end of the day in UTC.
+    // Determine the start and end of the day in UTC using server-validated date.
     const startDate = new Date(targetDate);
     startDate.setUTCHours(0, 0, 0, 0);
     const endDate = new Date(startDate);
     endDate.setUTCDate(startDate.getUTCDate() + 1);
     try {
-        const learningPointsQuery = db.collection("learning_points")
+        const baseQuery = db.collection("learning_points")
             .where("createdAt", ">=", startDate)
             .where("createdAt", "<", endDate);
-        const snapshot = await learningPointsQuery.get();
+        // Allow all users to see all learning points for today's learning
+        const snapshot = await baseQuery.get();
         if (snapshot.empty) {
             return [];
         }

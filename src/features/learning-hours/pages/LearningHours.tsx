@@ -10,6 +10,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Loader2, PlayCircle, StopCircle, CheckCircle2, AlertTriangle, BrainCircuit, Users, UserMinus, UserX, Check, Search, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -90,11 +91,14 @@ interface EndedViewLayoutProps {
 }
 
 const EndedViewLayout = ({ learningHour, savedAttendance, employees, finalFilter, setFinalFilter, finalFilteredEmployees, finalSearchQuery, setFinalSearchQuery }: EndedViewLayoutProps) => {
+    const activeEmployees = employees.filter((emp: any) => !emp.archived);
+    const activeEmployeeIds = new Set(activeEmployees.map((emp: any) => emp.id));
+
     const summaryStats = {
-        Present: Object.values(savedAttendance).filter((a: any) => a.status === "Present").length,
-        Absent: Object.values(savedAttendance).filter((a: any) => a.status === "Absent").length,
-        Missed: Object.values(savedAttendance).filter((a: any) => a.status === "Missed").length,
-        'Not Available': Object.values(savedAttendance).filter((a: any) => a.status === "Not Available").length,
+        Present: Object.values(savedAttendance).filter((a: any) => a.status === "Present" && activeEmployeeIds.has(a.employee_id)).length,
+        Absent: Object.values(savedAttendance).filter((a: any) => a.status === "Absent" && activeEmployeeIds.has(a.employee_id)).length,
+        Missed: Object.values(savedAttendance).filter((a: any) => a.status === "Missed" && activeEmployeeIds.has(a.employee_id)).length,
+        'Not Available': Object.values(savedAttendance).filter((a: any) => a.status === "Not Available" && activeEmployeeIds.has(a.employee_id)).length,
     };
 
     const SessionCompletedCard = (
@@ -216,10 +220,52 @@ export default function LearningHours() {
 
     const [isSyncing, setIsSyncing] = useState(false);
     const [isEndingSession, setIsEndingSession] = useState(false);
+    const [showStartConfirmation, setShowStartConfirmation] = useState(false);
 
     const handleStartSession = async () => {
-        await startSession();
-        fetchInitialData();
+        setShowStartConfirmation(true);
+    };
+
+    const confirmStartSession = async () => {
+        setShowStartConfirmation(false);
+
+        if (learningHour?.scheduledTime) {
+            const now = new Date();
+            const scheduled = learningHour.scheduledTime.toDate();
+            const remainingMinutes = Math.max(0, Math.ceil((scheduled.getTime() - now.getTime()) / (1000 * 60)));
+
+            toast({
+                title: `Session Starting`,
+                description: `Session will start in ${remainingMinutes} minute(s). Session was scheduled for ${format(scheduled, "PPP")}.`,
+            });
+
+            // Log for audit
+            console.log(`[AUDIT] Admin confirmed session start. Scheduled time: ${scheduled.toISOString()}, Remaining minutes: ${remainingMinutes}, Admin: ${user?.displayName || "Unknown"}, Time: ${new Date().toISOString()}`);
+
+            // Add small delay to show the message
+            setTimeout(async () => {
+                await startSession();
+                fetchInitialData();
+
+                console.log(`[AUDIT] Session started. Admin: ${user?.displayName || "Unknown"}, Time: ${new Date().toISOString()}`);
+            }, 2000);
+        } else {
+            await startSession();
+            fetchInitialData();
+
+            console.log(`[AUDIT] Session started without scheduled time check. Admin: ${user?.displayName || "Unknown"}, Time: ${new Date().toISOString()}`);
+        }
+    };
+
+    const cancelStartSession = () => {
+        setShowStartConfirmation(false);
+        toast({
+            title: "Session Start Cancelled",
+            description: "Session start was cancelled by admin.",
+            variant: "destructive"
+        });
+
+        console.log(`[AUDIT] Session start cancelled. Admin: ${user?.displayName || "Unknown"}, Time: ${new Date().toISOString()}`);
     };
 
     const handleEndSession = async () => {
@@ -270,7 +316,7 @@ export default function LearningHours() {
                             </div>
                             <CardTitle className="text-3xl font-extrabold text-gray-900">Learning Session</CardTitle>
                             <CardDescription className="text-gray-600 text-md mt-2">
-                                Scheduled for <span className="font-semibold text-black">{format(learningHour.scheduledTime.toDate(), "PPP")}</span> today.
+                                Scheduled for <span className="font-semibold text-black">{format(learningHour.scheduledTime.toDate(), "PPP 'at' p")}</span> today.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-2">
@@ -281,10 +327,31 @@ export default function LearningHours() {
                             >
                                 Reschedule
                             </Button>
-                            <Button size="lg" onClick={handleStartSession} disabled={isUpdating} className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 text-lg">
-                                {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <PlayCircle className="mr-2 h-6 w-6" />}
-                                {isUpdating ? 'Starting...' : 'Start Session Now'}
-                            </Button>
+                            <AlertDialog open={showStartConfirmation} onOpenChange={setShowStartConfirmation}>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="lg" onClick={handleStartSession} disabled={isUpdating} className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 text-lg">
+                                        {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <PlayCircle className="mr-2 h-6 w-6" />}
+                                        {isUpdating ? 'Starting...' : 'Start Session Now'}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Start Learning Session</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to start the learning session? This will begin the session for all team members.
+                                            {learningHour?.scheduledTime && (
+                                                <span className="block mt-2">
+                                                    Scheduled time: {format(learningHour.scheduledTime.toDate(), "PPP 'at' p")}
+                                                </span>
+                                            )}
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={cancelStartSession}>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={confirmStartSession}>Start Session</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </CardContent>
                     </Card>
                 </motion.div>

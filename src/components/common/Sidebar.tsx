@@ -41,7 +41,6 @@ import {
     BookCheck,
     Archive,
     ChevronLeft,
-    ShieldCheck
 } from "lucide-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -51,9 +50,9 @@ const userNavItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
-    { id: "learning-hours-points", label: "Today's Learning Points", icon: GraduationCap },
+    { id: "learning-hours-points", label: "Employees Learning Points", icon: GraduationCap },
     { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
-    { id: "feedback", label: "AI Feedback", icon: MessageSquareQuote },
+    { id: "feedback", label: "Students Feedback", icon: MessageSquareQuote },
     { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
     { id: "attendance", label: "Attendance", icon: CalendarCheck },
     { id: "peer-feedback", label: "Peer Feedback", icon: UsersRound },
@@ -64,7 +63,7 @@ const adminNavItems = [
     { id: "home", label: "Dashboard", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
-    { id: "learning-hours-points", label: "Today's Learning Points", icon: GraduationCap },
+    { id: "learning-hours-points", label: "Employees Learning Points", icon: GraduationCap },
     { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "daily-observations", label: "Daily Observations", icon: BookCheck },

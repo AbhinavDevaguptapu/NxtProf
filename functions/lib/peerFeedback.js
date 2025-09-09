@@ -37,7 +37,7 @@ exports.givePeerFeedback = exports.getPeerFeedbackLockStatus = exports.togglePee
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 // Function to get feedback received by the current user (anonymous)
-exports.getMyReceivedFeedback = (0, https_1.onCall)(async (request) => {
+exports.getMyReceivedFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
     const db = admin.firestore();
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "You must be logged in to view your feedback.");
@@ -59,7 +59,7 @@ exports.getMyReceivedFeedback = (0, https_1.onCall)(async (request) => {
     return feedback;
 });
 // Function for admins to get all feedback (not anonymous)
-exports.adminGetAllPeerFeedback = (0, https_1.onCall)(async (request) => {
+exports.adminGetAllPeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
     var _a;
     const db = admin.firestore();
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
@@ -91,7 +91,7 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)(async (request) => {
     }));
     return feedback.filter(item => item !== null);
 });
-exports.togglePeerFeedbackLock = (0, https_1.onCall)(async (request) => {
+exports.togglePeerFeedbackLock = (0, https_1.onCall)({ cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can toggle the peer feedback lock.");
@@ -107,8 +107,11 @@ exports.togglePeerFeedbackLock = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError("internal", "An unexpected error occurred while toggling the lock.");
     }
 });
-exports.getPeerFeedbackLockStatus = (0, https_1.onCall)(async () => {
+exports.getPeerFeedbackLockStatus = (0, https_1.onCall)({ cors: true }, async (request) => {
     var _a;
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
+    }
     const db = admin.firestore();
     const lockRef = db.collection("moduleLocks").doc("peerFeedback");
     try {
@@ -123,18 +126,37 @@ exports.getPeerFeedbackLockStatus = (0, https_1.onCall)(async () => {
         throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching lock status.");
     }
 });
-exports.givePeerFeedback = (0, https_1.onCall)(async (request) => {
+exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
     var _a;
     const db = admin.firestore();
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "You must be logged in to give feedback.");
     }
     const { targetId, projectOrTask, workEfficiency, easeOfWork, remarks } = request.data;
-    if (!targetId || !projectOrTask || !remarks) {
-        throw new https_1.HttpsError("invalid-argument", "Missing required fields.");
+    // Input validation and sanitization
+    if (!targetId || typeof targetId !== "string" || targetId.trim().length === 0) {
+        throw new https_1.HttpsError("invalid-argument", "Valid targetId is required.");
     }
+    if (!projectOrTask || typeof projectOrTask !== "string") {
+        throw new https_1.HttpsError("invalid-argument", "Valid projectOrTask is required.");
+    }
+    if (!remarks || typeof remarks !== "string") {
+        throw new https_1.HttpsError("invalid-argument", "Valid remarks are required.");
+    }
+    if (typeof workEfficiency !== "number" || typeof easeOfWork !== "number") {
+        throw new https_1.HttpsError("invalid-argument", "Ratings must be valid numbers.");
+    }
+    // Sanitize inputs
+    const sanitizedTargetId = targetId.trim();
+    const sanitizedProjectOrTask = projectOrTask.trim().substring(0, 255); // Limit length
+    const sanitizedRemarks = remarks.trim().substring(0, 1000); // Limit length
+    // Validate rating ranges
     if (workEfficiency < 0 || workEfficiency > 5 || easeOfWork < 0 || easeOfWork > 5) {
         throw new https_1.HttpsError("invalid-argument", "Ratings must be between 0 and 5.");
+    }
+    // Validate lengths
+    if (sanitizedTargetId.length > 128 || sanitizedProjectOrTask.length === 0 || sanitizedRemarks.length === 0) {
+        throw new https_1.HttpsError("invalid-argument", "Input validation failed.");
     }
     const giverId = request.auth.uid;
     try {
@@ -144,30 +166,42 @@ exports.givePeerFeedback = (0, https_1.onCall)(async (request) => {
         if (lockDoc.exists && ((_a = lockDoc.data()) === null || _a === void 0 ? void 0 : _a.locked) === true) {
             throw new https_1.HttpsError("failed-precondition", "Feedback submissions are temporarily disabled.");
         }
-        // Check if feedback has already been given by this user to the target this month
+        // Prevent race conditions with transaction-based duplicate check and creation
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const existingFeedbackQuery = await db.collection("givenPeerFeedback")
-            .where("giverId", "==", giverId)
-            .where("targetId", "==", targetId)
-            .where("createdAt", ">=", startOfMonth)
-            .where("createdAt", "<=", endOfMonth)
-            .limit(1)
-            .get();
-        if (!existingFeedbackQuery.empty) {
-            throw new https_1.HttpsError("failed-precondition", "You have already given feedback to this user.");
+        try {
+            await db.runTransaction(async (transaction) => {
+                // Check for existing feedback within transaction
+                const existingFeedbackQuery = db.collection("givenPeerFeedback")
+                    .where("giverId", "==", giverId)
+                    .where("targetId", "==", sanitizedTargetId)
+                    .where("createdAt", ">=", startOfMonth)
+                    .limit(1);
+                const existingDocSnapshot = await transaction.get(existingFeedbackQuery);
+                if (!existingDocSnapshot.empty) {
+                    throw new Error("DUPLICATE_FEEDBACK");
+                }
+                // Create the feedback document
+                const feedbackRef = db.collection("givenPeerFeedback").doc();
+                const feedback = {
+                    giverId,
+                    targetId: sanitizedTargetId,
+                    projectOrTask: sanitizedProjectOrTask,
+                    workEfficiency,
+                    easeOfWork,
+                    remarks: sanitizedRemarks,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                };
+                transaction.set(feedbackRef, feedback);
+            });
         }
-        const feedback = {
-            giverId,
-            targetId,
-            projectOrTask,
-            workEfficiency,
-            easeOfWork,
-            remarks,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        };
-        await db.collection("givenPeerFeedback").add(feedback);
+        catch (transactionError) {
+            if (transactionError.message === "DUPLICATE_FEEDBACK") {
+                throw new https_1.HttpsError("failed-precondition", "You have already given feedback to this user this month.");
+            }
+            // Re-throw other transaction errors
+            throw transactionError;
+        }
         return { success: true };
     }
     catch (error) {
