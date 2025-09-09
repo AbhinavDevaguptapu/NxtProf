@@ -4,7 +4,7 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { DecodedIdToken } from "firebase-admin/auth";
-import { isUserAdmin } from "./utils";
+import { isUserSuperAdmin } from "./utils";
 
 interface RoleManagementData { email: string; }
 interface CustomDecodedIdToken extends DecodedIdToken { isAdmin?: boolean; isCoAdmin?: boolean; }
@@ -103,7 +103,7 @@ export const deleteEmployee = onCall<{ uid?: string }>({ cors: true }, async (re
     }
 
     // A user can delete their own account, or an admin can delete any account.
-    if (request.auth.uid !== uid && !isUserAdmin(request.auth)) {
+    if (request.auth.uid !== uid && !isUserSuperAdmin(request.auth)) {
         throw new HttpsError("permission-denied", "You do not have permission to delete this account.");
     }
 

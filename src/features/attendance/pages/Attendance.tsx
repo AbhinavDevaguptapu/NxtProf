@@ -13,7 +13,7 @@ interface AttendancePageProps {
 
 export default function Attendance({ setActiveView }: AttendancePageProps) {
   const { admin, loading: adminLoading } = useAdminAuth();
-  const { user, loading: userLoading } = useUserAuth();
+  const { user, loading: userLoading, isAdmin, isCoAdmin } = useUserAuth();
 
   const isLoading = adminLoading || userLoading;
 
@@ -23,7 +23,7 @@ export default function Attendance({ setActiveView }: AttendancePageProps) {
         <div className="flex-grow flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
-      ) : admin ? (
+      ) : admin || (user && (isAdmin || isCoAdmin)) ? (
         <AdminAttendanceView />
       ) : user ? (
         <UserAttendanceView userId={user.uid} />
