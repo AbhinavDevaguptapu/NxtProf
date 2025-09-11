@@ -139,7 +139,7 @@ exports.deleteEmployee = (0, https_1.onCall)({ cors: true }, async (request) => 
         throw new https_1.HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
     }
     // A user can delete their own account, or an admin can delete any account.
-    if (request.auth.uid !== uid && !(0, utils_1.isUserAdmin)(request.auth)) {
+    if (request.auth.uid !== uid && !(0, utils_1.isUserSuperAdmin)(request.auth)) {
         throw new https_1.HttpsError("permission-denied", "You do not have permission to delete this account.");
     }
     try {

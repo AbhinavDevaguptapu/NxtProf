@@ -42,12 +42,12 @@ const formSchema = z.object({
     message: "You must select a point type.",
     path: ["point_type"],
 }).refine(data => {
-    if ((data.point_type === 'R1' || data.point_type === 'R2') && (!data.action_item || data.action_item.length < 10)) {
+    if (data.point_type === 'R1' && (!data.action_item || data.action_item.length < 10)) {
         return false;
     }
     return true;
 }, {
-    message: "Action item must be at least 10 characters for R1 and R2.",
+    message: "Action item must be at least 10 characters for R1.",
     path: ["action_item"],
 });
 
