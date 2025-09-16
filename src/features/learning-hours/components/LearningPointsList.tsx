@@ -41,13 +41,13 @@ const formSchema = z.object({
     message: "You must select a point type.",
     path: ["point_type"],
 }).refine(data => {
-    if ((data.point_type === 'R1' || data.point_type === 'R2') && (!data.action_item || data.action_item.length < 10)) {
-        return false;
-    }
-    return true;
+if (data.point_type === 'R1' && (!data.action_item || data.action_item.length < 10)) {
+    return false;
+}
+return true;
 }, {
-    message: "Action item must be at least 10 characters for R1 and R2.",
-    path: ["action_item"],
+message: "Action item must be at least 10 characters for R1.",
+path: ["action_item"],
 });
 
 // --- COMPONENT PROPS ---
@@ -140,10 +140,10 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
             return;
         }
 
-        // Check action_item for R1 and R2 points
-        if ((currentPoint.point_type === 'R1' || currentPoint.point_type === 'R2') &&
+        // Check action_item for R1 points only
+        if (currentPoint.point_type === 'R1' &&
             (!currentPoint.action_item || currentPoint.action_item.trim().length < 10)) {
-            form.setError('action_item', { message: 'Action Item is required for R1 and R2 points (minimum 10 characters)' });
+            form.setError('action_item', { message: 'Action Item is required for R1 points (minimum 10 characters)' });
             return;
         }
 
@@ -188,6 +188,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                 behavior: point.behavior,
                 impact: point.impact,
                 action: point.action_item || '',
+                recipient: point.recipient,
                 pointType: point.point_type,
             };
             const result = await analyzeTask(taskData);
@@ -226,8 +227,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
         currentPoint.behavior && currentPoint.behavior.trim().length >= 10 &&
         currentPoint.impact && currentPoint.impact.trim().length >= 10 &&
         currentPoint.recipient && currentPoint.recipient.trim().length >= 3 &&
-        ((currentPoint.point_type !== 'R1' && currentPoint.point_type !== 'R2') ||
-         (currentPoint.action_item && currentPoint.action_item.trim().length >= 10));
+        (currentPoint.point_type !== 'R1' || (currentPoint.action_item && currentPoint.action_item.trim().length >= 10));
 
     const analysisDisabled = isAnalyzing || isR3Point || !isFormValidForAnalysis;
 
@@ -270,6 +270,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
 
     // Calculate hasCorrections outside useEffect
     const hasCorrections = fullAnalysisResult && (
+        fullAnalysisResult.correctedRecipient ||
         fullAnalysisResult.correctedSituation ||
         fullAnalysisResult.correctedBehavior ||
         fullAnalysisResult.correctedImpact ||
@@ -280,6 +281,9 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
         if (!fullAnalysisResult) return;
 
         // Update form fields with corrected values
+        if (fullAnalysisResult.correctedRecipient) {
+            form.setValue('recipient', fullAnalysisResult.correctedRecipient);
+        }
         if (fullAnalysisResult.correctedSituation) {
             form.setValue('situation', fullAnalysisResult.correctedSituation);
         }
@@ -338,38 +342,45 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
 
                         {/* Display corrections if available */}
                         {fullAnalysisResult && fullAnalysisResult.status === "Needs improvement" && (
-                            (fullAnalysisResult.correctedSituation ||
+                            (fullAnalysisResult.correctedRecipient ||
+                             fullAnalysisResult.correctedSituation ||
                              fullAnalysisResult.correctedBehavior ||
                              fullAnalysisResult.correctedImpact ||
                              fullAnalysisResult.correctedActionItem) && (
                                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                     <h4 className="font-semibold text-blue-800 mb-3">Suggested Improvements:</h4>
                                     <div className="space-y-2 text-sm">
-                                        {fullAnalysisResult.correctedSituation && (
-                                            <div>
-                                                <strong className="text-blue-700">Situation:</strong>
-                                                <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedSituation}</p>
-                                            </div>
-                                        )}
-                                        {fullAnalysisResult.correctedBehavior && (
-                                            <div>
-                                                <strong className="text-blue-700">Behavior:</strong>
-                                                <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedBehavior}</p>
-                                            </div>
-                                        )}
-                                        {fullAnalysisResult.correctedImpact && (
-                                            <div>
-                                                <strong className="text-blue-700">Impact:</strong>
-                                                <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedImpact}</p>
-                                            </div>
-                                        )}
-                                        {fullAnalysisResult.correctedActionItem && (
-                                            <div>
-                                                <strong className="text-blue-700">Action Item:</strong>
-                                                <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedActionItem}</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    {fullAnalysisResult.correctedRecipient && (
+                                        <div>
+                                            <strong className="text-blue-700">Recipient:</strong>
+                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedRecipient}</p>
+                                        </div>
+                                    )}
+                                    {fullAnalysisResult.correctedSituation && (
+                                        <div>
+                                            <strong className="text-blue-700">Situation:</strong>
+                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedSituation}</p>
+                                        </div>
+                                    )}
+                                    {fullAnalysisResult.correctedBehavior && (
+                                        <div>
+                                            <strong className="text-blue-700">Behavior:</strong>
+                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedBehavior}</p>
+                                        </div>
+                                    )}
+                                    {fullAnalysisResult.correctedImpact && (
+                                        <div>
+                                            <strong className="text-blue-700">Impact:</strong>
+                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedImpact}</p>
+                                        </div>
+                                    )}
+                                    {fullAnalysisResult.correctedActionItem && (
+                                        <div>
+                                            <strong className="text-blue-700">Action Item:</strong>
+                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedActionItem}</p>
+                                        </div>
+                                    )}
+                                </div>
                                 </div>
                             )
                         )}
@@ -425,6 +436,7 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
     const [isEditingFormOpen, setIsEditingFormOpen] = useState(false);
     const [editingPoint, setEditingPoint] = useState<LearningPoint | undefined>(undefined);
     const [viewingPoint, setViewingPoint] = useState<LearningPoint | null>(null);
+    const [deleteConfirmPoint, setDeleteConfirmPoint] = useState<LearningPoint | null>(null);
 
     const handleOpenFormForEdit = (point: LearningPoint) => {
         setEditingPoint(point);
@@ -441,6 +453,21 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
             onUpdatePoint(editingPoint.id, data);
         }
         setIsEditingFormOpen(false);
+    };
+
+    const handleDeleteClick = (point: LearningPoint) => {
+        setDeleteConfirmPoint(point);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (deleteConfirmPoint) {
+            onDeletePoint(deleteConfirmPoint.id);
+            setDeleteConfirmPoint(null);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteConfirmPoint(null);
     };
 
     return (
@@ -544,11 +571,11 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
                                                     </Button>
                                                     {isEditable && (
                                                         <>
-                                                            <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(point)} className="w-full sm:w-auto sm:flex-1 sm:flex-none">
+                                                            <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(point)} className="w-full sm:w-auto sm:flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-colors">
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => onDeletePoint(point.id)} className="w-full sm:w-auto sm:flex-none">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(point)} className="w-full sm:w-auto sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors">
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </>
@@ -583,6 +610,41 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
                 onClose={() => setViewingPoint(null)}
                 point={viewingPoint}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!deleteConfirmPoint} onOpenChange={() => setDeleteConfirmPoint(null)}>
+                <AlertDialogContent className="sm:max-w-[425px] w-[95vw]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                            Delete Learning Point
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <p>Are you sure you want to delete this learning point?</p>
+                            {deleteConfirmPoint && (
+                                <div className="bg-muted p-3 rounded-lg">
+                                    <p className="font-medium text-sm">{deleteConfirmPoint.task_name}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Created: {deleteConfirmPoint.createdAt ? format(deleteConfirmPoint.createdAt.toDate(), 'PPP p') : 'Unknown'}
+                                    </p>
+                                </div>
+                            )}
+                            <p className="text-sm text-red-600 font-medium">This action cannot be undone.</p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={handleDeleteCancel}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirm}
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                        >
+                            Delete Point
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 };

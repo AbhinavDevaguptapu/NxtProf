@@ -1,14 +1,10 @@
-import { useFormContext } from 'react-hook-form';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { useFormContext } from 'react-hook-form'
 
 // UI Components
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarIcon } from 'lucide-react';
 
 export const LearningPointFormFields = () => {
     const form = useFormContext();
@@ -122,7 +118,7 @@ export const LearningPointFormFields = () => {
                     </FormItem>
                 )} />
 
-                {pointType !== 'R3' && (
+                {pointType === 'R1' && (
                     <FormField control={form.control} name="action_item" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Action Item (A)</FormLabel>

@@ -94,6 +94,11 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
                 form.setValue('recipient', defaultValues?.recipient || '');
             }
         }
+
+        // Clear action_item for R2 and R3
+        if (pointType === 'R2' || pointType === 'R3') {
+            form.setValue('action_item', '');
+        }
     }, [pointType, form, defaultValues]);
 
     useEffect(() => {

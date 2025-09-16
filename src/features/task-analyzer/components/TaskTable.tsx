@@ -29,6 +29,9 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, selectedDate }) => {
     );
   }
 
+  // Check if any task is not R2 (i.e., has Action items)
+  const hasActionItems = tasks.some(task => task.taskData.pointType !== 'R2');
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -45,7 +48,7 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, selectedDate }) => {
                 <TableHead className="min-w-[200px]">Situation (S)</TableHead>
                 <TableHead className="min-w-[200px]">Behavior (B)</TableHead>
                 <TableHead className="min-w-[200px]">Impact (I)</TableHead>
-                <TableHead className="min-w-[200px]">Action (A)</TableHead>
+                {hasActionItems && <TableHead className="min-w-[200px]">Action (A)</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -57,7 +60,11 @@ const TaskTable: React.FC<TaskTableProps> = ({ tasks, selectedDate }) => {
                   <TableCell>{task.taskData.situation || '-'}</TableCell>
                   <TableCell>{task.taskData.behavior || '-'}</TableCell>
                   <TableCell>{task.taskData.impact || '-'}</TableCell>
-                  <TableCell>{task.taskData.action || '-'}</TableCell>
+                  {hasActionItems && (
+                    <TableCell>
+                      {task.taskData.pointType === 'R2' ? 'N/A' : (task.taskData.action || '-')}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

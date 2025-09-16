@@ -2,6 +2,7 @@ export interface AnalysisResult {
   matchPercentage: number;
   status: "Meets criteria" | "Needs improvement";
   rationale: string;
+  correctedRecipient: string | null;
   correctedSituation: string | null;
   correctedBehavior: string | null;
   correctedImpact: string | null;
@@ -26,6 +27,7 @@ export interface TaskData {
   behavior: string;
   impact: string;
   action: string;
+  recipient: string;
   pointType: string;
 }
 

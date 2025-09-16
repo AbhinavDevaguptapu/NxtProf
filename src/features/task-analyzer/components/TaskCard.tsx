@@ -101,7 +101,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                               {taskData.situation && <div><strong className="font-semibold text-foreground">Situation:</strong> {taskData.situation}</div>}
                               {taskData.behavior && <div><strong className="font-semibold text-foreground">Behavior:</strong> {taskData.behavior}</div>}
                               {taskData.impact && <div><strong className="font-semibold text-foreground">Impact:</strong> {taskData.impact}</div>}
-                              {taskData.action && <div><strong className="font-semibold text-foreground">Action Item:</strong> {taskData.action}</div>}
+                              {taskData.action && taskData.pointType !== 'R2' && <div><strong className="font-semibold text-foreground">Action Item:</strong> {taskData.action}</div>}
                           </div>
                       )}
                   </div>
