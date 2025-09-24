@@ -32,11 +32,17 @@ import { usePeerFeedbackLock } from "../hooks/usePeerFeedbackLock";
 const functions = getFunctions();
 const givePeerFeedback = httpsCallable(functions, 'peerFeedback-givePeerFeedback');
 
+const validateRemarks = (value: string) => {
+    // Trim and collapse spaces for validation
+    const processed = value.trim().replace(/\s+/g, ' ');
+    return processed.length >= 10;
+};
+
 const formSchema = z.object({
     projectOrTask: z.string().min(3, "Project or task must be at least 3 characters."),
     workEfficiency: z.string().min(1, "You must select a rating."),
     easeOfWork: z.string().min(1, "You must select a rating."),
-    remarks: z.string().min(10, "Remarks must be at least 10 characters.").max(2000),
+    remarks: z.string().refine(validateRemarks, "Remarks must be at least 10 characters long and cannot consist mostly of spaces.").max(2000),
 });
 
 interface SubmitFeedbackModalProps {
@@ -67,8 +73,12 @@ const SubmitFeedbackModal = ({ isOpen, onOpenChange, targetEmployee, onFeedbackS
         }
         setIsSubmitting(true);
 
+        // Process remarks: trim and collapse spaces
+        const processedRemarks = values.remarks.trim().replace(/\s+/g, ' ');
+
         const payload = {
             ...values,
+            remarks: processedRemarks,
             giverId: user.uid,
             targetId: targetEmployee.id,
             workEfficiency: parseInt(values.workEfficiency, 10),
@@ -107,9 +117,9 @@ const SubmitFeedbackModal = ({ isOpen, onOpenChange, targetEmployee, onFeedbackS
                             name="projectOrTask"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Project or Task</FormLabel>
+                                    <FormLabel>Task or Work</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="e.g., Q2 Marketing Campaign" {...field} />
+                                        <Input placeholder="e.g., Peer Feedback" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -137,7 +147,11 @@ const SubmitFeedbackModal = ({ isOpen, onOpenChange, targetEmployee, onFeedbackS
                                         <Textarea
                                             placeholder="Provide your anonymous feedback here..."
                                             rows={4}
-                                            {...field}
+                                            value={field.value}
+                                            onChange={(e) => {
+                                                const newValue = e.target.value.replace(/\s+/g, ' ');
+                                                field.onChange(newValue);
+                                            }}
                                         />
                                     </FormControl>
                                     <FormMessage />
