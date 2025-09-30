@@ -8,11 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAvailableEmployees } from "../hooks/useAvailableEmployees";
 
 const EmployeeFeedbackList = () => {
-    const { employees, isLoading, removeEmployee } = useAvailableEmployees();
+    const { employees, isLoading, refetch } = useAvailableEmployees();
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-    const handleFeedbackSubmitted = (targetId: string) => {
-        removeEmployee(targetId);
+    const handleFeedbackSubmitted = async (targetId: string) => {
+        await refetch();
         setSelectedEmployee(null);
     };
 

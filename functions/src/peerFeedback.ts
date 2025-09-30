@@ -161,6 +161,7 @@ export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string
         // Prevent race conditions with transaction-based duplicate check and creation
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
         try {
             await db.runTransaction(async (transaction) => {
@@ -169,6 +170,7 @@ export const givePeerFeedback = onCall<{ targetId: string; projectOrTask: string
                     .where("giverId", "==", giverId)
                     .where("targetId", "==", sanitizedTargetId)
                     .where("createdAt", ">=", startOfMonth)
+                    .where("createdAt", "<=", endOfMonth)
                     .limit(1);
 
                 const existingDocSnapshot = await transaction.get(existingFeedbackQuery);
