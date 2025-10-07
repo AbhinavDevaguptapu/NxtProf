@@ -24,13 +24,6 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -249,12 +242,6 @@ const FeedbackFilters = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth()
-  );
-  const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
-  );
   const [selectedDateRange, setSelectedDateRange] = useState<
     DateRange | undefined
   >(undefined);
@@ -309,53 +296,6 @@ const FeedbackFilters = ({
             />
           </PopoverContent>
         </Popover>
-        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-          <Select
-            value={String(selectedMonth)}
-            onValueChange={(v) => setSelectedMonth(Number(v))}
-            disabled={isFiltering}
-          >
-            <SelectTrigger className="w-full sm:w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[...Array(12).keys()].map((i) => (
-                <SelectItem key={i} value={String(i)}>
-                  {format(new Date(0, i), "MMMM")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={String(selectedYear)}
-            onValueChange={(v) => setSelectedYear(Number(v))}
-            disabled={isFiltering}
-          >
-            <SelectTrigger className="w-full sm:w-[90px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[new Date().getFullYear(), ...[2024, 2023].filter(y => y !== new Date().getFullYear())].map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={() =>
-              handleFilterClick({
-                mode: "monthly",
-                date: new Date(selectedYear, selectedMonth, 1),
-              })
-            }
-            variant={activeButton === "monthly" ? "default" : "outline"}
-            disabled={isFiltering}
-            className="w-full sm:w-auto"
-          >
-            View Month
-          </Button>
-        </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <Popover>
             <PopoverTrigger asChild>

@@ -27,7 +27,7 @@ import {
   User,
 } from "firebase/auth";
 import { auth, db } from "@/integrations/firebase/client";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,19 +52,18 @@ export default function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loadingForm, setLoadingForm] = useState(false);
 
-  const { user, loading: userLoading } = useUserAuth();
+  const { user, userProfile, loading: userLoading } = useUserAuth();
   const { admin: currentAdmin, loading: adminLoading } = useAdminAuth();
   const navigate = useNavigate();
 
   // 1) Synchronous guard: if we know the final state, redirect immediately
-  if (!userLoading && !adminLoading && user) {
+  if (!userLoading && !adminLoading && user && userProfile) {
     if (currentAdmin) {
       return <Navigate to="/admin" replace />;
-    } else {
-      // check setup status in profile
-      // Ideally you'd have userProfile.hasCompletedSetup from context
-      // but for simplicity, we'll send them to setup (the effect below will correct)
+    } else if (!userProfile.hasCompletedSetup) {
       return <Navigate to="/setup" replace />;
+    } else {
+      return <Navigate to="/" replace />;
     }
   }
 

@@ -38,11 +38,16 @@ const GlobalLoading = () => (
 );
 
 const AppContent = () => {
-  const { user, initialized: userInitialized } = useUserAuth();
+  const { user, userProfile, initialized: userInitialized } = useUserAuth();
   const { admin, initialized: adminInitialized } = useAdminAuth();
 
   if (!userInitialized || !adminInitialized) {
     return <GlobalLoading />;
+  }
+
+  // Guard for users who haven't completed setup
+  if (user && userProfile && !admin && !userProfile.hasCompletedSetup) {
+    return <Navigate to="/setup" replace />;
   }
 
   return (

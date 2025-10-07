@@ -71,6 +71,7 @@ const adminNavItems = [
     { id: "manage-employees", label: "Manage Employees", icon: Users },
     { id: "archived-employees", label: "Archived Employees", icon: Archive },
     { id: "attendance", label: "Manage Attendance", icon: CalendarCheck },
+    { id: "onboardingKit", label: "Onboarding Kit", icon: Box },
 ]
 
 // --- Prop Interfaces ---
@@ -192,7 +193,33 @@ const SidebarContent = ({ activeView, setActiveView, onItemClick }: SidebarConte
     let navItems = userNavItems;
     let isAdminOrCoAdmin = false;
     if (admin || isCoAdmin) {
-        navItems = adminNavItems;
+        navItems = adminNavItems.filter(item => {
+            if (item.id === 'co-admin-add-learning-points' && !isCoAdmin) {
+                return false; // Hide for admins
+            }
+            if ((item.id === 'manage-employees' || item.id === 'archived-employees') && isCoAdmin && !admin) {
+                return false; // Hide for co-admins (but show for admins)
+            }
+            if (item.id === 'onboardingKit' && admin && !isCoAdmin) {
+                return false; // Hide for admins (but show for co-admins)
+            }
+            return true;
+        }).map(item => {
+            // For co-admin, change admin-peer-feedback to peer-feedback
+            if (item.id === 'admin-peer-feedback' && isCoAdmin && !admin) {
+                return { ...item, id: 'peer-feedback' };
+            }
+            return item;
+        });
+        // Add Students Feedback above Peer Feedback for co-admin
+        if (isCoAdmin && !admin) {
+            const peerFeedbackIndex = navItems.findIndex(item => item.id === 'peer-feedback');
+            if (peerFeedbackIndex !== -1) {
+                navItems.splice(peerFeedbackIndex, 0, { id: "feedback", label: "Students Feedback", icon: MessageSquareQuote });
+            } else {
+                navItems.push({ id: "feedback", label: "Students Feedback", icon: MessageSquareQuote });
+            }
+        }
         isAdminOrCoAdmin = true;
     }
 
