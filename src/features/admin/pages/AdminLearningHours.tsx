@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { useToast } from '@/components/ui/use-toast';
-import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useUserAuth } from '@/context/UserAuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/integrations/firebase/client';
 
@@ -94,10 +94,11 @@ const AdminLearningHours = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isDateSynced, setIsDateSynced] = useState<boolean>(false);
     const { toast } = useToast();
-    const { admin } = useAdminAuth();
+    const { isAdmin, isCoAdmin } = useUserAuth();
+    const isAdminUser = isAdmin || isCoAdmin;
 
     const checkSyncStatus = async () => {
-        if (!admin) return;
+        if (!isAdminUser) return;
 
         try {
             const dateString = format(date, 'yyyy-MM-dd');
@@ -174,10 +175,10 @@ const AdminLearningHours = () => {
     }, [date, refetch]);
 
     useEffect(() => {
-        if (admin) {
+        if (isAdminUser) {
             checkSyncStatus();
         }
-    }, [date, admin]);
+    }, [date, isAdminUser]);
 
     const employeeMap = useMemo(() => {
         return employees.reduce((acc, emp) => {
@@ -198,11 +199,11 @@ const AdminLearningHours = () => {
             <CardHeader>
                 <CardTitle>
                     {format(date, "PPP") === format(new Date(), "PPP") ? "Today's" : format(date, "PPPP")} Learning Points
-                    {admin && isDateSynced && <span className="text-sm text-green-600 font-normal ml-2">✓ Synced</span>}
+                    {isAdminUser && isDateSynced && <span className="text-sm text-green-600 font-normal ml-2">✓ Synced</span>}
                 </CardTitle>
                 <CardDescription>
                     Here are all the learning points submitted on {format(date, "PPP")}.
-                    {admin && ` Sync status: ${isDateSynced ? "Already synced to spreadsheet" : "Not synced yet"}.`}
+                    {isAdminUser && ` Sync status: ${isDateSynced ? "Already synced to spreadsheet" : "Not synced yet"}.`}
                     You can filter them by employee.
                 </CardDescription>
                 <div className="pt-4 flex gap-4 items-end">
@@ -244,7 +245,7 @@ const AdminLearningHours = () => {
                             ))}
                         </SelectContent>
                     </Select>
-                    {admin && (
+                    {isAdminUser && (
                         <Button
                             onClick={handleSyncByDate}
                             disabled={isSyncing || isDateSynced}

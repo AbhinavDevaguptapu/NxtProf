@@ -234,6 +234,7 @@ const SidebarContent = ({ activeView, setActiveView, onItemClick }: SidebarConte
 
     const userLearningHoursSubItems = [
         { id: "learning-hours", label: "Add Learning Points", icon: GraduationCap },
+        { id: "learning-hours-points", label: "Employees Learning Points", icon: GraduationCap },
         { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     ];
 
