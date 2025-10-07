@@ -2,6 +2,7 @@ import React, { useState, Dispatch, SetStateAction, ReactNode, useEffect } from 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from '@/components/common/Sidebar';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useUserAuth } from '@/context/UserAuthContext';
 import UserHome from '@/features/home/pages/Index';
 import AdminHome from '@/features/admin/pages/AdminHome';
 import ProfilePage from '@/features/profile/pages/ProfilePage';
@@ -18,6 +19,7 @@ import AdminLearningHours from '@/features/admin/pages/AdminLearningHours';
 import FloatingNav from '@/components/common/FloatingNav';
 import DailyObservationsPage from '@/features/daily-observations/pages/DailyObservationsPage';
 import ArchivedEmployeesPage from '@/features/admin/pages/ArchivedEmployeesPage';
+import CoAdminAddLearningPoints from '@/features/co-admin/pages/CoAdminAddLearningPoints';
 
 export type ViewType =
     | 'home'
@@ -34,7 +36,8 @@ export type ViewType =
     | 'admin-peer-feedback'
     | 'learning-hours-points'
     | 'daily-observations'
-    | 'archived-employees';
+    | 'archived-employees'
+    | 'co-admin-add-learning-points';
 
 export interface ViewState {
     view: ViewType;
@@ -55,6 +58,7 @@ const getInitialView = (): ViewState => {
 
 export default function AppShell() {
     const { admin } = useAdminAuth();
+    const { isCoAdmin } = useUserAuth();
     const [activeView, setActiveView] = useState<ViewState>(getInitialView);
 
     // This effect handles the browser's back/forward buttons
@@ -100,6 +104,7 @@ export default function AppShell() {
             'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
             'daily-observations': DailyObservationsPage,
             'archived-employees': admin ? ArchivedEmployeesPage : AccessDenied,
+            'co-admin-add-learning-points': isCoAdmin ? CoAdminAddLearningPoints : AccessDenied,
         };
 
         const ComponentToRender = viewMap[view] || viewMap.home;

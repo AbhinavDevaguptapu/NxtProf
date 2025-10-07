@@ -580,9 +580,10 @@ const EmployeeDetailHeader = ({ employee, onActionComplete }: { employee: Employ
                             className="gap-2"
                             variant={isDropdown ? undefined : "outline"}
                             size={isDropdown ? undefined : "sm"}
-                            disabled={employee.id === admin?.uid}
+                            disabled={employee.id === admin?.uid || processingAction === 'archive'}
                         >
-                            <Archive className="h-4 w-4" /> Archive
+                            {processingAction === 'archive' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                            Archive
                         </TriggerComponent>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -605,8 +606,10 @@ const EmployeeDetailHeader = ({ employee, onActionComplete }: { employee: Employ
                             className="gap-2 text-red-600 focus:text-red-700"
                             variant={isDropdown ? undefined : "outline"}
                             size={isDropdown ? undefined : "sm"}
+                            disabled={processingAction === 'delete'}
                         >
-                            <Trash2 className="h-4 w-4" /> Delete
+                            {processingAction === 'delete' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            Delete
                         </TriggerComponent>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

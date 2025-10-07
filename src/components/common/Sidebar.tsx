@@ -21,6 +21,11 @@ import {
     SheetDescription,
     SheetTrigger,
 } from "@/components/ui/sheet"
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import {
     Home,
@@ -50,8 +55,6 @@ const userNavItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
-    { id: "learning-hours-points", label: "Employees Learning Points", icon: GraduationCap },
-    { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     { id: "feedback", label: "Students Feedback", icon: MessageSquareQuote },
     { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
     { id: "attendance", label: "Attendance", icon: CalendarCheck },
@@ -63,8 +66,6 @@ const adminNavItems = [
     { id: "home", label: "Dashboard", icon: Home },
     { id: "standups", label: "Standups", icon: ClipboardList },
     { id: "learning-hours", label: "Learning Hours", icon: GraduationCap },
-    { id: "learning-hours-points", label: "Employees Learning Points", icon: GraduationCap },
-    { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
     { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
     { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
     { id: "manage-employees", label: "Manage Employees", icon: Users },
@@ -184,8 +185,30 @@ const UserProfile = ({ onProfileClick, onLogout }: { onProfileClick: () => void,
 
 const SidebarContent = ({ activeView, setActiveView, onItemClick }: SidebarContentProps) => {
     const { admin } = useAdminAuth()
-    const { logout } = useUserAuth()
-    const navItems = admin ? adminNavItems : userNavItems
+    const { isCoAdmin, logout } = useUserAuth()
+
+    const [learningHoursOpen, setLearningHoursOpen] = useState(false);
+
+    let navItems = userNavItems;
+    let isAdminOrCoAdmin = false;
+    if (admin || isCoAdmin) {
+        navItems = adminNavItems;
+        isAdminOrCoAdmin = true;
+    }
+
+    const isUser = !isAdminOrCoAdmin;
+
+    const learningHoursSubItems = [
+        { id: "learning-hours", label: "Manage Sessions", icon: GraduationCap },
+        ...(isCoAdmin ? [{ id: "co-admin-add-learning-points", label: "Add Learning Points", icon: GraduationCap }] : []),
+        { id: "learning-hours-points", label: "Employees Learning Points", icon: GraduationCap },
+        { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
+    ];
+
+    const userLearningHoursSubItems = [
+        { id: "learning-hours", label: "Add Learning Points", icon: GraduationCap },
+        { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
+    ];
 
     const handleNavClick = (view: ViewType) => {
         setActiveView({ view })
@@ -208,15 +231,58 @@ const SidebarContent = ({ activeView, setActiveView, onItemClick }: SidebarConte
                 <Logo onClick={() => handleNavClick('home')} />
             </div>
 
-            <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
-                {navItems.map((item) => (
-                    <NavItem
-                        key={item.id}
-                        item={item}
-                        isActive={activeView === item.id}
-                        onClick={() => handleNavClick(item.id as ViewType)}
-                    />
-                ))}
+            <nav className="sidebar-nav flex-1 px-4 space-y-1.5 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style>{`
+                    .sidebar-nav::-webkit-scrollbar {
+                        display: none;
+                    }
+                `}</style>
+                {navItems.map((item) => {
+                    if (item.id === 'learning-hours' && (isAdminOrCoAdmin || isUser)) {
+                        const subItems = isAdminOrCoAdmin ? learningHoursSubItems : userLearningHoursSubItems;
+                        return (
+                            <Collapsible key={item.id} open={learningHoursOpen} onOpenChange={setLearningHoursOpen}>
+                                <CollapsibleTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start text-sm font-medium h-11 px-3 rounded-lg"
+                                    >
+                                        <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                                        <span className="truncate">{item.label}</span>
+                                        <ChevronRight className={`ml-auto h-4 w-4 transition-transform ${learningHoursOpen ? 'rotate-90' : ''}`} />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="space-y-1 pl-6">
+                                    <motion.div
+                                        layout
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                        className="space-y-1"
+                                    >
+                                        {subItems.map((subItem) => (
+                                            <NavItem
+                                                key={subItem.id}
+                                                item={subItem}
+                                                isActive={activeView === subItem.id}
+                                                onClick={() => handleNavClick(subItem.id as ViewType)}
+                                            />
+                                        ))}
+                                    </motion.div>
+                                </CollapsibleContent>
+                            </Collapsible>
+                        );
+                    }
+                    return (
+                        <NavItem
+                            key={item.id}
+                            item={item}
+                            isActive={activeView === item.id}
+                            onClick={() => handleNavClick(item.id as ViewType)}
+                        />
+                    );
+                })}
             </nav>
 
             <UserProfile onProfileClick={handleProfileClick} onLogout={handleLogout} />
