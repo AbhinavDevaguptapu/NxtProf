@@ -60,6 +60,7 @@ export default function EmployeeSetup() {
     const navigate = useNavigate();
 
     const [employeeId, setEmployeeId] = useState('');
+    const [sheetLink, setSheetLink] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [exitLoading, setExitLoading] = useState(false);
@@ -67,8 +68,18 @@ export default function EmployeeSetup() {
     const [countdown, setCountdown] = useState(30);
 
     const isEmployeeIdValid = (id: string) => /^NW\d{7}$/.test(id);
+    const isSheetLinkValid = (link: string) => {
+        if (link.trim() === '') return true; // Allow empty string
+        try {
+            new URL(link.trim());
+            return true;
+        } catch {
+            return false;
+        }
+    };
 
-    const isFormValid = isEmployeeIdValid(employeeId);
+    const cleanedSheetLink = sheetLink.trim();
+    const isFormValid = isEmployeeIdValid(employeeId) && isSheetLinkValid(cleanedSheetLink);
 
     useEffect(() => {
         if (countdown > 0) {
@@ -123,11 +134,30 @@ export default function EmployeeSetup() {
                 return;
             }
 
+            // Check for duplicate feedbackSheetUrl only if a link is provided
+            if (cleanedSheetLink) {
+                const urlQuery = query(employeesRef, where('feedbackSheetUrl', '==', cleanedSheetLink));
+                const urlQuerySnapshot = await getDocs(urlQuery);
+                if (!urlQuerySnapshot.empty) {
+                    setError('This Feedback Sheet URL is already associated with another account.');
+                    setLoading(false);
+                    return;
+                }
+            }
+
             const ref = doc(db, 'employees', user.uid);
-            const dataToUpdate = {
+            const dataToUpdate: {
+                employeeId: string;
+                hasCompletedSetup: boolean;
+                feedbackSheetUrl?: string;
+            } = {
                 employeeId,
                 hasCompletedSetup: true,
             };
+
+            if (cleanedSheetLink) {
+                dataToUpdate.feedbackSheetUrl = cleanedSheetLink;
+            }
 
             await updateDoc(ref, dataToUpdate);
             navigate('/');
@@ -154,7 +184,7 @@ export default function EmployeeSetup() {
                     <CardHeader>
                         <CardTitle className="text-2xl">Welcome, {user?.displayName || 'User'}!</CardTitle>
                         <CardDescription>
-                            Please provide your Employee ID to continue.
+                            Please provide your Employee ID to continue. The Feedback Sheet link is optional.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -182,6 +212,21 @@ export default function EmployeeSetup() {
                                 )}
                             </motion.div>
 
+                            <motion.div variants={fieldVariants} className="space-y-2">
+                                <label htmlFor="sheetLink" className="text-sm font-medium">Feedback Sheet Link (Optional)</label>
+                                <Input
+                                    id="sheetLink"
+                                    type="url"
+                                    placeholder="https://docs.google.com/spreadsheets/..."
+                                    value={sheetLink}
+                                    onChange={(e) => setSheetLink(e.target.value)}
+                                />
+                                {!isSheetLinkValid(sheetLink) && sheetLink.length > 0 && (
+                                    <p className="text-xs text-destructive">
+                                        Please enter a valid URL.
+                                    </p>
+                                )}
+                            </motion.div>
 
                             {error && (
                                 <motion.p
@@ -193,15 +238,20 @@ export default function EmployeeSetup() {
                             )}
 
                             <motion.div variants={fieldVariants}>
-                                <motion.div
+                                <motion.button
+                                    type="submit"
+                                    className="w-full"
+                                    disabled={!isFormValid || loading || exitLoading}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
                                     <Button
-                                        type="submit"
+                                        type="button"
                                         className="w-full"
                                         disabled={!isFormValid || loading || exitLoading}
+                                        tabIndex={-1}
                                         style={{
+                                            pointerEvents: 'none',
                                             background: 'black',
                                             color: 'white',
                                             boxShadow: 'none',
@@ -210,7 +260,7 @@ export default function EmployeeSetup() {
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {loading ? 'Saving...' : 'Get Started'}
                                     </Button>
-                                </motion.div>
+                                </motion.button>
                             </motion.div>
                             <motion.div variants={fieldVariants}>
                                 <Button
