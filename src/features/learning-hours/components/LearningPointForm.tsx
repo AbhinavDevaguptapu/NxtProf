@@ -142,7 +142,7 @@ export const LearningPointForm = ({ isOpen, onClose, onSubmit, defaultValues }: 
                         <LearningPointFormFields />
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                            <Button type="submit" disabled={isAdmin}>Save Point</Button>
+                            <Button type="submit">Save Point</Button>
                         </DialogFooter>
                     </form>
                 </FormProvider>

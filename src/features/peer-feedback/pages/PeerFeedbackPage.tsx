@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const PeerFeedbackPage = () => {
     const { feedback, isLoading: isLoadingFeedback } = useReceivedFeedback();
-    const { isAdmin } = useUserAuth();
+    const { isAdmin, isCoAdmin } = useUserAuth();
     const { isLocked, isLoading: isLoadingLock, toggleLock } = usePeerFeedbackLock();
 
 
@@ -24,7 +24,7 @@ const PeerFeedbackPage = () => {
                 <p className="text-muted-foreground mt-1 mb-2">
                     Give and receive constructive feedback within your team.
                 </p>
-                {isAdmin && (
+                {(isAdmin || isCoAdmin) && (
                     <div className="flex items-center space-x-2 mb-4">
                         <Switch
                             id="feedback-lock"

@@ -200,9 +200,6 @@ const SidebarContent = ({ activeView, setActiveView, onItemClick }: SidebarConte
             if ((item.id === 'manage-employees' || item.id === 'archived-employees') && isCoAdmin && !admin) {
                 return false; // Hide for co-admins (but show for admins)
             }
-            if (item.id === 'onboardingKit' && admin && !isCoAdmin) {
-                return false; // Hide for admins (but show for co-admins)
-            }
             return true;
         }).map(item => {
             // For co-admin, change admin-peer-feedback to peer-feedback

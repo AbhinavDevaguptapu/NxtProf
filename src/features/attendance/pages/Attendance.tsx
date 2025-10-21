@@ -21,7 +21,9 @@ export default function Attendance({ setActiveView }: AttendancePageProps) {
   const isLoading = adminLoading || userLoading;
 
   const renderContent = () => {
-    if (isCoAdmin) {
+    if (admin || (user && isAdmin)) {
+      return <AdminAttendanceView />;
+    } else if (isCoAdmin) {
       return (
         <>
           <div className="mb-6 flex items-center justify-between p-4 bg-muted/50 rounded-lg">
@@ -50,8 +52,6 @@ export default function Attendance({ setActiveView }: AttendancePageProps) {
           )}
         </>
       );
-    } else if (admin || (user && isAdmin)) {
-      return <AdminAttendanceView />;
     } else if (user) {
       return <UserAttendanceView userId={user.uid} />;
     } else {

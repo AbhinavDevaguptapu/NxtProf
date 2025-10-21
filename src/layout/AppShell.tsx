@@ -58,7 +58,7 @@ const getInitialView = (): ViewState => {
 
 export default function AppShell() {
     const { admin } = useAdminAuth();
-    const { isCoAdmin } = useUserAuth();
+    const { isCoAdmin, isAdmin } = useUserAuth();
     const [activeView, setActiveView] = useState<ViewState>(getInitialView);
 
     // This effect handles the browser's back/forward buttons
@@ -104,7 +104,7 @@ export default function AppShell() {
             'manage-employees': admin ? AdminEmployeeDashboard : AccessDenied,
             'daily-observations': DailyObservationsPage,
             'archived-employees': admin ? ArchivedEmployeesPage : AccessDenied,
-            'co-admin-add-learning-points': isCoAdmin ? CoAdminAddLearningPoints : AccessDenied,
+            'co-admin-add-learning-points': (isAdmin || isCoAdmin) ? CoAdminAddLearningPoints : AccessDenied,
         };
 
         const ComponentToRender = viewMap[view] || viewMap.home;
