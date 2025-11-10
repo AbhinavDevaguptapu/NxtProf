@@ -142,33 +142,33 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
 
   const monthlyStats = useMemo(() => {
     const stats = {
-        standup: { present: 0, missed: 0, absent: 0, notAvailable: 0 },
-        learning: { present: 0, missed: 0, absent: 0, notAvailable: 0 },
+      standup: { present: 0, missed: 0, absent: 0, notAvailable: 0 },
+      learning: { present: 0, missed: 0, absent: 0, notAvailable: 0 },
     };
 
     Object.entries(allAttendance).forEach(([dateStr, statuses]) => {
-        try {
-            const date = parseISO(dateStr);
-            if (isSameMonth(date, month) && !isSunday(date)) {
-                // Standup stats
-                if (statuses.standup === "Present") stats.standup.present++;
-                else if (statuses.standup === "Missed") stats.standup.missed++;
-                else if (statuses.standup === "Absent") stats.standup.absent++;
-                else if (statuses.standup === "Not Available") stats.standup.notAvailable++;
+      try {
+        const date = parseISO(dateStr);
+        if (isSameMonth(date, month) && !isSunday(date)) {
+          // Standup stats
+          if (statuses.standup === "Present") stats.standup.present++;
+          else if (statuses.standup === "Missed") stats.standup.missed++;
+          else if (statuses.standup === "Absent") stats.standup.absent++;
+          else if (statuses.standup === "Not Available") stats.standup.notAvailable++;
 
-                // Learning Hour stats
-                if (statuses.learning === "Present") stats.learning.present++;
-                else if (statuses.learning === "Missed") stats.learning.missed++;
-                else if (statuses.learning === "Absent") stats.learning.absent++;
-                else if (statuses.learning === "Not Available") stats.learning.notAvailable++;
-            }
-        } catch (error) {
-            console.error("Error parsing date:", dateStr, error);
+          // Learning Hour stats
+          if (statuses.learning === "Present") stats.learning.present++;
+          else if (statuses.learning === "Missed") stats.learning.missed++;
+          else if (statuses.learning === "Absent") stats.learning.absent++;
+          else if (statuses.learning === "Not Available") stats.learning.notAvailable++;
         }
+      } catch (error) {
+        console.error("Error parsing date:", dateStr, error);
+      }
     });
 
     return stats;
-}, [allAttendance, month]);
+  }, [allAttendance, month]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(month);
@@ -189,40 +189,40 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
   const StatCard = ({ title, stats, icon }: { title: string, stats: { present: number, missed: number, absent: number, notAvailable: number }, icon: React.ReactNode }) => {
     const considered = stats.present + stats.missed;
     const totalConducted = considered + stats.absent + stats.notAvailable;
-    const percentage = considered > 0 ? Math.round((stats.present / considered) * 100) : 0;
+    const percentage = considered > 0 ? Math.round(((stats.present + stats.absent + stats.notAvailable) / totalConducted) * 100) : 0;
 
     const colorClass = useMemo(() => {
-        if (percentage >= 90) return 'bg-green-500';
-        if (percentage >= 75) return 'bg-yellow-500';
-        return 'bg-red-500';
+      if (percentage >= 90) return 'bg-green-500';
+      if (percentage >= 75) return 'bg-yellow-500';
+      return 'bg-red-500';
     }, [percentage]);
 
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">{icon} {title}</CardTitle>
-                    <p className="text-sm text-muted-foreground">Total: <span className="font-bold text-primary">{totalConducted}</span></p>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <p>Present: <span className="font-bold">{stats.present}</span></p>
-                    <p>Missed: <span className="font-bold">{stats.missed}</span></p>
-                    <p>Absent: <span className="font-bold">{stats.absent}</span></p>
-                    <p>N/A: <span className="font-bold">{stats.notAvailable}</span></p>
-                </div>
-                <div>
-                    <div className="flex justify-between items-end mb-1">
-                        <h5 className="text-sm font-medium text-muted-foreground">Attendance</h5>
-                        <p className="font-bold">{percentage}%</p>
-                    </div>
-                    <Progress value={percentage} className="h-2" indicatorClassName={colorClass} />
-                </div>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">{icon} {title}</CardTitle>
+            <p className="text-sm text-muted-foreground">Total: <span className="font-bold text-primary">{totalConducted}</span></p>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <p>Present: <span className="font-bold">{stats.present}</span></p>
+            <p>Missed: <span className="font-bold">{stats.missed}</span></p>
+            <p>Absent: <span className="font-bold">{stats.absent}</span></p>
+            <p>N/A: <span className="font-bold">{stats.notAvailable}</span></p>
+          </div>
+          <div>
+            <div className="flex justify-between items-end mb-1">
+              <h5 className="text-sm font-medium text-muted-foreground">Attendance</h5>
+              <p className="font-bold">{percentage}%</p>
+            </div>
+            <Progress value={percentage} className="h-2" indicatorClassName={colorClass} />
+          </div>
+        </CardContent>
+      </Card>
     );
-};
+  };
 
   const DayCell = ({ date }: { date: Date }) => {
     const dateKey = format(date, "yyyy-MM-dd");

@@ -239,34 +239,8 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
             setFullAnalysisResult(null);
         });
 
-        const handleApplySuggestions = () => {
-            if (!fullAnalysisResult) return;
-
-            // Update form fields with corrected values
-            if (fullAnalysisResult.correctedSituation) {
-                form.setValue('situation', fullAnalysisResult.correctedSituation);
-            }
-            if (fullAnalysisResult.correctedBehavior) {
-                form.setValue('behavior', fullAnalysisResult.correctedBehavior);
-            }
-            if (fullAnalysisResult.correctedImpact) {
-                form.setValue('impact', fullAnalysisResult.correctedImpact);
-            }
-            if (fullAnalysisResult.correctedActionItem) {
-                form.setValue('action_item', fullAnalysisResult.correctedActionItem);
-            }
-
-            // Clear the analysis state and close modal
-            setIsConfirmDialogOpen(false);
-            setIsModalOpen(false);
-            setAnalysisComplete(false);
-            setAnalysisScore(null);
-            setAnalysisRationale(null);
-            setFullAnalysisResult(null);
-        };
-
         return () => subscription.unsubscribe();
-    }, [form, fullAnalysisResult]);
+    }, [form]);
 
     // Calculate hasCorrections outside useEffect
     const hasCorrections = fullAnalysisResult && (
@@ -347,37 +321,37 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                              fullAnalysisResult.correctedBehavior ||
                              fullAnalysisResult.correctedImpact ||
                              fullAnalysisResult.correctedActionItem) && (
-                                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <h4 className="font-semibold text-blue-800 mb-3">Suggested Improvements:</h4>
+                                <div className="mt-6 p-4 bg-muted/50 border rounded-lg">
+                                    <h4 className="font-semibold text-foreground mb-3">Suggested Improvements:</h4>
                                     <div className="space-y-2 text-sm">
                                     {fullAnalysisResult.correctedRecipient && (
                                         <div>
-                                            <strong className="text-blue-700">Recipient:</strong>
-                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedRecipient}</p>
+                                            <strong className="text-primary">Recipient:</strong>
+                                            <p className="text-muted-foreground mt-1">{fullAnalysisResult.correctedRecipient}</p>
                                         </div>
                                     )}
                                     {fullAnalysisResult.correctedSituation && (
                                         <div>
-                                            <strong className="text-blue-700">Situation:</strong>
-                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedSituation}</p>
+                                            <strong className="text-primary">Situation:</strong>
+                                            <p className="text-muted-foreground mt-1">{fullAnalysisResult.correctedSituation}</p>
                                         </div>
                                     )}
                                     {fullAnalysisResult.correctedBehavior && (
                                         <div>
-                                            <strong className="text-blue-700">Behavior:</strong>
-                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedBehavior}</p>
+                                            <strong className="text-primary">Behavior:</strong>
+                                            <p className="text-muted-foreground mt-1">{fullAnalysisResult.correctedBehavior}</p>
                                         </div>
                                     )}
                                     {fullAnalysisResult.correctedImpact && (
                                         <div>
-                                            <strong className="text-blue-700">Impact:</strong>
-                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedImpact}</p>
+                                            <strong className="text-primary">Impact:</strong>
+                                            <p className="text-muted-foreground mt-1">{fullAnalysisResult.correctedImpact}</p>
                                         </div>
                                     )}
                                     {fullAnalysisResult.correctedActionItem && (
                                         <div>
-                                            <strong className="text-blue-700">Action Item:</strong>
-                                            <p className="text-gray-700 mt-1">{fullAnalysisResult.correctedActionItem}</p>
+                                            <strong className="text-primary">Action Item:</strong>
+                                            <p className="text-muted-foreground mt-1">{fullAnalysisResult.correctedActionItem}</p>
                                         </div>
                                     )}
                                 </div>
@@ -390,7 +364,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                             <div className="mt-4 flex justify-center">
                                 <Button
                                     onClick={() => setIsConfirmDialogOpen(true)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                                    className="w-full sm:w-auto"
                                 >
                                     <span className="hidden sm:inline">Replace Suggestions</span>
                                     <span className="sm:hidden">Replace</span>
@@ -563,7 +537,7 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
                                             
                                             <CardFooter className="flex flex-col gap-3 mt-auto pt-4">
                                                 <p className="text-xs text-muted-foreground w-full">To: {point.recipient}</p>
-                                                <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-end sm:gap-2">
+                                                <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-end sm:items-center sm:gap-2">
                                                     <Button variant="outline" size="sm" onClick={() => setViewingPoint(point)} className="w-full sm:w-auto sm:mr-0">
                                                         <Eye className="h-4 w-4 mr-2" />
                                                         <span className="hidden sm:inline">View Summary</span>
@@ -571,11 +545,11 @@ export const LearningPointsList = ({ points, isLoading, onAddPoint, onUpdatePoin
                                                     </Button>
                                                     {isEditable && (
                                                         <>
-                                                            <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(point)} className="w-full sm:w-auto sm:flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-colors">
+                                                            <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(point)} className="w-full sm:w-auto">
                                                                 <Pencil className="h-4 w-4 mr-2" />
                                                                 Edit
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(point)} className="w-full sm:w-auto sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors">
+                                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(point)} className="w-full sm:w-auto hover:bg-destructive/10 hover:text-destructive transition-colors">
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </>

@@ -158,7 +158,7 @@ Creating something new that adds value to the existing process.
 
 ---
 
-## Task Review
+## Task Review and Reporting
 A process that ensures we stick to our ELP and reach our objective within the timeframe. Review is done at regular intervals during the task & before closing the task.
 
 In review, we check whether or not we are sticking to the following things for each subtask:
