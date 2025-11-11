@@ -40,7 +40,7 @@ export const LearningPointFormFields = () => {
                                 <SelectItem value="Timeframe">Timeframe</SelectItem>
                                 <SelectItem value="Quality">Quality</SelectItem>
                                 <SelectItem value="Efficiency and Creativity">Efficiency and Creativity</SelectItem>
-                                <SelectItem value="Task Review">Task Review</SelectItem>
+                                <SelectItem value="Task Review">Task Review and Reporting</SelectItem>
                                 <SelectItem value="Growth Mindset">Growth Mindset</SelectItem>
                                 <SelectItem value="Outcome vs Output">Outcome vs Output</SelectItem>
                                 <SelectItem value="Being Organized">Being Organized</SelectItem>
