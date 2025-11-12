@@ -55,7 +55,7 @@ exports.analyzeTask = (0, https_1.onCall)({ timeoutSeconds: 120, memory: "512MiB
         throw new https_1.HttpsError("invalid-argument", "Prompt must be between 1 and 20000 characters.");
     }
     try {
-        const model = new generative_ai_1.GoogleGenerativeAI((0, utils_1.getGeminiKey)()).getGenerativeModel({ model: "gemini-2.0-flash-001" });
+        const model = new generative_ai_1.GoogleGenerativeAI((0, utils_1.getGeminiKey)()).getGenerativeModel({ model: "gemini-2.5-flash-lite" });
         const aiRes = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: sanitizedPrompt }] }],
             generationConfig: {
