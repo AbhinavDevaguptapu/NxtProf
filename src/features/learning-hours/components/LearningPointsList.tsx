@@ -67,6 +67,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisComplete, setAnalysisComplete] = useState(false);
     const [analysisRationale, setAnalysisRationale] = useState<string | null>(null);
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [fullAnalysisResult, setFullAnalysisResult] = useState<AnalysisResult | null>(null);
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
@@ -156,53 +157,61 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
         setIsAnalyzing(true);
         setAnalysisComplete(false);
         setAnalysisRationale(null);
-        let totalScore = 0;
-        let lastRationale = '';
+        setAnalysisError(null);
+        
+        try {
+            let totalScore = 0;
+            let lastRationale = '';
 
-        const allPoints = [...points, {
-            id: 'new-point',
-            createdAt: new Timestamp(Date.now() / 1000, 0),
-            task_name: currentPoint.task_name,
-            framework_category: currentPoint.framework_category,
-            situation: currentPoint.situation,
-            behavior: currentPoint.behavior,
-            impact: currentPoint.impact,
-            action_item: currentPoint.action_item,
-            point_type: currentPoint.point_type,
-            editable: true,
-            recipient: currentPoint.recipient,
-        }];
+            const allPoints = [...points, {
+                id: 'new-point',
+                createdAt: new Timestamp(Date.now() / 1000, 0),
+                task_name: currentPoint.task_name,
+                framework_category: currentPoint.framework_category,
+                situation: currentPoint.situation,
+                behavior: currentPoint.behavior,
+                impact: currentPoint.impact,
+                action_item: currentPoint.action_item,
+                point_type: currentPoint.point_type,
+                editable: true,
+                recipient: currentPoint.recipient,
+            }];
 
-        if (allPoints.length === 0) {
+            if (allPoints.length === 0) {
+                setIsAnalyzing(false);
+                return;
+            }
+
+            for (const point of allPoints) {
+                const taskData: TaskData = {
+                    id: point.id,
+                    date: point.createdAt ? format(point.createdAt.toDate(), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+                    task: point.task_name,
+                    taskFrameworkCategory: point.framework_category,
+                    situation: point.situation,
+                    behavior: point.behavior,
+                    impact: point.impact,
+                    action: point.action_item || '',
+                    recipient: point.recipient,
+                    pointType: point.point_type,
+                };
+                const result = await analyzeTask(taskData);
+                totalScore += result.matchPercentage;
+                lastRationale = result.rationale;
+                setFullAnalysisResult(result);
+            }
+
+            const averageScore = totalScore / allPoints.length;
+            setAnalysisScore(averageScore);
+            setAnalysisRationale(lastRationale);
+            setAnalysisComplete(true);
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error("Analysis failed:", error);
+            setAnalysisError("The AI analysis failed. This could be due to a network issue or a problem with the analysis service. Please try again.");
+        } finally {
             setIsAnalyzing(false);
-            return;
         }
-
-        for (const point of allPoints) {
-            const taskData: TaskData = {
-                id: point.id,
-                date: point.createdAt ? format(point.createdAt.toDate(), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
-                task: point.task_name,
-                taskFrameworkCategory: point.framework_category,
-                situation: point.situation,
-                behavior: point.behavior,
-                impact: point.impact,
-                action: point.action_item || '',
-                recipient: point.recipient,
-                pointType: point.point_type,
-            };
-            const result = await analyzeTask(taskData);
-            totalScore += result.matchPercentage;
-            lastRationale = result.rationale;
-            setFullAnalysisResult(result);
-        }
-
-        const averageScore = totalScore / allPoints.length;
-        setAnalysisScore(averageScore);
-        setAnalysisRationale(lastRationale);
-        setIsAnalyzing(false);
-        setAnalysisComplete(true);
-        setIsModalOpen(true);
     };
 
     const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
@@ -237,6 +246,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
             setAnalysisScore(null);
             setAnalysisRationale(null);
             setFullAnalysisResult(null);
+            setAnalysisError(null);
         });
 
         return () => subscription.unsubscribe();
@@ -284,6 +294,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6 p-6 border rounded-lg bg-background">
                 <LearningPointFormFields />
+
                 <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
                     {!isR3Point && (
                         <Button type="button" onClick={handleAnalysis} disabled={analysisDisabled} className="w-full sm:w-auto">
@@ -294,6 +305,22 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                     <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">Cancel</Button>
                 </div>
             </form>
+
+            <AlertDialog open={!!analysisError} onOpenChange={() => setAnalysisError(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Analysis Failed</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {analysisError}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setAnalysisError(null)}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-[600px] max-h-[80vh] w-[95vw]">
@@ -349,7 +376,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                                         </div>
                                     )}
                                     {fullAnalysisResult.correctedActionItem && (
-                                        <div>
+<div>
                                             <strong className="text-primary">Action Item:</strong>
                                             <p className="text-muted-foreground mt-1">{fullAnalysisResult.correctedActionItem}</p>
                                         </div>
