@@ -35,7 +35,7 @@ export const analyzeTask = onCall<{ prompt: string }>(
 
     try {
       const model = new GoogleGenerativeAI(getGeminiKey()).getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash-lite",
       });
       const aiRes = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: sanitizedPrompt }] }],
