@@ -61,7 +61,7 @@ exports.analyzeTask = (0, https_1.onCall)({
     }
     try {
         const model = new generative_ai_1.GoogleGenerativeAI((0, utils_1.getGeminiKey)()).getGenerativeModel({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-2.5-flash-lite",
         });
         const aiRes = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: sanitizedPrompt }] }],

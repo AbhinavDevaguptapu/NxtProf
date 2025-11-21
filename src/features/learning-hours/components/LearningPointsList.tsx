@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FilePlus, Lock, Unlock, Trash2, Pencil, Eye, BookOpen } from 'lucide-react';
+import { FilePlus, Lock, Unlock, Trash2, Pencil, Eye, BookOpen, Wand2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { LearningPoint } from '../types';
 import { LearningPointForm } from './LearningPointForm';
@@ -20,6 +20,10 @@ import { LearningPointSummaryModal } from './LearningPointSummaryModal';
 import { useUserAuth } from '@/context/UserAuthContext';
 import { analyzeTask } from '@/features/task-analyzer/services/geminiService';
 import { TaskData, AnalysisResult } from '@/features/task-analyzer/types';
+import { AIAssistant } from './AIAssistant';
+import { Suggestions } from '../services/learningPointsAIService';
+import { useMediaQuery } from '@/hooks/use-media-query';
+
 
 // --- FORM SCHEMA ---
 const formSchema = z.object({
@@ -160,50 +164,24 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
         setAnalysisError(null);
         
         try {
-            let totalScore = 0;
-            let lastRationale = '';
-
-            const allPoints = [...points, {
+            const taskData: TaskData = {
                 id: 'new-point',
-                createdAt: new Timestamp(Date.now() / 1000, 0),
-                task_name: currentPoint.task_name,
-                framework_category: currentPoint.framework_category,
+                date: new Date().toISOString().split('T')[0],
+                task: currentPoint.task_name,
+                taskFrameworkCategory: currentPoint.framework_category,
                 situation: currentPoint.situation,
                 behavior: currentPoint.behavior,
                 impact: currentPoint.impact,
-                action_item: currentPoint.action_item,
-                point_type: currentPoint.point_type,
-                editable: true,
+                action: currentPoint.action_item || '',
                 recipient: currentPoint.recipient,
-            }];
+                pointType: currentPoint.point_type,
+            };
 
-            if (allPoints.length === 0) {
-                setIsAnalyzing(false);
-                return;
-            }
+            const result = await analyzeTask(taskData);
 
-            for (const point of allPoints) {
-                const taskData: TaskData = {
-                    id: point.id,
-                    date: point.createdAt ? format(point.createdAt.toDate(), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
-                    task: point.task_name,
-                    taskFrameworkCategory: point.framework_category,
-                    situation: point.situation,
-                    behavior: point.behavior,
-                    impact: point.impact,
-                    action: point.action_item || '',
-                    recipient: point.recipient,
-                    pointType: point.point_type,
-                };
-                const result = await analyzeTask(taskData);
-                totalScore += result.matchPercentage;
-                lastRationale = result.rationale;
-                setFullAnalysisResult(result);
-            }
-
-            const averageScore = totalScore / allPoints.length;
-            setAnalysisScore(averageScore);
-            setAnalysisRationale(lastRationale);
+            setAnalysisScore(result.matchPercentage);
+            setAnalysisRationale(result.rationale);
+            setFullAnalysisResult(result);
             setAnalysisComplete(true);
             setIsModalOpen(true);
         } catch (error) {
@@ -223,8 +201,16 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
         form.reset();
     };
 
+    const handleApplyAISuggestions = (suggestions: Partial<Suggestions>) => {
+        if (suggestions.situation) form.setValue('situation', suggestions.situation, { shouldValidate: true });
+        if (suggestions.behavior) form.setValue('behavior', suggestions.behavior, { shouldValidate: true });
+        if (suggestions.impact) form.setValue('impact', suggestions.impact, { shouldValidate: true });
+        if (suggestions.action_item) form.setValue('action_item', suggestions.action_item, { shouldValidate: true });
+        if (suggestions.framework_category) form.setValue('framework_category', suggestions.framework_category, { shouldValidate: true });
+    };
+
     const isR3Point = form.watch('point_type') === 'R3';
-    const isSubmitDisabled = isAdmin || (!isR3Point && (!analysisComplete || (analysisScore !== null && analysisScore < 80)));
+    const isSubmitDisabled = isAdmin || (!isR3Point && (!analysisComplete || (analysisScore !== null && analysisScore < 75)));
 
     // Check if all required fields are filled for analysis
     const currentPoint = form.watch();
@@ -292,19 +278,24 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
 
     return (
         <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6 p-6 border rounded-lg bg-background">
-                <LearningPointFormFields />
+            <div className="relative">
+                 <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6 p-6 border rounded-lg bg-background">
+                    <LearningPointFormFields />
 
-                <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
-                    {!isR3Point && (
-                        <Button type="button" onClick={handleAnalysis} disabled={analysisDisabled} className="w-full sm:w-auto">
-                            {isAnalyzing ? 'Analyzing...' : 'Get Analysis and Confirmation'}
-                        </Button>
-                    )}
-                    <Button type="submit" disabled={isSubmitDisabled} className="w-full sm:w-auto">Submit</Button>
-                    <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">Cancel</Button>
-                </div>
-            </form>
+                    <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
+                        {!isR3Point && (
+                            <Button type="button" onClick={handleAnalysis} disabled={analysisDisabled} className="w-full sm:w-auto">
+                                {isAnalyzing ? 'Analyzing...' : 'Get Analysis and Confirmation'}
+                            </Button>
+                        )}
+                        <Button type="submit" disabled={isSubmitDisabled} className="w-full sm:w-auto">Submit</Button>
+                        <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">Cancel</Button>
+                    </div>
+                </form>
+
+                <AIAssistant onApplySuggestions={handleApplyAISuggestions} />
+            </div>
+
 
             <AlertDialog open={!!analysisError} onOpenChange={() => setAnalysisError(null)}>
                 <AlertDialogContent>
@@ -334,7 +325,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                         <div className="space-y-4">
                         {analysisScore !== null && (
                             <div className="text-lg font-semibold">
-                                Score: <span className={analysisScore >= 80 ? 'text-green-600' : 'text-red-600'}>{analysisScore.toFixed(2)}%</span>
+                                Score: <span className={analysisScore >= 75 ? 'text-green-600' : 'text-red-600'}>{analysisScore.toFixed(2)}%</span>
                             </div>
                         )}
                         {analysisRationale && (
@@ -399,8 +390,8 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
                             </div>
                         )}
 
-                        {analysisScore < 80 && (
-                            <p className="text-sm text-red-600">Your score is below 80%. Please improve your points and re-run the analysis.</p>
+                        {analysisScore < 75 && (
+                            <p className="text-sm text-red-600">Your score is below 75%. Please improve your points and re-run the analysis.</p>
                         )}
                         </div>
                     </ScrollArea>
