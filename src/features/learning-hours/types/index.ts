@@ -38,21 +38,16 @@ export type LearningPoint = {
     userId: string;
     createdAt: Timestamp;
     date: Timestamp;
-    task_name: string;
-    task_link?: string;
-    // Fields for R2/R3
-    situation?: string;
-    behavior?: string;
-    impact?: string;
-    // Fields for R1
-    problem?: string;
-    core_point_missed?: string;
-    // Optional for R3
-    action_item?: string;
-    point_type: 'R1' | 'R2' | 'R3';
-    framework_category: string; // No longer a primary enum in the form
-    subcategory: string;
-    recipient: string;
-    editable: boolean;
-    sessionId: string;
-};
+        task_name: string;
+        task_link?: string;
+        situation: string;
+        behavior: string;
+        impact: string;
+        action_item?: string; // Required for R1 points in the form
+        point_type: 'R1' | 'R2' | 'R3';
+        framework_category: string; // No longer a primary enum in the form
+        subcategory: string;
+        recipient: string;
+        editable: boolean;
+        sessionId: string;
+    };

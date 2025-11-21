@@ -53,9 +53,7 @@ export const LearningPointSummaryModal: React.FC<LearningPointSummaryModalProps>
             <DetailRow label="Situation" value={point.situation} />
             <DetailRow label="Behavior" value={point.behavior} />
             <DetailRow label="Impact" value={point.impact} />
-            <DetailRow label="Problem" value={point.problem} />
-            <DetailRow label="Core Point Missed" value={point.core_point_missed} />
-            {point.point_type !== 'R2' && (
+            {point.point_type === 'R1' && (
               <DetailRow label="Action Item" value={point.action_item} />
             )}
           </div>
