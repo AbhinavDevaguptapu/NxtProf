@@ -41,7 +41,12 @@ const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const generative_ai_1 = require("@google/generative-ai");
 const utils_1 = require("./utils");
-exports.analyzeTask = (0, https_1.onCall)({ timeoutSeconds: 120, memory: "512MiB", secrets: ["GEMINI_KEY"], cors: true }, async (request) => {
+exports.analyzeTask = (0, https_1.onCall)({
+    timeoutSeconds: 120,
+    memory: "512MiB",
+    secrets: ["GEMINI_KEY"],
+    cors: true,
+}, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Authentication required.");
     }
@@ -55,7 +60,9 @@ exports.analyzeTask = (0, https_1.onCall)({ timeoutSeconds: 120, memory: "512MiB
         throw new https_1.HttpsError("invalid-argument", "Prompt must be between 1 and 20000 characters.");
     }
     try {
-        const model = new generative_ai_1.GoogleGenerativeAI((0, utils_1.getGeminiKey)()).getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const model = new generative_ai_1.GoogleGenerativeAI((0, utils_1.getGeminiKey)()).getGenerativeModel({
+            model: "gemini-2.0-flash-exp",
+        });
         const aiRes = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: sanitizedPrompt }] }],
             generationConfig: {
@@ -94,30 +101,32 @@ exports.getLearningPointsForEmployee = (0, https_1.onCall)({ cors: true }, async
         throw new https_1.HttpsError("invalid-argument", "Invalid employee ID format.");
     }
     // Authorization check: users can only access their own data unless they're admins
-    const isAdmin = request.auth.token.isAdmin === true || request.auth.token.isCoAdmin === true;
+    const isAdmin = request.auth.token.isAdmin === true ||
+        request.auth.token.isCoAdmin === true;
     if (!isAdmin && request.auth.uid !== sanitizedEmployeeId) {
         throw new https_1.HttpsError("permission-denied", "You can only access your own learning points.");
     }
     try {
-        const learningPointsSnapshot = await admin.firestore()
+        const learningPointsSnapshot = await admin
+            .firestore()
             .collection("learning_points")
             .where("userId", "==", sanitizedEmployeeId)
             .get();
         const learningPoints = learningPointsSnapshot.docs.map((doc) => {
             const data = doc.data();
             const date = data.date instanceof admin.firestore.Timestamp
-                ? data.date.toDate().toLocaleDateString('en-CA')
-                : data.date || '';
+                ? data.date.toDate().toLocaleDateString("en-CA")
+                : data.date || "";
             return {
                 id: doc.id,
                 date,
-                task: data.task_name || '',
-                taskFrameworkCategory: data.framework_category || '',
-                pointType: data.point_type || '',
-                situation: data.situation || '',
-                behavior: data.behavior || '',
-                impact: data.impact || '',
-                action: data.action_item || '',
+                task: data.task_name || "",
+                taskFrameworkCategory: data.framework_category || "",
+                pointType: data.point_type || "",
+                situation: data.situation || "",
+                behavior: data.behavior || "",
+                impact: data.impact || "",
+                action: data.action_item || "",
             };
         });
         return learningPoints;
