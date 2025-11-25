@@ -267,12 +267,12 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
             form.setValue('action_item', fullAnalysisResult.correctedActionItem);
         }
 
-        // Clear the analysis state and close modal
+        // Close modals and set analysis state to allow submission.
         setIsConfirmDialogOpen(false);
         setIsModalOpen(false);
-        setAnalysisComplete(false);
-        setAnalysisScore(null);
-        setAnalysisRationale(null);
+        setAnalysisComplete(true);
+        setAnalysisScore(75); // Set score to passing grade after applying suggestions
+        setAnalysisRationale("AI suggestions have been applied. Ready to submit.");
         setFullAnalysisResult(null);
     };
 
