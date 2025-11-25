@@ -210,7 +210,7 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
     };
 
     const isR3Point = form.watch('point_type') === 'R3';
-    const isSubmitDisabled = isAdmin || (!isR3Point && (!analysisComplete || (analysisScore !== null && analysisScore < 75)));
+    const isSubmitDisabled = !isR3Point && (!analysisComplete || (analysisScore !== null && analysisScore < 75));
 
     // Check if all required fields are filled for analysis
     const currentPoint = form.watch();
