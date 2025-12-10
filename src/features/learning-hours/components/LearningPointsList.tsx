@@ -252,28 +252,24 @@ const InlineLearningPointForm = ({ onFormSubmit, onCancel, points }: { onFormSub
 
         // Update form fields with corrected values
         if (fullAnalysisResult.correctedRecipient) {
-            form.setValue('recipient', fullAnalysisResult.correctedRecipient);
+            form.setValue('recipient', fullAnalysisResult.correctedRecipient, { shouldValidate: true });
         }
         if (fullAnalysisResult.correctedSituation) {
-            form.setValue('situation', fullAnalysisResult.correctedSituation);
+            form.setValue('situation', fullAnalysisResult.correctedSituation, { shouldValidate: true });
         }
         if (fullAnalysisResult.correctedBehavior) {
-            form.setValue('behavior', fullAnalysisResult.correctedBehavior);
+            form.setValue('behavior', fullAnalysisResult.correctedBehavior, { shouldValidate: true });
         }
         if (fullAnalysisResult.correctedImpact) {
-            form.setValue('impact', fullAnalysisResult.correctedImpact);
+            form.setValue('impact', fullAnalysisResult.correctedImpact, { shouldValidate: true });
         }
         if (fullAnalysisResult.correctedActionItem) {
-            form.setValue('action_item', fullAnalysisResult.correctedActionItem);
+            form.setValue('action_item', fullAnalysisResult.correctedActionItem, { shouldValidate: true });
         }
 
-        // Close modals and set analysis state to allow submission.
+        // Close modals. The form.watch effect will reset the analysis state.
         setIsConfirmDialogOpen(false);
         setIsModalOpen(false);
-        setAnalysisComplete(true);
-        setAnalysisScore(75); // Set score to passing grade after applying suggestions
-        setAnalysisRationale("AI suggestions have been applied. Ready to submit.");
-        setFullAnalysisResult(null);
     };
 
     return (
