@@ -41,7 +41,6 @@ import {
   Menu,
   ChevronRight,
   LucideIcon,
-  Bot,
   UsersRound,
   BookCheck,
   Archive,
@@ -280,7 +279,6 @@ const SidebarContent = ({
       label: "Employees Learning Points",
       icon: GraduationCap,
     },
-    { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
   ];
 
   const userLearningHoursSubItems = [
@@ -290,7 +288,6 @@ const SidebarContent = ({
       label: "Employees Learning Points",
       icon: GraduationCap,
     },
-    { id: "task-analyzer", label: "AI LH-Points Analysis", icon: Bot },
   ];
 
   const handleNavClick = (view: ViewType) => {

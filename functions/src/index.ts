@@ -46,7 +46,7 @@ export {
 } from "./standups";
 
 // Task Analysis
-export { analyzeTask, getLearningPointsForEmployee } from "./taskAnalysis";
+export { analyzeTask } from "./taskAnalysis";
 
 // User Management
 export {
