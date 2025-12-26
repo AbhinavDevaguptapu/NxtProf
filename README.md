@@ -41,7 +41,7 @@ This project is built entirely on Google's Firebase platform, offering a robust,
   - Allows advanced data filtering by day, month, custom date range, or full history.
 - **Google Sheets Integration**: Sync all attendance data to a master Google Sheet with the click of a button for record-keeping.
 
-## Technology Stack
+## Tech Stack
 
 ### Frontend
 
@@ -49,12 +49,13 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 - **Build Tool**: Vite
 - **Language**: TypeScript
 - **Routing**: React Router v6 & State-based navigation
-- **UI Components**: shadcn/ui
+- **UI Components**: shadcn/ui (powered by Radix UI, Embla Carousel, Input OTP)
 - **Styling**: Tailwind CSS
 - **Animation**: Framer Motion
 - **State Management**: React Context API & TanStack Query
-- **Charting**: Chart.js & react-chartjs-2
+- **Charting**: Chart.js, react-chartjs-2, and Recharts
 - **Date Handling**: date-fns
+- **Theming**: Next.js Themes
 
 ### Backend & Infrastructure
 
@@ -63,8 +64,63 @@ This project is built entirely on Google's Firebase platform, offering a robust,
 - **Database**: Firestore (NoSQL) with Security Rules
 - **File Storage**: Firebase Storage
 - **Serverless Logic**: Firebase Cloud Functions (v2) in TypeScript
-- **AI Model**: Google's Gemini 1.5 Flash API
+- **AI Model**: Google's Gemini 2.5 Flash Lite API
 - **External Integration**: Google Sheets API via a dedicated Service Account
+
+## Getting Started
+
+To get a local copy up and running, follow these simple steps.
+
+### Prerequisites
+
+You need to have `npm` or `yarn` installed on your machine.
+
+### Installation
+
+1.  Clone the repo
+    ```sh
+    git clone https://github.com/niatInstructor/NxtProf.git
+    ```
+2.  Install NPM packages
+    ```sh
+    npm install
+    ```
+
+### Running the Application
+
+To run the app in the development mode, use:
+```sh
+npm run dev
+```
+Open [http://localhost:8080](http://localhost:8080) to view it in the browser.
+
+The page will reload if you make edits. You will also see any lint errors in the console.
+
+## Available Scripts
+
+In the project directory, you can run:
+
+- `npm run dev`: Runs the app in the development mode.
+- `npm run build`: Builds the app for production to the `dist` folder.
+- `npm run lint`: Lints the project files using ESLint.
+- `npm run preview`: Serves the production build locally for preview.
+
+## Project Structure
+
+```
+├── functions         # Firebase Cloud Functions
+├── public            # Public assets
+├── src
+│   ├── components    # Shared UI components
+│   ├── context       # React Context providers
+│   ├── features      # Feature-based modules
+│   ├── hooks         # Custom React hooks
+│   ├── integrations  # Third-party integrations (e.g., Firebase)
+│   ├── layout        # Application shell and layout components
+│   └── lib           # Utility functions
+├── vite.config.ts    # Vite configuration
+└── ...
+```
 
 ## Architecture and Data Flow
 
