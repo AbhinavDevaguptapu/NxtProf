@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  Dispatch,
-  SetStateAction,
-  ReactNode,
-  useEffect,
-} from "react";
+import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar } from "@/components/common/Sidebar";
 import { useAdminAuth } from "@/context/AdminAuthContext";
@@ -101,7 +95,7 @@ export default function AppShell() {
   };
 
   const renderContent = () => {
-    const { view, context } = activeView;
+    const { view } = activeView;
 
     const viewMap: Record<
       string,

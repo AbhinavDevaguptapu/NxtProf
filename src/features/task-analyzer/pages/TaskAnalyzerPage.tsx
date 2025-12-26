@@ -1,27 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import AnalysisPage from '../components/AnalysisPage';
+import { useState, useEffect, useCallback } from "react";
+import AnalysisPage from "../components/AnalysisPage";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { Loader2, Users } from 'lucide-react';
-import { Employee } from '../types';
-import { getEmployees } from '../services/employeeService';
-import { Card, CardContent } from '@/components/ui/card';
-import ErrorDisplay from '../components/ErrorDisplay';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ViewState, ViewType } from '@/layout/AppShell';
+import { Users } from "lucide-react";
+import { Employee } from "../types";
+import { getEmployees } from "../services/employeeService";
+import { Card, CardContent } from "@/components/ui/card";
+import ErrorDisplay from "../components/ErrorDisplay";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface TaskAnalyzerPageProps {
-  setActiveView: (view: ViewState) => void;
-}
-
-const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) => {
+const TaskAnalyzerPage = () => {
   const { user, userProfile, isAdmin, isCoAdmin } = useUserAuth();
 
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  );
   const [employeeSheets, setEmployeeSheets] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEmployeeData = async () => {
+  const fetchEmployeeData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -30,21 +27,30 @@ const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) =>
         setEmployeeSheets(employees);
       } else if (user) {
         // Regular users see their own analysis directly.
-        setSelectedEmployee({ id: user.uid, name: user?.displayName || 'My Analysis', sheetName: '' });
+        setSelectedEmployee({
+          id: user.uid,
+          name: user?.displayName || "My Analysis",
+          sheetName: "",
+        });
       }
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Failed to fetch employee data.';
-      setError(errorMessage.includes('permission-denied') ? 'permission-denied' : errorMessage);
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to fetch employee data.";
+      setError(
+        errorMessage.includes("permission-denied")
+          ? "permission-denied"
+          : errorMessage
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAdmin, isCoAdmin, user]);
 
   useEffect(() => {
     if (userProfile) {
       fetchEmployeeData();
     }
-  }, [isAdmin, isCoAdmin, userProfile]);
+  }, [isAdmin, isCoAdmin, userProfile, fetchEmployeeData]);
 
   const handleEmployeeSelect = (employee: Employee | null) => {
     setSelectedEmployee(employee);
@@ -74,8 +80,12 @@ const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) =>
             <div className="mx-auto bg-secondary rounded-full h-16 w-16 flex items-center justify-center">
               <Users className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold mt-4">No Analysis Available</h2>
-            <p className="text-muted-foreground mt-1">An analysis sheet has not been assigned to your account.</p>
+            <h2 className="text-xl font-semibold mt-4">
+              No Analysis Available
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              An analysis sheet has not been assigned to your account.
+            </p>
           </CardContent>
         </Card>
       );
@@ -89,7 +99,9 @@ const TaskAnalyzerPage: React.FC<TaskAnalyzerPageProps> = ({ setActiveView }) =>
       <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold">Task Analysis</h1>
-          <p className="text-muted-foreground">Select an employee and date to view their analysis.</p>
+          <p className="text-muted-foreground">
+            Select an employee and date to view their analysis.
+          </p>
         </div>
       </div>
       {isLoading ? (

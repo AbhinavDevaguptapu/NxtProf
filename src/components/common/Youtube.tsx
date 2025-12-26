@@ -1,21 +1,37 @@
 // OnBoarding Step 1 - UI Updated
 
-import { useEffect, useRef } from 'react';
-import { db } from '@/integrations/firebase/client';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from "react";
+import { db } from "@/integrations/firebase/client";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { motion } from "framer-motion";
 
 // --- SHADCN/UI & LUCIDE IMPORTS ---
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { PlayCircle, CheckCircle2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { PlayCircle, CheckCircle2 } from "lucide-react";
 
-const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched }) => {
+const YouTubePlayer = ({
+  user_id,
+  onContinue,
+  setIsVideoWatched,
+  isVideoWatched,
+}) => {
   // --- All original logic and hooks are untouched ---
   const playerRef = useRef(null);
   const savedProgressRef = useRef(0);
-  const intervalRef = useRef();
 
   // WARNING: This clears all local storage for the domain.
   // It was in the original code and is preserved here as requested.
@@ -26,12 +42,12 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
   useEffect(() => {
     const checkAndCreateUser = async () => {
       if (!user_id) return; // Prevent running with no user_id
-      const onboardingRef = doc(db, 'userOnboardingStatus', user_id);
+      const onboardingRef = doc(db, "userOnboardingStatus", user_id);
       const docSnap = await getDoc(onboardingRef);
 
       if (!docSnap.exists()) {
         await setDoc(onboardingRef, {
-          onboarding_status: 'INPROGRESS',
+          onboarding_status: "INPROGRESS",
           user_id: user_id,
         });
         console.log("New user added:", user_id);
@@ -44,10 +60,12 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
   }, [user_id]); // Dependency added for correctness
 
   useEffect(() => {
+    let intervalId: number | NodeJS.Timeout | undefined;
+
     const createPlayer = () => {
       // Using `any` as it was in the original code
-      playerRef.current = new (window as any).YT.Player('yt-player', {
-        videoId: '7k6dHwZTNs0',
+      playerRef.current = new (window as any).YT.Player("yt-player", {
+        videoId: "7k6dHwZTNs0",
         playerVars: {
           autoplay: 1,
           controls: 1,
@@ -61,7 +79,7 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
           },
           onStateChange: (event) => {
             if (event.data === (window as any).YT.PlayerState.PLAYING) {
-              (intervalRef as any).current = setInterval(() => {
+              intervalId = setInterval(() => {
                 const currentTime = playerRef.current.getCurrentTime();
                 savedProgressRef.current = currentTime;
                 const duration = playerRef.current.getDuration();
@@ -72,12 +90,18 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
 
                   if (progress >= 80) {
                     setIsVideoWatched(true);
-                    clearInterval(intervalRef.current);
+                    if (intervalId) {
+                      clearInterval(intervalId);
+                      intervalId = undefined;
+                    }
                   }
                 }
               }, 1000);
             } else {
-              clearInterval(intervalRef.current);
+              if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = undefined;
+              }
             }
           },
         },
@@ -88,8 +112,8 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
       if ((window as any).YT && (window as any).YT.Player) {
         createPlayer();
       } else {
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
         document.body.appendChild(tag);
         (window as any).onYouTubeIframeAPIReady = createPlayer;
       }
@@ -98,7 +122,9 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
     loadPlayer();
 
     return () => {
-      clearInterval(intervalRef.current);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
       delete (window as any).onYouTubeIframeAPIReady;
     };
   }, [setIsVideoWatched]);
@@ -109,7 +135,7 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <Card className="max-w-3xl mx-auto w-full">
           <CardHeader>
@@ -118,7 +144,8 @@ const YouTubePlayer = ({ user_id, onContinue, setIsVideoWatched, isVideoWatched 
               Instructor Training Video
             </CardTitle>
             <CardDescription>
-              Please watch at least 80% of the video to proceed. This is a crucial step for your onboarding.
+              Please watch at least 80% of the video to proceed. This is a
+              crucial step for your onboarding.
             </CardDescription>
           </CardHeader>
           <CardContent>

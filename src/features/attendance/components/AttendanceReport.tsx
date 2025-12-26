@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { format, startOfDay } from "date-fns";
 import { db } from "@/integrations/firebase/client";
 import {
@@ -14,12 +14,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -42,7 +37,11 @@ import { cn } from "@/lib/utils";
 import { ReasonModal } from "./ReasonModal";
 
 type Employee = {
-  archived: boolean; id: string; name: string; email: string; employeeId: string 
+  archived: boolean;
+  id: string;
+  name: string;
+  email: string;
+  employeeId: string;
 };
 type AttendanceStatus = "Present" | "Absent" | "Missed" | "Not Available";
 type AttendanceRecord = {
@@ -83,7 +82,9 @@ export const AttendanceReport = ({
       setLoading(true);
       try {
         if (employees.length === 0) {
-          const empSnap = await getDocs(query(collection(db, "employees"), where("archived", "!=", true)));
+          const empSnap = await getDocs(
+            query(collection(db, "employees"), where("archived", "!=", true))
+          );
           setEmployees(
             empSnap.docs
               .map((d) => ({ id: d.id, ...d.data() } as Employee))
@@ -218,18 +219,33 @@ export const AttendanceReport = ({
 
   const dailyStats = useMemo(() => {
     const sourceData = editing ? editedAtt : attendance;
-    let present = 0, absent = 0, missed = 0, notAvailable = 0;
+    let present = 0,
+      absent = 0,
+      missed = 0,
+      notAvailable = 0;
 
-    employees.forEach(emp => {
+    employees.forEach((emp) => {
       const record = sourceData[emp.id];
-      const status = editing ? (record as unknown as AttendanceStatus) : (record as AttendanceRecord)?.status;
+      const status = editing
+        ? (record as unknown as AttendanceStatus)
+        : (record as AttendanceRecord)?.status;
 
       switch (status) {
-        case "Present": present++; break;
-        case "Absent": absent++; break;
-        case "Not Available": notAvailable++; break;
-        case "Missed": missed++; break;
-        default: missed++; break;
+        case "Present":
+          present++;
+          break;
+        case "Absent":
+          absent++;
+          break;
+        case "Not Available":
+          notAvailable++;
+          break;
+        case "Missed":
+          missed++;
+          break;
+        default:
+          missed++;
+          break;
       }
     });
 

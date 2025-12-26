@@ -16,7 +16,7 @@ export default function NotFound() {
   }, [location.pathname]);
 
   const handleNavigateHome = () => {
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -33,17 +33,35 @@ export default function NotFound() {
         >
           <AlertTriangle className="h-24 w-24 text-primary mx-auto" />
         </motion.div>
-        
+
         <h1 className="text-8xl font-bold tracking-tighter">
-          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>4</motion.span>
-          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>0</motion.span>
-          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>4</motion.span>
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            4
+          </motion.span>
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            0
+          </motion.span>
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            4
+          </motion.span>
         </h1>
-        
+
         <p className="text-2xl text-muted-foreground">
-          Oops! The page you're looking for has ventured off the grid.
+          Oops! The page you&rsquo;re looking for has ventured off the grid.
         </p>
-        
+
         <Button onClick={handleNavigateHome} size="lg">
           <Home className="mr-2 h-5 w-5" />
           Return to Home

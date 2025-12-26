@@ -129,7 +129,6 @@ const UserProfile = ({
   onLogout: () => void;
 }) => {
   const { user, isAdmin, isCoAdmin } = useUserAuth();
-  const { admin } = useAdminAuth();
 
   return (
     <div className="px-4 pt-4 mt-auto border-t border-gray-200 dark:border-gray-800">

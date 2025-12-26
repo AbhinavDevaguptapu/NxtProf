@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 import { db } from "@/integrations/firebase/client";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -125,117 +124,120 @@ export type ActiveFilter = {
 };
 
 type RawFeedbackData = {
-    date: string;
-    understanding: number;
-    instructor: number;
-    comment: string;
+  date: string;
+  understanding: number;
+  instructor: number;
+  comment: string;
 }[];
-
 
 // --- CHILD COMPONENTS ---
 
 const FeedbackDetailsModal = ({
-    isOpen,
-    onClose,
-    feedbackData,
-    isLoading,
-    error,
-    isMobile,
+  isOpen,
+  onClose,
+  feedbackData,
+  isLoading,
+  error,
+  isMobile,
 }: {
-    isOpen: boolean;
-    onClose: () => void;
-    feedbackData: RawFeedbackData | null;
-    isLoading: boolean;
-    error: string | null;
-    isMobile: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  feedbackData: RawFeedbackData | null;
+  isLoading: boolean;
+  error: string | null;
+  isMobile: boolean;
 }) => {
-    const renderContent = () => {
-        if (isLoading) {
-            return (
-                <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            );
-        }
-        if (error) {
-            return <div className="text-red-500 text-center">{error}</div>;
-        }
-        if (!feedbackData || feedbackData.length === 0) {
-            return <p className="text-center text-muted-foreground">No detailed feedback to display.</p>;
-        }
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+    if (error) {
+      return <div className="text-red-500 text-center">{error}</div>;
+    }
+    if (!feedbackData || feedbackData.length === 0) {
+      return (
+        <p className="text-center text-muted-foreground">
+          No detailed feedback to display.
+        </p>
+      );
+    }
 
-        if (isMobile) {
-            return (
-                <div className="space-y-4">
-                    {feedbackData.map((item, index) => (
-                        <Card key={index} className="p-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <p className="text-sm font-medium">{format(new Date(item.date), "PPP p")}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Understanding</p>
-                                    <p className="font-semibold">{item.understanding}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Instructor</p>
-                                    <p className="font-semibold">{item.instructor}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted-foreground">Comment</p>
-                                <p className="text-sm break-words">{item.comment || "-"}</p>
-                            </div>
-                        </Card>
-                    ))}
+    if (isMobile) {
+      return (
+        <div className="space-y-4">
+          {feedbackData.map((item, index) => (
+            <Card key={index} className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-sm font-medium">
+                  {format(new Date(item.date), "PPP p")}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Understanding</p>
+                  <p className="font-semibold">{item.understanding}</p>
                 </div>
-            );
-        }
-
-        return (
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Understanding</TableHead>
-                        <TableHead>Instructor</TableHead>
-                        <TableHead>Comment</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {feedbackData.map((item, index) => (
-                        <TableRow key={index}>
-                            <TableCell>{format(new Date(item.date), "PPP p")}</TableCell>
-                            <TableCell>{item.understanding}</TableCell>
-                            <TableCell>{item.instructor}</TableCell>
-                            <TableCell>{item.comment || "-"}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        );
-    };
+                <div>
+                  <p className="text-xs text-muted-foreground">Instructor</p>
+                  <p className="font-semibold">{item.instructor}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Comment</p>
+                <p className="text-sm break-words">{item.comment || "-"}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
+      );
+    }
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>All Feedback Entries</DialogTitle>
-                    <DialogDescription>
-                        Here are all the individual feedback entries for the selected period.
-                    </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="h-[60vh] pr-4">
-                    {renderContent()}
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={onClose}>Close</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Understanding</TableHead>
+            <TableHead>Instructor</TableHead>
+            <TableHead>Comment</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {feedbackData.map((item, index) => (
+            <TableRow key={index}>
+              <TableCell>{format(new Date(item.date), "PPP p")}</TableCell>
+              <TableCell>{item.understanding}</TableCell>
+              <TableCell>{item.instructor}</TableCell>
+              <TableCell>{item.comment || "-"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     );
-};
+  };
 
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>All Feedback Entries</DialogTitle>
+          <DialogDescription>
+            Here are all the individual feedback entries for the selected
+            period.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[60vh] pr-4">{renderContent()}</ScrollArea>
+        <DialogFooter>
+          <Button onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const FeedbackFilters = ({
   onFilterChange,
@@ -244,8 +246,9 @@ const FeedbackFilters = ({
   onFilterChange: (filter: ActiveFilter) => void;
   isFiltering: boolean;
 }) => {
-  const [activeButton, setActiveButton] =
-    useState<ActiveFilter["mode"] | ''>('');
+  const [activeButton, setActiveButton] = useState<ActiveFilter["mode"] | "">(
+    ""
+  );
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
@@ -335,7 +338,10 @@ const FeedbackFilters = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[new Date().getFullYear(), ...[2024, 2023].filter(y => y !== new Date().getFullYear())].map((y) => (
+              {[
+                new Date().getFullYear(),
+                ...[2024, 2023].filter((y) => y !== new Date().getFullYear()),
+              ].map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
@@ -694,16 +700,10 @@ const DashboardContent = ({
   );
 };
 
-import { ViewState, ViewType } from "@/layout/AppShell";
-
 // --- MAIN PAGE COMPONENT ---
-interface FeedbackPageProps {
-  setActiveView: (view: ViewState) => void;
-}
 
-export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
+export default function FeedbackPage() {
   const { user, loading: userAuthLoading } = useUserAuth();
-  const { admin, initialized: adminInitialized } = useAdminAuth();
   const isMobile = useMobile();
 
   const [isChartLoading, setIsChartLoading] = useState(false);
@@ -721,37 +721,51 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
   const [rawFeedback, setRawFeedback] = useState<RawFeedbackData | null>(null);
   const [isRawFeedbackLoading, setIsRawFeedbackLoading] = useState(false);
   const [rawFeedbackError, setRawFeedbackError] = useState<string | null>(null);
-  
+
   const fetchRawFeedback = async () => {
-      if (!employeeData?.firebaseUid || !activeFilter) return;
+    if (!employeeData?.firebaseUid || !activeFilter) return;
 
-      setIsRawFeedbackLoading(true);
-      setRawFeedbackError(null);
-      setIsFeedbackModalOpen(true); // Open modal immediately
+    setIsRawFeedbackLoading(true);
+    setRawFeedbackError(null);
+    setIsFeedbackModalOpen(true); // Open modal immediately
 
-      const functions = getFunctions();
-      const getRawFeedbackCallable = httpsCallable<any, RawFeedbackData>(functions, "getRawFeedback");
+    const functions = getFunctions();
+    const getRawFeedbackCallable = httpsCallable<any, RawFeedbackData>(
+      functions,
+      "getRawFeedback"
+    );
 
-      const params: any = {
-          employeeId: employeeData.firebaseUid,
-          timeFrame: activeFilter.mode,
-      };
-      if ((activeFilter.mode === "daily" || activeFilter.mode === "specific" || activeFilter.mode === "monthly") && activeFilter.date) {
-          params.date = format(activeFilter.date, "yyyy-MM-dd");
-      } else if (activeFilter.mode === "range" && activeFilter.dateRange?.from && activeFilter.dateRange?.to) {
-          params.startDate = format(activeFilter.dateRange.from, "yyyy-MM-dd");
-          params.endDate = format(activeFilter.dateRange.to, "yyyy-MM-dd");
-      }
+    const params: any = {
+      employeeId: employeeData.firebaseUid,
+      timeFrame: activeFilter.mode,
+    };
+    if (
+      (activeFilter.mode === "daily" ||
+        activeFilter.mode === "specific" ||
+        activeFilter.mode === "monthly") &&
+      activeFilter.date
+    ) {
+      params.date = format(activeFilter.date, "yyyy-MM-dd");
+    } else if (
+      activeFilter.mode === "range" &&
+      activeFilter.dateRange?.from &&
+      activeFilter.dateRange?.to
+    ) {
+      params.startDate = format(activeFilter.dateRange.from, "yyyy-MM-dd");
+      params.endDate = format(activeFilter.dateRange.to, "yyyy-MM-dd");
+    }
 
-      try {
-          const result = await getRawFeedbackCallable(params);
-          setRawFeedback(result.data);
-      } catch (err) {
-          console.error("Error fetching raw feedback:", err);
-          setRawFeedbackError("Failed to load detailed feedback. Please try again.");
-      } finally {
-          setIsRawFeedbackLoading(false);
-      }
+    try {
+      const result = await getRawFeedbackCallable(params);
+      setRawFeedback(result.data);
+    } catch (err) {
+      console.error("Error fetching raw feedback:", err);
+      setRawFeedbackError(
+        "Failed to load detailed feedback. Please try again."
+      );
+    } finally {
+      setIsRawFeedbackLoading(false);
+    }
   };
 
   // The admin check is now handled by AppShell, so the Navigate component is removed.
@@ -880,9 +894,8 @@ export default function FeedbackPage({ setActiveView }: FeedbackPageProps) {
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Your Feedback Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back,{" "}
-            <strong>{employeeData?.name || "Employee"}</strong>! Here's your
-            latest performance summary.
+            Welcome back, <strong>{employeeData?.name || "Employee"}</strong>!
+            Here&rsquo;s your latest performance summary.
           </p>
         </div>
         <FeedbackFilters
