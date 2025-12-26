@@ -32,146 +32,147 @@
  * @throws {Error} If used outside of a `UserAuthProvider`.
  * @returns {AuthContextType} The current authentication and profile context values.
  */
+/* eslint-disable react-refresh/only-export-components */
+
 // src/context/UserAuthContext.tsx
 
-import React, {
-    createContext,
-    useContext,
-    useEffect,
-    useState,
-    ReactNode,
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
 } from "react";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth, db } from "@/integrations/firebase/client";
 import { doc, DocumentData, onSnapshot, Unsubscribe } from "firebase/firestore";
 
 export interface UserProfile extends DocumentData {
-    employeeId?: string;
-    hasCompletedSetup?: boolean;
-    isAdmin?: boolean;
-    isCoAdmin?: boolean;
+  employeeId?: string;
+  hasCompletedSetup?: boolean;
+  isAdmin?: boolean;
+  isCoAdmin?: boolean;
 }
 
 interface AuthContextType {
-    user: User | null;
-    userProfile: UserProfile | null;
-    isAdmin: boolean;
-    isCoAdmin: boolean;
-    loading: boolean;
-    initialized: boolean;
-    logout: () => Promise<void>;
+  user: User | null;
+  userProfile: UserProfile | null;
+  isAdmin: boolean;
+  isCoAdmin: boolean;
+  loading: boolean;
+  initialized: boolean;
+  logout: () => Promise<void>;
 }
 
 const UserAuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const UserAuthProvider = ({ children }: { children: ReactNode }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [isCoAdmin, setIsCoAdmin] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCoAdmin, setIsCoAdmin] = useState(false);
 
-    // loadingAuth covers onAuthStateChanged; loadingProfile covers Firestore snapshot
-    const [loadingAuth, setLoadingAuth] = useState(true);
-    const [loadingProfile, setLoadingProfile] = useState(true);
+  // loadingAuth covers onAuthStateChanged; loadingProfile covers Firestore snapshot
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-    // initialized only once both auth & profile are settled
-    const initialized = !loadingAuth && !loadingProfile;
+  // initialized only once both auth & profile are settled
+  const initialized = !loadingAuth && !loadingProfile;
 
-    useEffect(() => {
-        let unsubscribeProfile: Unsubscribe | null = null;
+  useEffect(() => {
+    let unsubscribeProfile: Unsubscribe | null = null;
 
-        // 1) Listen for Firebase Auth state
-        const unsubscribeAuth = onAuthStateChanged(
-            auth,
-            (currentUser) => {
-                setUser(currentUser);
+    // 1) Listen for Firebase Auth state
+    const unsubscribeAuth = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        setUser(currentUser);
 
-                if (currentUser) {
-                    currentUser.getIdTokenResult().then((idTokenResult) => {
-                        setIsAdmin(!!idTokenResult.claims.isAdmin);
-                        setIsCoAdmin(!!idTokenResult.claims.isCoAdmin);
-                    });
-                } else {
-                    setIsAdmin(false);
-                    setIsCoAdmin(false);
-                }
+        if (currentUser) {
+          currentUser.getIdTokenResult().then((idTokenResult) => {
+            setIsAdmin(!!idTokenResult.claims.isAdmin);
+            setIsCoAdmin(!!idTokenResult.claims.isCoAdmin);
+          });
+        } else {
+          setIsAdmin(false);
+          setIsCoAdmin(false);
+        }
 
-                setLoadingAuth(false);
+        setLoadingAuth(false);
 
-                // tear down any previous profile listener
-                if (unsubscribeProfile) {
-                    unsubscribeProfile();
-                    unsubscribeProfile = null;
-                }
+        // tear down any previous profile listener
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+          unsubscribeProfile = null;
+        }
 
-                if (currentUser) {
-                    // 2) Listen for the corresponding employee doc
-                    const employeeDocRef = doc(db, "employees", currentUser.uid);
-                    setLoadingProfile(true);
-                    unsubscribeProfile = onSnapshot(
-                        employeeDocRef,
-                        (snap) => {
-                            setUserProfile(snap.exists() ? (snap.data() as UserProfile) : null);
-                            setLoadingProfile(false);
-                        },
-                        (error) => {
-                            console.error(
-                                "Error fetching employee profile snapshot:",
-                                error
-                            );
-                            setUserProfile(null);
-                            setLoadingProfile(false);
-                        }
-                    );
-                } else {
-                    // no user → no profile
-                    setUserProfile(null);
-                    setLoadingProfile(false);
-                }
+        if (currentUser) {
+          // 2) Listen for the corresponding employee doc
+          const employeeDocRef = doc(db, "employees", currentUser.uid);
+          setLoadingProfile(true);
+          unsubscribeProfile = onSnapshot(
+            employeeDocRef,
+            (snap) => {
+              setUserProfile(
+                snap.exists() ? (snap.data() as UserProfile) : null
+              );
+              setLoadingProfile(false);
             },
             (error) => {
-                console.error("onAuthStateChanged error:", error);
-                setUser(null);
-                setUserProfile(null);
-                setLoadingAuth(false);
-                setLoadingProfile(false);
+              console.error("Error fetching employee profile snapshot:", error);
+              setUserProfile(null);
+              setLoadingProfile(false);
             }
-        );
-
-        return () => {
-            unsubscribeAuth();
-            if (unsubscribeProfile) {
-                unsubscribeProfile();
-            }
-        };
-    }, []);
-
-    const logout = async () => {
-        await signOut(auth);
-        // No need to navigate here, the onAuthStateChanged listener will handle the state update
-    };
-
-    return (
-        <UserAuthContext.Provider
-            value={{
-                user,
-                userProfile,
-                loading: loadingAuth || loadingProfile,
-                initialized,
-                logout,
-                isAdmin,
-                isCoAdmin,
-            }}
-        >
-            {children}
-        </UserAuthContext.Provider>
+          );
+        } else {
+          // no user → no profile
+          setUserProfile(null);
+          setLoadingProfile(false);
+        }
+      },
+      (error) => {
+        console.error("onAuthStateChanged error:", error);
+        setUser(null);
+        setUserProfile(null);
+        setLoadingAuth(false);
+        setLoadingProfile(false);
+      }
     );
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
+  }, []);
+
+  const logout = async () => {
+    await signOut(auth);
+    // No need to navigate here, the onAuthStateChanged listener will handle the state update
+  };
+
+  return (
+    <UserAuthContext.Provider
+      value={{
+        user,
+        userProfile,
+        loading: loadingAuth || loadingProfile,
+        initialized,
+        logout,
+        isAdmin,
+        isCoAdmin,
+      }}
+    >
+      {children}
+    </UserAuthContext.Provider>
+  );
 };
 
 export const useUserAuth = (): AuthContextType => {
-    const ctx = useContext(UserAuthContext);
-    if (!ctx) {
-        throw new Error("useUserAuth must be used within a UserAuthProvider");
-    }
-    return ctx;
+  const ctx = useContext(UserAuthContext);
+  if (!ctx) {
+    throw new Error("useUserAuth must be used within a UserAuthProvider");
+  }
+  return ctx;
 };

@@ -1,25 +1,44 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { getLearningPointsForEmployee } from '../services/employeeService';
-import { analyzeTask } from '../services/geminiService';
-import { Task, TaskData, Employee } from '../types';
-import { Skeleton } from '@/components/ui/skeleton';
-import TaskCard from './TaskCard';
+/* eslint-disable react-refresh/only-export-components */
+
+import React, { useState, useEffect, useMemo } from "react";
+import { getLearningPointsForEmployee } from "../services/employeeService";
+import { analyzeTask } from "../services/geminiService";
+import { Task, TaskData, Employee } from "../types";
+import { Skeleton } from "@/components/ui/skeleton";
+import TaskCard from "./TaskCard";
 
 // Local definition for AnalysisStatus since types.ts is not found
 export enum AnalysisStatus {
-  PENDING = 'PENDING',
-  ANALYZING = 'ANALYZING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  SKIPPED = 'SKIPPED',
+  PENDING = "PENDING",
+  ANALYZING = "ANALYZING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  SKIPPED = "SKIPPED",
 }
 
-import TaskTable from './TaskTable';
-import { Loader2, CheckCircle, XCircle, Calendar as CalendarIcon, ArrowLeft, Users } from 'lucide-react';
-import ErrorDisplay from './ErrorDisplay';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import TaskTable from "./TaskTable";
+import {
+  CheckCircle,
+  XCircle,
+  Calendar as CalendarIcon,
+  Users,
+} from "lucide-react";
+import ErrorDisplay from "./ErrorDisplay";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 interface AnalysisPageProps {
   isAdminView?: boolean;
@@ -34,24 +53,21 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
   employees = [],
   selectedEmployee,
   onEmployeeSelect,
-  onBack,
 }) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [analyzedTasks, setAnalyzedTasks] = useState<Task[]>([]);
   const [uniqueDates, setUniqueDates] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [processingMessage, setProcessingMessage] = useState<string>('');
-
-  const employeeName = selectedEmployee?.name;
+  const [processingMessage, setProcessingMessage] = useState<string>("");
 
   useEffect(() => {
     const fetchTaskData = async () => {
       if (!selectedEmployee) {
         setAllTasks([]);
         setUniqueDates([]);
-        setSelectedDate('');
+        setSelectedDate("");
         setError(null);
         return;
       }
@@ -61,16 +77,18 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
       setProcessingMessage(`Fetching tasks for ${selectedEmployee.name}...`);
 
       try {
-        const taskData: TaskData[] = await getLearningPointsForEmployee(selectedEmployee.id);
+        const taskData: TaskData[] = await getLearningPointsForEmployee(
+          selectedEmployee.id
+        );
 
         if (taskData.length === 0) {
-          setError('No learning points found for this employee.');
+          setError("No learning points found for this employee.");
           setAllTasks([]);
           setUniqueDates([]);
           return;
         }
 
-        const tasks: Task[] = taskData.map(data => ({
+        const tasks: Task[] = taskData.map((data) => ({
           id: data.id,
           taskData: data,
           analysis: null,
@@ -78,20 +96,21 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
         }));
         setAllTasks(tasks);
 
-        const dates = [...new Set(tasks.map(t => t.taskData.date))]
-          .filter(date => date)
+        const dates = [...new Set(tasks.map((t) => t.taskData.date))]
+          .filter((date) => date)
           .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
         setUniqueDates(dates);
 
         // Initially, don't select any date
-        setSelectedDate('');
-
+        setSelectedDate("");
       } catch (e) {
         console.error(e);
-        setError("An error occurred while loading the analysis. Please try again.");
+        setError(
+          "An error occurred while loading the analysis. Please try again."
+        );
       } finally {
         setIsLoading(false);
-        setProcessingMessage('');
+        setProcessingMessage("");
       }
     };
 
@@ -111,48 +130,98 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
         return;
       }
 
-      const tasksToProcess = allTasks.filter(t => t.taskData.date === selectedDate);
-      setAnalyzedTasks(tasksToProcess.map(t => ({ ...t, status: AnalysisStatus.PENDING })));
+      const tasksToProcess = allTasks.filter(
+        (t) => t.taskData.date === selectedDate
+      );
+      setAnalyzedTasks(
+        tasksToProcess.map((t) => ({ ...t, status: AnalysisStatus.PENDING }))
+      );
 
       if (tasksToProcess.length === 0) return;
 
       for (let i = 0; i < tasksToProcess.length; i++) {
         const task = tasksToProcess[i];
 
-        if (task.taskData.pointType !== 'R1' && task.taskData.pointType !== 'R2') {
-          setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: AnalysisStatus.SKIPPED } : t));
+        if (
+          task.taskData.pointType !== "R1" &&
+          task.taskData.pointType !== "R2"
+        ) {
+          setAnalyzedTasks((prev) =>
+            prev.map((t) =>
+              t.id === task.id ? { ...t, status: AnalysisStatus.SKIPPED } : t
+            )
+          );
           continue; // Skip to the next task
         }
 
-        setProcessingMessage(`Analyzing task ${i + 1} of ${tasksToProcess.length}...`);
-        setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: AnalysisStatus.ANALYZING } : t));
+        setProcessingMessage(
+          `Analyzing task ${i + 1} of ${tasksToProcess.length}...`
+        );
+        setAnalyzedTasks((prev) =>
+          prev.map((t) =>
+            t.id === task.id ? { ...t, status: AnalysisStatus.ANALYZING } : t
+          )
+        );
 
         try {
           const analysis = await analyzeTask(task.taskData);
-          setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, analysis, status: AnalysisStatus.COMPLETED } : t));
+          setAnalyzedTasks((prev) =>
+            prev.map((t) =>
+              t.id === task.id
+                ? { ...t, analysis, status: AnalysisStatus.COMPLETED }
+                : t
+            )
+          );
         } catch (e) {
           console.error(`Failed to analyze task ${task.id}:`, e);
-          setAnalyzedTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: AnalysisStatus.FAILED } : t));
+          setAnalyzedTasks((prev) =>
+            prev.map((t) =>
+              t.id === task.id ? { ...t, status: AnalysisStatus.FAILED } : t
+            )
+          );
         }
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      setProcessingMessage('Analysis complete!');
-      setTimeout(() => setProcessingMessage(''), 3000);
+      setProcessingMessage("Analysis complete!");
+      setTimeout(() => setProcessingMessage(""), 3000);
     };
 
     processTasksForDate();
   }, [selectedDate, allTasks]);
 
-  const tasksForSelectedDate = useMemo(() => allTasks.filter(t => t.taskData.date === selectedDate), [selectedDate, allTasks]);
-  const analyzedCount = useMemo(() => analyzedTasks.filter(t => t.status === AnalysisStatus.COMPLETED).length, [analyzedTasks]);
-  const failedCount = useMemo(() => analyzedTasks.filter(t => t.status === AnalysisStatus.FAILED).length, [analyzedTasks]);
-  const totalToAnalyze = useMemo(() => tasksForSelectedDate.filter(t => t.taskData.pointType === 'R1' || t.taskData.pointType === 'R2').length, [tasksForSelectedDate]);
-  const isProcessing = useMemo(() => analyzedTasks.some(t => t.status === AnalysisStatus.ANALYZING), [analyzedTasks]);
-  const progress = totalToAnalyze > 0 ? ((analyzedCount + failedCount) / totalToAnalyze) * 100 : 0;
+  const tasksForSelectedDate = useMemo(
+    () => allTasks.filter((t) => t.taskData.date === selectedDate),
+    [selectedDate, allTasks]
+  );
+  const analyzedCount = useMemo(
+    () =>
+      analyzedTasks.filter((t) => t.status === AnalysisStatus.COMPLETED).length,
+    [analyzedTasks]
+  );
+  const failedCount = useMemo(
+    () =>
+      analyzedTasks.filter((t) => t.status === AnalysisStatus.FAILED).length,
+    [analyzedTasks]
+  );
+  const totalToAnalyze = useMemo(
+    () =>
+      tasksForSelectedDate.filter(
+        (t) => t.taskData.pointType === "R1" || t.taskData.pointType === "R2"
+      ).length,
+    [tasksForSelectedDate]
+  );
+  const isProcessing = useMemo(
+    () => analyzedTasks.some((t) => t.status === AnalysisStatus.ANALYZING),
+    [analyzedTasks]
+  );
+  const progress =
+    totalToAnalyze > 0
+      ? ((analyzedCount + failedCount) / totalToAnalyze) * 100
+      : 0;
 
   const handleEmployeeSelect = (employeeId: string) => {
     if (employeeId === selectedEmployee?.id) return;
-    const employee = employees.find(e => e.id === employeeId);
+    const employee = employees.find((e) => e.id === employeeId);
     if (employee && onEmployeeSelect) {
       onEmployeeSelect(employee);
     }
@@ -163,26 +232,37 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
       <div className="flex flex-col md:flex-row justify-start md:items-start gap-4">
         <div className="flex flex-col md:flex-row gap-2 pt-2 w-full md:w-auto">
           {isAdminView && (
-            <Select onValueChange={handleEmployeeSelect} value={selectedEmployee?.id || ''}>
+            <Select
+              onValueChange={handleEmployeeSelect}
+              value={selectedEmployee?.id || ""}
+            >
               <SelectTrigger className="w-full md:w-[240px]">
                 <Users className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="-- Select Employee --" />
               </SelectTrigger>
               <SelectContent>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
-          <Select onValueChange={setSelectedDate} value={selectedDate} disabled={isProcessing || !selectedEmployee}>
+          <Select
+            onValueChange={setSelectedDate}
+            value={selectedDate}
+            disabled={isProcessing || !selectedEmployee}
+          >
             <SelectTrigger className="w-full md:w-[240px]">
               <CalendarIcon className="mr-2 h-4 w-4" />
               <SelectValue placeholder="-- Select a date --" />
             </SelectTrigger>
             <SelectContent>
-              {uniqueDates.map(date => (
-                <SelectItem key={date} value={date}>{date}</SelectItem>
+              {uniqueDates.map((date) => (
+                <SelectItem key={date} value={date}>
+                  {date}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -200,19 +280,26 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
         </div>
       )}
 
-      {error && <ErrorDisplay message={error} onRetry={() => {
-        if (selectedEmployee) {
-          // This is a bit of a hack, but it will re-trigger the fetch
-          onEmployeeSelect?.(selectedEmployee);
-        }
-      }} />}
+      {error && (
+        <ErrorDisplay
+          message={error}
+          onRetry={() => {
+            if (selectedEmployee) {
+              // This is a bit of a hack, but it will re-trigger the fetch
+              onEmployeeSelect?.(selectedEmployee);
+            }
+          }}
+        />
+      )}
 
       {!isLoading && !error && !selectedEmployee && isAdminView && (
         <Card className="h-full flex items-center justify-center border-2 border-dashed">
           <CardContent className="text-center py-10">
             <Users className="h-12 w-12 text-muted-foreground mx-auto" />
             <h2 className="text-xl font-semibold mt-4">Select an Employee</h2>
-            <p className="text-muted-foreground mt-1">Choose an employee from the dropdown above to begin.</p>
+            <p className="text-muted-foreground mt-1">
+              Choose an employee from the dropdown above to begin.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -221,7 +308,10 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
         <>
           {selectedDate ? (
             <>
-              <TaskTable tasks={tasksForSelectedDate} selectedDate={selectedDate} />
+              <TaskTable
+                tasks={tasksForSelectedDate}
+                selectedDate={selectedDate}
+              />
 
               {(isProcessing || analyzedTasks.length > 0) && (
                 <Card>
@@ -233,7 +323,9 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
                     <div className="flex items-center space-x-4 mb-4">
                       <div className="flex items-center text-green-500">
                         <CheckCircle className="w-5 h-5 mr-1.5" />
-                        <span>Analyzed: {analyzedCount}/{totalToAnalyze}</span>
+                        <span>
+                          Analyzed: {analyzedCount}/{totalToAnalyze}
+                        </span>
                       </div>
                       {failedCount > 0 && (
                         <div className="flex items-center text-red-500">
@@ -242,14 +334,20 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
                         </div>
                       )}
                     </div>
-                    {(isProcessing || progress < 100) && <Progress value={progress} />}
+                    {(isProcessing || progress < 100) && (
+                      <Progress value={progress} />
+                    )}
                   </CardContent>
                 </Card>
               )}
 
               <div className="space-y-6">
                 {analyzedTasks.map((task, index) => (
-                  <div key={task.id} className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
+                  <div
+                    key={task.id}
+                    className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     <TaskCard task={task} />
                   </div>
                 ))}
@@ -260,7 +358,9 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({
               <CardContent className="text-center py-10">
                 <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto" />
                 <h2 className="text-xl font-semibold mt-4">Select a Date</h2>
-                <p className="text-muted-foreground mt-1">Choose a date from the dropdown above to begin the analysis.</p>
+                <p className="text-muted-foreground mt-1">
+                  Choose a date from the dropdown above to begin the analysis.
+                </p>
               </CardContent>
             </Card>
           )}

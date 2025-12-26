@@ -1,19 +1,19 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { Loader2, Users, User } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AdminAttendanceView } from "../components/AdminAttendanceView";
 import { UserAttendanceView } from "../components/UserAttendanceView";
-import { ViewState } from "@/layout/AppShell";
 
-interface AttendancePageProps {
-  setActiveView?: (view: ViewState) => void;
-}
-
-export default function Attendance({ setActiveView }: AttendancePageProps) {
+export default function Attendance() {
   const { admin, loading: adminLoading } = useAdminAuth();
   const { user, loading: userLoading, isAdmin, isCoAdmin } = useUserAuth();
   const [showPersonalView, setShowPersonalView] = useState(false);

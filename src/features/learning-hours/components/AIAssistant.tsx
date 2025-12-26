@@ -311,8 +311,8 @@ const EmptyState = forwardRef<HTMLDivElement>((props, ref) => (
     <div className="space-y-1">
       <h3 className="font-semibold text-lg">How can I help?</h3>
       <p className="text-sm text-muted-foreground">
-        Describe a work situation, and I'll help you format it into Learning
-        Points (SBIA).
+        Describe a work situation, and I&rsquo;ll help you format it into
+        Learning Points (SBIA).
       </p>
     </div>
   </motion.div>

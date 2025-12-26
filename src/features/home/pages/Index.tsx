@@ -1,15 +1,25 @@
-"use client"
+"use client";
 
-import React from "react"
-import { useUserAuth } from "@/context/UserAuthContext"
-import { useAttendanceStreak } from "@/hooks/use-attendance-streak"
-import { useLearningStreak } from "@/hooks/use-learning-streak"
-import { Activity, BookOpen, Box, Calendar, Flame, LucideIcon, MessageSquare, ArrowRight, Sparkles, Users } from "lucide-react"
-import { motion, Variants } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { ViewState } from "@/layout/AppShell"
-import MotivationalQuote from "@/components/common/MotivationalQuote"
-import { cn } from "@/lib/utils"
+import { useUserAuth } from "@/context/UserAuthContext";
+import { useAttendanceStreak } from "@/hooks/use-attendance-streak";
+import { useLearningStreak } from "@/hooks/use-learning-streak";
+import {
+  Activity,
+  BookOpen,
+  Box,
+  Calendar,
+  Flame,
+  LucideIcon,
+  MessageSquare,
+  ArrowRight,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { motion, Variants } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ViewState } from "@/layout/AppShell";
+import MotivationalQuote from "@/components/common/MotivationalQuote";
+import { cn } from "@/lib/utils";
 
 // --- Animation Variants ---
 const containerVariants: Variants = {
@@ -18,7 +28,7 @@ const containerVariants: Variants = {
     opacity: 1,
     transition: { staggerChildren: 0.1 },
   },
-}
+};
 
 const itemVariants: Variants = {
   hidden: { y: 20, opacity: 0 },
@@ -27,23 +37,23 @@ const itemVariants: Variants = {
     opacity: 1,
     transition: { duration: 0.4, ease: "easeOut" },
   },
-}
+};
 
 // --- Prop Interfaces ---
 interface UserHomeProps {
-  setActiveView: (view: ViewState) => void
+  setActiveView: (view: ViewState) => void;
 }
 
 interface StreakBannerProps {
-  title: string
-  streak: number
-  loading: boolean
-  icon: LucideIcon
+  title: string;
+  streak: number;
+  loading: boolean;
+  icon: LucideIcon;
   colors: {
-    icon: string
-    bgGradient: string
-    iconBg: string
-  }
+    icon: string;
+    bgGradient: string;
+    iconBg: string;
+  };
 }
 
 // --- Reusable Sub-Components ---
@@ -60,32 +70,55 @@ const StreakSkeleton = () => (
       </div>
     </CardContent>
   </Card>
-)
+);
 
-const StreakBanner = ({ title, streak, loading, icon: Icon, colors }: StreakBannerProps) => {
-  if (loading) return <StreakSkeleton />
+const StreakBanner = ({
+  title,
+  streak,
+  loading,
+  icon: Icon,
+  colors,
+}: StreakBannerProps) => {
+  if (loading) return <StreakSkeleton />;
 
   return (
-    <Card className={cn("border-0 shadow-sm overflow-hidden", colors.bgGradient)}>
+    <Card
+      className={cn("border-0 shadow-sm overflow-hidden", colors.bgGradient)}
+    >
       <CardContent className="p-4 md:p-5">
         <div className="flex items-center gap-4">
-          <div className={cn("flex items-center justify-center rounded-full h-14 w-14 flex-shrink-0", colors.iconBg)}>
+          <div
+            className={cn(
+              "flex items-center justify-center rounded-full h-14 w-14 flex-shrink-0",
+              colors.iconBg
+            )}
+          >
             <Icon className={cn("h-7 w-7", colors.icon)} />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-muted-foreground text-sm">{title}</h3>
+            <h3 className="font-medium text-muted-foreground text-sm">
+              {title}
+            </h3>
             <div className="flex items-baseline gap-1.5">
-              <p className="text-3xl font-bold text-card-foreground">{streak}</p>
-              <span className="text-sm font-medium text-muted-foreground">day streak for current month</span>
+              <p className="text-3xl font-bold text-card-foreground">
+                {streak}
+              </p>
+              <span className="text-sm font-medium text-muted-foreground">
+                day streak for current month
+              </span>
             </div>
           </div>
         </div>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
-const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => void }) => {
+const QuickActions = ({
+  setActiveView,
+}: {
+  setActiveView: (view: ViewState) => void;
+}) => {
   const actions = [
     {
       title: "Join Standup",
@@ -104,7 +137,7 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
       bg: "bg-blue-500/10",
     },
     {
-      title: "AI Feedback",
+      title: "Students Feedback",
       description: "Get insights",
       icon: MessageSquare,
       action: () => setActiveView({ view: "feedback" }),
@@ -135,7 +168,7 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
       color: "text-pink-500",
       bg: "bg-pink-500/10",
     },
-  ]
+  ];
 
   return (
     <Card>
@@ -144,7 +177,9 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
           <Activity className="h-5 w-5 text-primary" />
           Quick Actions
         </CardTitle>
-        <p className="text-sm text-muted-foreground">Navigate to key sections of the app.</p>
+        <p className="text-sm text-muted-foreground">
+          Navigate to key sections of the app.
+        </p>
       </CardHeader>
       <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {actions.map((action) => (
@@ -161,8 +196,12 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
                 <action.icon className={cn("h-5 w-5", action.color)} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-card-foreground">{action.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{action.description}</p>
+                <p className="font-semibold text-sm text-card-foreground">
+                  {action.title}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {action.description}
+                </p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             </button>
@@ -170,17 +209,22 @@ const QuickActions = ({ setActiveView }: { setActiveView: (view: ViewState) => v
         ))}
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
 // --- Main Page Component ---
 export default function UserHome({ setActiveView }: UserHomeProps) {
-  const { user } = useUserAuth()
-  const { attendanceStreak, attendanceLoading } = useAttendanceStreak()
-  const { learningStreak, loading: learningIsLoading } = useLearningStreak()
+  const { user } = useUserAuth();
+  const { attendanceStreak, attendanceLoading } = useAttendanceStreak();
+  const { learningStreak, loading: learningIsLoading } = useLearningStreak();
 
-  const currentHour = new Date().getHours()
-  const greeting = currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening"
+  const currentHour = new Date().getHours();
+  const greeting =
+    currentHour < 12
+      ? "Good morning"
+      : currentHour < 18
+      ? "Good afternoon"
+      : "Good evening";
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -191,11 +235,12 @@ export default function UserHome({ setActiveView }: UserHomeProps) {
         className="space-y-1"
       >
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex flex-wrap items-center gap-x-2">
-          {greeting}, <span className="break-words">{user?.displayName || "Member"}!</span>
+          {greeting},{" "}
+          <span className="break-words">{user?.displayName || "Member"}!</span>
           <Sparkles className="h-6 w-6 text-amber-400" />
         </h1>
         <p className="text-muted-foreground text-base">
-          Welcome back, here's your overview for today.
+          Welcome back, here&rsquo;s your overview for today.
         </p>
       </motion.div>
 
@@ -210,12 +255,15 @@ export default function UserHome({ setActiveView }: UserHomeProps) {
             <motion.div variants={itemVariants}>
               <StreakBanner
                 title="Standup Attendance"
-                streak={typeof attendanceStreak === 'number' ? attendanceStreak : 0}
+                streak={
+                  typeof attendanceStreak === "number" ? attendanceStreak : 0
+                }
                 loading={attendanceLoading}
                 icon={Flame}
                 colors={{
                   icon: "text-orange-500",
-                  bgGradient: "bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-950/50 dark:to-amber-950/50",
+                  bgGradient:
+                    "bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-950/50 dark:to-amber-950/50",
                   iconBg: "bg-orange-500/10",
                 }}
               />
@@ -223,12 +271,13 @@ export default function UserHome({ setActiveView }: UserHomeProps) {
             <motion.div variants={itemVariants}>
               <StreakBanner
                 title="Learning Hours"
-                streak={typeof learningStreak === 'number' ? learningStreak : 0}
+                streak={typeof learningStreak === "number" ? learningStreak : 0}
                 loading={learningIsLoading}
                 icon={BookOpen}
                 colors={{
                   icon: "text-blue-500",
-                  bgGradient: "bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50",
+                  bgGradient:
+                    "bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50",
                   iconBg: "bg-blue-500/10",
                 }}
               />
@@ -258,5 +307,5 @@ export default function UserHome({ setActiveView }: UserHomeProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

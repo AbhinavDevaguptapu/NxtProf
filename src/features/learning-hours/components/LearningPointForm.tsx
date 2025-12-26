@@ -162,8 +162,8 @@ export const LearningPointForm = ({
             {defaultValues?.id ? "Edit" : "Create"} Learning Point
           </DialogTitle>
           <DialogDescription>
-            Fill out the details for the learning point. Click save when you're
-            done.
+            Fill out the details for the learning point. Click save when
+            you&rsquo;re done.
           </DialogDescription>
         </DialogHeader>
         <FormProvider {...form}>

@@ -29,9 +29,11 @@
  * @returns {AdminAuthContextType} The admin authentication context value.
  * @throws {Error} If used outside of an AdminAuthProvider.
  */
+/* eslint-disable react-refresh/only-export-components */
+
 // src/context/AdminAuthContext.tsx
 
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -96,9 +98,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const isAdmin = Boolean(admin);
 
   return (
-    <AdminAuthContext.Provider
-      value={{ admin, isAdmin, loading, initialized }}
-    >
+    <AdminAuthContext.Provider value={{ admin, isAdmin, loading, initialized }}>
       {children}
     </AdminAuthContext.Provider>
   );
@@ -107,9 +107,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAdminAuth = () => {
   const ctx = useContext(AdminAuthContext);
   if (ctx === undefined) {
-    throw new Error(
-      "useAdminAuth must be used within an AdminAuthProvider"
-    );
+    throw new Error("useAdminAuth must be used within an AdminAuthProvider");
   }
   return ctx;
 };

@@ -34,6 +34,8 @@ export type AttendanceRecord = {
 };
 
 export type LearningPoint = {
+  problem: any;
+  core_point_missed: any;
     id: string;
     userId: string;
     createdAt: Timestamp;

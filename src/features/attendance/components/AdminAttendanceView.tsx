@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Loader2,
-  Calendar as CalendarIcon,
-  CloudUpload,
-} from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, CloudUpload } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import {

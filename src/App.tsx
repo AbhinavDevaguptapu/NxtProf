@@ -39,7 +39,7 @@ const GlobalLoading = () => (
 
 const AppContent = () => {
   const { user, initialized: userInitialized } = useUserAuth();
-  const { admin, initialized: adminInitialized } = useAdminAuth();
+  const { initialized: adminInitialized } = useAdminAuth();
 
   if (!userInitialized || !adminInitialized) {
     return <GlobalLoading />;
@@ -48,10 +48,26 @@ const AppContent = () => {
   return (
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
-      <Route path="/auth" element={!user ? <AuthPage /> : <Navigate to="/" />} />
-      <Route path="/admin/login" element={!user ? <AdminLogin /> : <Navigate to="/" />} />
-      <Route path="/setup" element={<ProtectedRoute><EmployeeSetup /></ProtectedRoute>} />
-      <Route path="/" element={user ? <Navigate to="/index" /> : <Navigate to="/landing" />} />
+      <Route
+        path="/auth"
+        element={!user ? <AuthPage /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/admin/login"
+        element={!user ? <AdminLogin /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/setup"
+        element={
+          <ProtectedRoute>
+            <EmployeeSetup />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/"
+        element={user ? <Navigate to="/index" /> : <Navigate to="/landing" />}
+      />
       <Route
         path="/*"
         element={
@@ -64,7 +80,14 @@ const AppContent = () => {
           )
         }
       />
-      <Route path="/daily-observations" element={<CoAdminProtectedRoute><DailyObservationsPage /></CoAdminProtectedRoute>} />
+      <Route
+        path="/daily-observations"
+        element={
+          <CoAdminProtectedRoute>
+            <DailyObservationsPage />
+          </CoAdminProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -75,7 +98,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <UserAuthProvider>
           <AdminAuthProvider>
             <AppContent />

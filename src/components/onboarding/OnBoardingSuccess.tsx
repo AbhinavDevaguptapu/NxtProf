@@ -1,12 +1,19 @@
 // Onboarding Success - UI Updated
 
-import { ViewState } from '@/layout/AppShell';
-import { motion } from 'framer-motion';
+import { ViewState } from "@/layout/AppShell";
+import { motion } from "framer-motion";
 
 // --- SHADCN/UI & LUCIDE IMPORTS ---
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { PartyPopper, ArrowRight } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { PartyPopper, ArrowRight } from "lucide-react";
 
 // A dedicated component for the animated checkmark graphic
 const AnimatedCheck = () => {
@@ -17,9 +24,9 @@ const AnimatedCheck = () => {
       opacity: 1,
       transition: {
         pathLength: { duration: 1, bounce: 0 },
-        opacity: { duration: 0.1 }
-      }
-    }
+        opacity: { duration: 0.1 },
+      },
+    },
   };
 
   return (
@@ -49,10 +56,9 @@ interface OnboardingSuccessProps {
   setActiveView: (view: ViewState) => void;
 }
 
-
 const OnboardingSuccess = ({ setActiveView }: OnboardingSuccessProps) => {
   const handleNavigate = () => {
-    setActiveView({ view: 'home' });
+    setActiveView({ view: "home" });
   };
 
   return (
@@ -76,16 +82,13 @@ const OnboardingSuccess = ({ setActiveView }: OnboardingSuccessProps) => {
               Onboarding Complete!
             </DialogTitle>
             <DialogDescription className="text-lg mt-2">
-              Congratulations! You've successfully completed all the required steps. You are now ready to begin.
+              Congratulations! You&rsquo;ve successfully completed all the
+              required steps. You are now ready to begin.
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter className="mt-6 sm:flex-col sm:space-y-2">
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={handleNavigate}
-            >
+            <Button size="lg" className="w-full" onClick={handleNavigate}>
               Go to Dashboard
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
