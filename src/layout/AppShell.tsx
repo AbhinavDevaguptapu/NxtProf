@@ -12,7 +12,7 @@ import FeedbackPage from "@/features/feedback/pages/FeedbackPage";
 import LearningHours from "@/features/learning-hours/pages/LearningHours";
 import OnboardingVideoPage from "@/features/onboarding/pages/OnBoardingPage";
 import AdminEmployeeDashboard from "@/features/admin/pages/AdminEmployeeDashboard";
-import TaskAnalyzerPage from "@/features/task-analyzer/pages/TaskAnalyzerPage";
+
 import PeerFeedbackPage from "@/features/peer-feedback/pages/PeerFeedbackPage";
 import AdminPeerFeedback from "@/features/admin/pages/AdminPeerFeedback";
 import AdminLearningHours from "@/features/admin/pages/AdminLearningHours";
@@ -31,7 +31,7 @@ export type ViewType =
   | "onboardingKit"
   | "manage-employees"
   | "employee-detail"
-  | "task-analyzer"
+
   | "peer-feedback"
   | "admin-peer-feedback"
   | "learning-hours-points"
@@ -108,7 +108,7 @@ export default function AppShell() {
       feedback: FeedbackPage,
       profile: ProfilePage,
       onboardingKit: OnboardingVideoPage,
-      "task-analyzer": TaskAnalyzerPage,
+
       "peer-feedback": PeerFeedbackPage,
       "admin-peer-feedback": admin ? AdminPeerFeedback : AccessDenied,
       "learning-hours-points": AdminLearningHours,
