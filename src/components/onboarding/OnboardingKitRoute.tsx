@@ -19,7 +19,7 @@ const resources = [
   {
     label: "Learning Portal",
     url: "https://learning.ccbp.in/",
-    note: "Login with Number: 9160909057 | OTP: 987654",
+    note: "Login with Number: 9160909057 | OTP: 629467",
   },
   {
     label: "Instructor Handbook",
