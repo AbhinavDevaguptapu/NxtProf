@@ -338,10 +338,7 @@ const FeedbackFilters = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[
-                new Date().getFullYear(),
-                ...[2024, 2023].filter((y) => y !== new Date().getFullYear()),
-              ].map((y) => (
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
