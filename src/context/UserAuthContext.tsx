@@ -52,6 +52,7 @@ export interface UserProfile extends DocumentData {
   hasCompletedSetup?: boolean;
   isAdmin?: boolean;
   isCoAdmin?: boolean;
+  admin_approval_required?: boolean;
 }
 
 interface AuthContextType {

@@ -78,6 +78,7 @@ import {
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { getUserFriendlyErrorMessage } from "@/lib/errorHandler";
 
 ChartJS.register(
   CategoryScale,
@@ -458,17 +459,20 @@ const EmployeeDetailHeader = ({
     try {
       await updateEmployee(employee.id, editFormData);
       toast({
-        title: "Success",
-        description: `${employee.name}'s profile updated.`,
+        title: "Profile Updated",
+        description: `${employee.name}'s profile has been updated successfully.`,
         className: "bg-green-500 text-white",
       });
       onActionComplete();
       setIsEditDialogOpen(false);
     } catch (err) {
-      const error = err as Error;
+      const message = getUserFriendlyErrorMessage(
+        err,
+        "Could not update profile. Please try again."
+      );
       toast({
         title: "Update Failed",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -481,38 +485,41 @@ const EmployeeDetailHeader = ({
   ) => {
     setProcessingAction(action);
     let fnName = "";
+    let actionLabel = "";
     switch (action) {
       case "promote":
         fnName = "addAdminRole";
+        actionLabel = "promoted to Admin";
         break;
       case "demote":
         fnName = "removeAdminRole";
+        actionLabel = "removed from Admin";
         break;
       case "promoteCoAdmin":
         fnName = "addCoAdminRole";
+        actionLabel = "promoted to Co-Admin";
         break;
       case "demoteCoAdmin":
         fnName = "removeCoAdminRole";
+        actionLabel = "removed from Co-Admin";
         break;
     }
     try {
       const functions = getFunctions();
-      const callable = httpsCallable<unknown, CallableResponse>(
-        functions,
-        fnName
-      );
-      const result = await callable({ email: employee.email });
       toast({
-        title: "Success",
-        description: result.data.message,
+        title: "Role Updated",
+        description: `${employee.name} has been ${actionLabel}.`,
         className: "bg-blue-500 text-white",
       });
       onActionComplete();
     } catch (err) {
-      const error = err as Error;
+      const message = getUserFriendlyErrorMessage(
+        err,
+        `Could not change role. Please try again.`
+      );
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Role Change Failed",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -527,16 +534,19 @@ const EmployeeDetailHeader = ({
       const deleteFn = httpsCallable(functions, "deleteEmployee");
       await deleteFn({ uid: employee.id });
       toast({
-        title: "Deleted",
-        description: `${employee.name} has been removed.`,
+        title: "Employee Deleted",
+        description: `${employee.name} has been permanently removed from the system.`,
         className: "bg-green-500 text-white",
       });
       onActionComplete();
     } catch (err) {
-      const error = err as Error;
+      const message = getUserFriendlyErrorMessage(
+        err,
+        `Could not delete this employee. Please try again.`
+      );
       toast({
-        title: "Delete failed",
-        description: error.message,
+        title: "Deletion Failed",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -551,16 +561,19 @@ const EmployeeDetailHeader = ({
       const archiveFn = httpsCallable(functions, "archiveEmployee");
       await archiveFn({ uid: employee.id });
       toast({
-        title: "Archived",
-        description: `${employee.name} has been archived.`,
+        title: "Employee Archived",
+        description: `${employee.name} has been archived successfully.`,
         className: "bg-green-500 text-white",
       });
       onActionComplete();
     } catch (err) {
-      const error = err as Error;
+      const message = getUserFriendlyErrorMessage(
+        err,
+        `Could not archive this employee. Please try again.`
+      );
       toast({
-        title: "Archive failed",
-        description: error.message,
+        title: "Archive Failed",
+        description: message,
         variant: "destructive",
       });
     } finally {

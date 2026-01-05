@@ -206,3 +206,45 @@ export const getArchivedEmployees = onCall({ cors: true }, async (request) => {
         throw new HttpsError("internal", "Failed to fetch archived employee data.");
     }
 });
+
+export const getUnapprovedUsers = onCall({ cors: true }, async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can view unapproved users.");
+    }
+
+    try {
+        const employeesSnapshot = await admin.firestore().collection("employees")
+            .where("admin_approval_required", "==", true)
+            .orderBy("name")
+            .get();
+
+        const users = employeesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        return users;
+    } catch (error: any) {
+        console.error("Error fetching unapproved users:", error);
+        throw new HttpsError("internal", "Failed to fetch unapproved users.");
+    }
+});
+
+export const approveUser = onCall<{ uid: string }>({ cors: true }, async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+        throw new HttpsError("permission-denied", "Only admins can approve users.");
+    }
+    const uid = request.data.uid;
+    if (!uid) {
+        throw new HttpsError("invalid-argument", "Missing uid.");
+    }
+
+    try {
+        await admin.firestore().doc(`employees/${uid}`).update({
+            admin_approval_required: false
+        });
+        return { message: "User approved successfully." };
+    } catch (error: any) {
+        console.error("Error approving user:", error);
+        throw new HttpsError("internal", "Failed to approve user.");
+    }
+});

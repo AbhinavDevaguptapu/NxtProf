@@ -50,6 +50,7 @@ import { analyzeTask } from "@/features/task-analyzer/services/geminiService";
 import { TaskData, AnalysisResult } from "@/features/task-analyzer/types";
 import { AIAssistant } from "./AIAssistant";
 import { Suggestions } from "../services/learningPointsAIService";
+import { getUserFriendlyErrorMessage } from "@/lib/errorHandler";
 
 // --- FORM SCHEMA ---
 const formSchema = z
@@ -267,9 +268,11 @@ const InlineLearningPointForm = ({
       setIsModalOpen(true);
     } catch (error) {
       console.error("Analysis failed:", error);
-      setAnalysisError(
-        "The AI analysis failed. This could be due to a network issue or a problem with the analysis service. Please try again."
+      const friendlyMessage = getUserFriendlyErrorMessage(
+        error,
+        "The AI analysis encountered an issue. Please try again or check your connection."
       );
+      setAnalysisError(friendlyMessage);
     } finally {
       setIsAnalyzing(false);
     }

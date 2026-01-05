@@ -39,6 +39,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import {
+  formatErrorForDisplay,
+} from "@/lib/errorHandler";
 
 export const ScheduleStandupForm = ({
   todayDocId,
@@ -60,12 +63,20 @@ export const ScheduleStandupForm = ({
 
   const handleSchedule = async () => {
     if (!scheduledDate) {
-      toast({ title: "Please select a date.", variant: "destructive" });
+      toast({
+        title: "Date Required",
+        description: "Please select a date for the standup.",
+        variant: "destructive",
+      });
       return;
     }
     const [hours, minutes] = scheduledTimeInput.split(":").map(Number);
     if (isNaN(hours) || isNaN(minutes) || hours > 23 || minutes > 59) {
-      toast({ title: "Invalid time format.", variant: "destructive" });
+      toast({
+        title: "Invalid Time",
+        description: "Please enter a valid time in HH:MM format (24-hour).",
+        variant: "destructive",
+      });
       return;
     }
     const finalDateTime = setHours(
@@ -73,7 +84,12 @@ export const ScheduleStandupForm = ({
       hours
     );
     if (finalDateTime < startOfMinute(new Date())) {
-      toast({ title: "Cannot schedule in the past.", variant: "destructive" });
+      toast({
+        title: "Date & Time Invalid",
+        description:
+          "The standup cannot be scheduled for the past. Please choose a future time.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -85,15 +101,23 @@ export const ScheduleStandupForm = ({
         scheduledBy: adminName,
       });
       toast({
-        title: "Success!",
-        description: `Standup scheduled for ${format(finalDateTime, "p")}.`,
+        title: "Standup Scheduled!",
+        description: `The standup has been scheduled for ${format(
+          finalDateTime,
+          "EEEE, MMM dd 'at' h:mm a"
+        )}.`,
       });
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error(error);
+      const { title, description } = formatErrorForDisplay(
+        error,
+        "Scheduling Failed",
+        "scheduling"
+      );
       toast({
-        title: "Scheduling Failed",
-        description: "An unexpected error occurred.",
+        title,
+        description,
         variant: "destructive",
       });
     } finally {

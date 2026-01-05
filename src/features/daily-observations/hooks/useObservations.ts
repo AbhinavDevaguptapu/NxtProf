@@ -1,26 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getFunctions, httpsCallable, HttpsCallableResult } from "firebase/functions";
-import { getFirestore, collection, query, where, getDocs, Timestamp, orderBy } from "firebase/firestore";
+import {
+  getFunctions,
+  httpsCallable,
+  HttpsCallableResult,
+} from "firebase/functions";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  Timestamp,
+  orderBy,
+} from "firebase/firestore";
 import { Observation } from "../types";
 import { toast } from "sonner";
+import { getUserFriendlyErrorMessage } from "@/lib/errorHandler";
 
 // --- Type Definitions ---
 interface MutationSuccess {
-    success: boolean;
-    message: string;
+  success: boolean;
+  message: string;
 }
 
 interface AddObservationVars {
-    observationText: string;
+  observationText: string;
 }
 
 interface UpdateObservationVars {
-    id: string;
-    observationText: string;
+  id: string;
+  observationText: string;
 }
 
 interface DeleteObservationVars {
-    id: string;
+  id: string;
 }
 
 // --- Firebase Setup ---
@@ -28,9 +41,18 @@ const functions = getFunctions();
 const db = getFirestore();
 
 // Define callables with explicit types for better safety
-const addObservationCallable = httpsCallable<AddObservationVars, MutationSuccess>(functions, "addObservation");
-const updateObservationCallable = httpsCallable<UpdateObservationVars, MutationSuccess>(functions, "updateObservation");
-const deleteObservationCallable = httpsCallable<DeleteObservationVars, MutationSuccess>(functions, "deleteObservation");
+const addObservationCallable = httpsCallable<
+  AddObservationVars,
+  MutationSuccess
+>(functions, "addObservation");
+const updateObservationCallable = httpsCallable<
+  UpdateObservationVars,
+  MutationSuccess
+>(functions, "updateObservation");
+const deleteObservationCallable = httpsCallable<
+  DeleteObservationVars,
+  MutationSuccess
+>(functions, "deleteObservation");
 
 // --- React Query Hooks ---
 
@@ -87,52 +109,73 @@ export const useGetObservations = (date: Date) => {
  * Adds a new observation.
  */
 export const useAddObservation = () => {
-    const queryClient = useQueryClient();
-    return useMutation<HttpsCallableResult<MutationSuccess>, Error, AddObservationVars>({
-        mutationFn: async (variables) => addObservationCallable(variables),
-        onSuccess: (result) => {
-            toast.success(result.data.message);
-            queryClient.invalidateQueries({ queryKey: ["observations"] });
-        },
-        onError: (error: any) => {
-            const message = error.message || "Could not add observation.";
-            toast.error(message);
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<
+    HttpsCallableResult<MutationSuccess>,
+    Error,
+    AddObservationVars
+  >({
+    mutationFn: async (variables) => addObservationCallable(variables),
+    onSuccess: (result) => {
+      toast.success(result.data.message || "Observation added successfully!");
+      queryClient.invalidateQueries({ queryKey: ["observations"] });
+    },
+    onError: (error: any) => {
+      const message = getUserFriendlyErrorMessage(
+        error,
+        "Could not add your observation. Please try again."
+      );
+      toast.error(message);
+    },
+  });
 };
 
 /**
  * Updates an existing observation.
  */
 export const useUpdateObservation = () => {
-    const queryClient = useQueryClient();
-    return useMutation<HttpsCallableResult<MutationSuccess>, Error, UpdateObservationVars>({
-        mutationFn: async (variables) => updateObservationCallable(variables),
-        onSuccess: (result) => {
-            toast.success(result.data.message);
-            queryClient.invalidateQueries({ queryKey: ["observations"] });
-        },
-        onError: (error: any) => {
-            const message = error.message || "Could not update observation.";
-            toast.error(message);
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<
+    HttpsCallableResult<MutationSuccess>,
+    Error,
+    UpdateObservationVars
+  >({
+    mutationFn: async (variables) => updateObservationCallable(variables),
+    onSuccess: (result) => {
+      toast.success(result.data.message || "Observation updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["observations"] });
+    },
+    onError: (error: any) => {
+      const message = getUserFriendlyErrorMessage(
+        error,
+        "Could not update your observation. Please try again."
+      );
+      toast.error(message);
+    },
+  });
 };
 
 /**
  * Deletes an observation.
  */
 export const useDeleteObservation = () => {
-    const queryClient = useQueryClient();
-    return useMutation<HttpsCallableResult<MutationSuccess>, Error, DeleteObservationVars>({
-        mutationFn: async (variables) => deleteObservationCallable(variables),
-        onSuccess: (result) => {
-            toast.success(result.data.message);
-            queryClient.invalidateQueries({ queryKey: ["observations"] });
-        },
-        onError: (error: any) => {
-            const message = error.message || "Could not delete observation.";
-            toast.error(message);
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation<
+    HttpsCallableResult<MutationSuccess>,
+    Error,
+    DeleteObservationVars
+  >({
+    mutationFn: async (variables) => deleteObservationCallable(variables),
+    onSuccess: (result) => {
+      toast.success(result.data.message || "Observation deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["observations"] });
+    },
+    onError: (error: any) => {
+      const message = getUserFriendlyErrorMessage(
+        error,
+        "Could not delete your observation. Please try again."
+      );
+      toast.error(message);
+    },
+  });
 };
