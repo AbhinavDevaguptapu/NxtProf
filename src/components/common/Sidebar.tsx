@@ -45,6 +45,7 @@ import {
   BookCheck,
   Archive,
   ChevronLeft,
+  UserCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -68,6 +69,7 @@ const adminNavItems = [
   { id: "admin-peer-feedback", label: "Peer Feedback", icon: UsersRound },
   { id: "daily-observations", label: "Daily Observations", icon: BookCheck },
   { id: "manage-employees", label: "Manage Employees", icon: Users },
+  { id: "user-approval", label: "User Approval", icon: UserCheck },
   { id: "archived-employees", label: "Archived Employees", icon: Archive },
   { id: "attendance", label: "Manage Attendance", icon: CalendarCheck },
   { id: "onboardingKit", label: "Onboarding Kit", icon: Box },

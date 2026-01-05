@@ -1,7 +1,6 @@
 /**
  * @file Cloud Functions for task analysis and Google Sheet data retrieval.
  */
-import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getGeminiKey } from "./utils";
@@ -61,5 +60,3 @@ export const analyzeTask = onCall<{ prompt: string }>(
     }
   }
 );
-
-

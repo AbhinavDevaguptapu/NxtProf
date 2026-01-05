@@ -48,6 +48,9 @@ import { useLearningHourAttendance } from "@/features/learning-hours/hooks/useLe
 import { useLearningPoints } from "@/features/learning-hours/hooks/useLearningPoints";
 import { ScheduleLearningHourForm } from "@/features/learning-hours/components/ScheduleLearningHourForm";
 import { AttendanceCard } from "@/features/learning-hours/components/AttendanceCard";
+import {
+  formatErrorForDisplay,
+} from "@/lib/errorHandler";
 import { SessionStatistics } from "@/features/learning-hours/components/SessionStatistics";
 import { AbsenceReasonModal } from "@/features/learning-hours/components/AbsenceReasonModal";
 import { LearningPointsList } from "@/features/learning-hours/components/LearningPointsList";
@@ -450,14 +453,20 @@ export default function LearningHours() {
       await endSessionFunction({ sessionId: todayDocId });
 
       toast({
-        title: "Success",
-        description: "Session ended and points have been locked.",
+        title: "Session Ended",
+        description:
+          "Your learning session has been ended and points have been locked.",
       });
     } catch (error: any) {
       console.error("Error ending session:", error);
+      const { title, description } = formatErrorForDisplay(
+        error,
+        "Unable to End Session",
+        "ending"
+      );
       toast({
-        title: "Error",
-        description: error.message,
+        title,
+        description,
         variant: "destructive",
       });
     } finally {

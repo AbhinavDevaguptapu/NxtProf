@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getEmployeePerformanceSummary = exports.peerFeedback = exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = exports.getLearningPointsForEmployee = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.syncLearningHoursByDate = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
+exports.getEmployeePerformanceSummary = exports.peerFeedback = exports.getUnapprovedUsers = exports.approveUser = exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = exports.analyzeTask = exports.endActiveStandup = exports.startScheduledStandup = exports.scheduleDailyStandup = exports.deleteObservation = exports.updateObservation = exports.addObservation = exports.syncLearningHoursByDate = exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = exports.getRawFeedback = exports.getFeedbackAiSummary = exports.getFeedbackChartData = exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
 /**
  * @file Cloud Functions for the NxtProf application.
  * @description This file serves as the main entry point for all backend serverless logic.
@@ -73,7 +73,6 @@ Object.defineProperty(exports, "endActiveStandup", { enumerable: true, get: func
 // Task Analysis
 var taskAnalysis_1 = require("./taskAnalysis");
 Object.defineProperty(exports, "analyzeTask", { enumerable: true, get: function () { return taskAnalysis_1.analyzeTask; } });
-Object.defineProperty(exports, "getLearningPointsForEmployee", { enumerable: true, get: function () { return taskAnalysis_1.getLearningPointsForEmployee; } });
 // User Management
 var users_1 = require("./users");
 Object.defineProperty(exports, "addAdminRole", { enumerable: true, get: function () { return users_1.addAdminRole; } });
@@ -85,6 +84,8 @@ Object.defineProperty(exports, "archiveEmployee", { enumerable: true, get: funct
 Object.defineProperty(exports, "unarchiveEmployee", { enumerable: true, get: function () { return users_1.unarchiveEmployee; } });
 Object.defineProperty(exports, "getEmployeesWithAdminStatus", { enumerable: true, get: function () { return users_1.getEmployeesWithAdminStatus; } });
 Object.defineProperty(exports, "getArchivedEmployees", { enumerable: true, get: function () { return users_1.getArchivedEmployees; } });
+Object.defineProperty(exports, "approveUser", { enumerable: true, get: function () { return users_1.approveUser; } });
+Object.defineProperty(exports, "getUnapprovedUsers", { enumerable: true, get: function () { return users_1.getUnapprovedUsers; } });
 // Peer Feedback (exports all functions from the module as a single group)
 exports.peerFeedback = __importStar(require("./peerFeedback"));
 // Performance

@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = void 0;
+exports.approveUser = exports.getUnapprovedUsers = exports.getArchivedEmployees = exports.getEmployeesWithAdminStatus = exports.unarchiveEmployee = exports.archiveEmployee = exports.deleteEmployee = exports.removeCoAdminRole = exports.addCoAdminRole = exports.removeAdminRole = exports.addAdminRole = void 0;
 /**
  * @file User and role management Cloud Functions.
  */
@@ -234,6 +234,44 @@ exports.getArchivedEmployees = (0, https_1.onCall)({ cors: true }, async (reques
     catch (error) {
         console.error("Error fetching archived employees:", error);
         throw new https_1.HttpsError("internal", "Failed to fetch archived employee data.");
+    }
+});
+exports.getUnapprovedUsers = (0, https_1.onCall)({ cors: true }, async (request) => {
+    var _a;
+    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can view unapproved users.");
+    }
+    try {
+        const employeesSnapshot = await admin.firestore().collection("employees")
+            .where("admin_approval_required", "==", true)
+            .orderBy("name")
+            .get();
+        const users = employeesSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+        return users;
+    }
+    catch (error) {
+        console.error("Error fetching unapproved users:", error);
+        throw new https_1.HttpsError("internal", "Failed to fetch unapproved users.");
+    }
+});
+exports.approveUser = (0, https_1.onCall)({ cors: true }, async (request) => {
+    var _a;
+    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
+        throw new https_1.HttpsError("permission-denied", "Only admins can approve users.");
+    }
+    const uid = request.data.uid;
+    if (!uid) {
+        throw new https_1.HttpsError("invalid-argument", "Missing uid.");
+    }
+    try {
+        await admin.firestore().doc(`employees/${uid}`).update({
+            admin_approval_required: false
+        });
+        return { message: "User approved successfully." };
+    }
+    catch (error) {
+        console.error("Error approving user:", error);
+        throw new https_1.HttpsError("internal", "Failed to approve user.");
     }
 });
 //# sourceMappingURL=users.js.map

@@ -19,6 +19,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { AttendanceReport } from "./AttendanceReport";
+import { getUserFriendlyErrorMessage } from "@/lib/errorHandler";
 
 type SessionType = "standups" | "learning_hours";
 
@@ -41,33 +42,34 @@ export const AdminAttendanceView = () => {
       const date = format(selectedDate, "yyyy-MM-dd");
 
       toast({
-        title: "Sync Started",
-        description: `Syncing ${sessionType} data for ${date}...`,
+        title: "Syncing Data...",
+        description: `Please wait while we sync ${sessionType.replace(
+          "_",
+          " "
+        )} attendance for ${date}.`,
       });
 
       const result = await syncAttendanceToSheet({ date, sessionType });
 
       toast({
-        title: "Sync Successful",
-        description: (result.data as any).message,
+        title: "Sync Complete",
+        description:
+          (result.data as any).message ||
+          "Data has been synchronized successfully to the sheet.",
       });
     } catch (error: any) {
       console.error("Sync failed:", error);
-      if (error.code === "functions/permission-denied") {
-        toast({
-          title: "Permission Denied",
-          description:
-            "Please try logging out and back in to refresh your admin permissions.",
-          variant: "destructive",
-          duration: 10000,
-        });
-      } else {
-        toast({
-          title: "Sync Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
+      const message = getUserFriendlyErrorMessage(
+        error,
+        "Failed to sync attendance data. Please try again or contact support."
+      );
+
+      toast({
+        title: "Sync Failed",
+        description: message,
+        variant: "destructive",
+        duration: 10000,
+      });
     } finally {
       setIsSyncing(false);
     }

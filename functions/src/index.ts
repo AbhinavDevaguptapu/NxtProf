@@ -13,36 +13,36 @@ export { syncAttendanceToSheet, scheduledSync } from "./attendanceSync";
 
 // Feedback Analysis
 export {
-    getFeedbackChartData,
-    getFeedbackAiSummary,
-    getRawFeedback,
+  getFeedbackChartData,
+  getFeedbackAiSummary,
+  getRawFeedback,
 } from "./feedbackAnalysis";
 
 // Learning Sessions
 export {
-    endLearningSessionAndLockPoints,
-    getLearningPointsByDate,
+  endLearningSessionAndLockPoints,
+  getLearningPointsByDate,
 } from "./learningSessions";
 
 // Learning Hours Sync
 export {
-    syncLearningPointsToSheet,
-    autoSyncLearningPoints,
-    syncLearningHoursByDate,
+  syncLearningPointsToSheet,
+  autoSyncLearningPoints,
+  syncLearningHoursByDate,
 } from "./syncLearningHours";
 
 // Daily Observations
 export {
-    addObservation,
-    updateObservation,
-    deleteObservation,
+  addObservation,
+  updateObservation,
+  deleteObservation,
 } from "./dailyObservations";
 
 // Standups
 export {
-    scheduleDailyStandup,
-    startScheduledStandup,
-    endActiveStandup,
+  scheduleDailyStandup,
+  startScheduledStandup,
+  endActiveStandup,
 } from "./standups";
 
 // Task Analysis
@@ -50,15 +50,17 @@ export { analyzeTask } from "./taskAnalysis";
 
 // User Management
 export {
-    addAdminRole,
-    removeAdminRole,
-    addCoAdminRole,
-    removeCoAdminRole,
-    deleteEmployee,
-    archiveEmployee,
-    unarchiveEmployee,
-    getEmployeesWithAdminStatus,
-    getArchivedEmployees,
+  addAdminRole,
+  removeAdminRole,
+  addCoAdminRole,
+  removeCoAdminRole,
+  deleteEmployee,
+  archiveEmployee,
+  unarchiveEmployee,
+  getEmployeesWithAdminStatus,
+  getArchivedEmployees,
+  approveUser,
+  getUnapprovedUsers,
 } from "./users";
 
 // Peer Feedback (exports all functions from the module as a single group)

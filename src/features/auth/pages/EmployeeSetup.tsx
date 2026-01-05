@@ -150,9 +150,11 @@ export default function EmployeeSetup() {
                 employeeId: string;
                 hasCompletedSetup: boolean;
                 feedbackSheetUrl?: string;
+                admin_approval_required: boolean;
             } = {
                 employeeId,
                 hasCompletedSetup: true,
+                admin_approval_required: true,
             };
 
             if (cleanedSheetLink) {

@@ -20,6 +20,7 @@ import FloatingNav from "@/components/common/FloatingNav";
 import DailyObservationsPage from "@/features/daily-observations/pages/DailyObservationsPage";
 import ArchivedEmployeesPage from "@/features/admin/pages/ArchivedEmployeesPage";
 import CoAdminAddLearningPoints from "@/features/co-admin/pages/CoAdminAddLearningPoints";
+import UserApprovalPage from "@/features/admin/pages/UserApprovalPage";
 
 export type ViewType =
   | "home"
@@ -37,7 +38,8 @@ export type ViewType =
   | "learning-hours-points"
   | "daily-observations"
   | "archived-employees"
-  | "add-learning-points";
+  | "add-learning-points"
+  | "user-approval";
 
 export interface ViewState {
   view: ViewType;
@@ -117,6 +119,7 @@ export default function AppShell() {
       "archived-employees": admin ? ArchivedEmployeesPage : AccessDenied,
       "add-learning-points":
         isAdmin || isCoAdmin ? CoAdminAddLearningPoints : AccessDenied,
+      "user-approval": admin ? UserApprovalPage : AccessDenied,
     };
 
     const ComponentToRender = viewMap[view] || viewMap.home;

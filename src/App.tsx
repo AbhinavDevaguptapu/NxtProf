@@ -14,6 +14,7 @@ import LandingPage from "@/features/home/pages/LandingPage";
 import AppShell from "@/layout/AppShell";
 import NotFound from "@/features/not-found/pages/NotFound";
 import DailyObservationsPage from "@/features/daily-observations/pages/DailyObservationsPage";
+import PendingApproval from "@/features/auth/pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
@@ -38,11 +39,16 @@ const GlobalLoading = () => (
 );
 
 const AppContent = () => {
-  const { user, initialized: userInitialized } = useUserAuth();
+  const { user, userProfile, initialized: userInitialized, isAdmin } = useUserAuth();
   const { initialized: adminInitialized } = useAdminAuth();
 
   if (!userInitialized || !adminInitialized) {
     return <GlobalLoading />;
+  }
+
+  // If user is logged in, not an admin, and requires approval
+  if (user && !isAdmin && userProfile?.admin_approval_required) {
+    return <PendingApproval />;
   }
 
   return (
