@@ -232,6 +232,9 @@ const SidebarContent = ({
         ) {
           return false; // Hide for co-admins (but show for admins)
         }
+        if (item.id === "user-approval" && isCoAdmin && !admin) {
+          return false; // Hide user approval for co-admins
+        }
         return true;
       })
       .map((item) => {

@@ -506,6 +506,9 @@ const EmployeeDetailHeader = ({
     }
     try {
       const functions = getFunctions();
+      const callable = httpsCallable(functions, fnName);
+      await callable({ email: employee.email });
+
       toast({
         title: "Role Updated",
         description: `${employee.name} has been ${actionLabel}.`,
