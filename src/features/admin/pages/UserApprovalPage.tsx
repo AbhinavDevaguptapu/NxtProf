@@ -33,7 +33,10 @@ export default function UserApprovalPage() {
     try {
       const getUnapprovedUsers = httpsCallable(functions, "getUnapprovedUsers");
       const result = await getUnapprovedUsers();
-      setUsers((result.data as any[]) || []);
+      const data = (result.data as PendingUser[]) || [];
+      // Client-side sorting to avoid Firestore index requirement
+      data.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      setUsers(data);
     } catch (error) {
       console.error("Error fetching users:", error);
       const message = getUserFriendlyErrorMessage(

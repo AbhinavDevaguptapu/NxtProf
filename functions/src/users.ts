@@ -215,7 +215,6 @@ export const getUnapprovedUsers = onCall({ cors: true }, async (request) => {
     try {
         const employeesSnapshot = await admin.firestore().collection("employees")
             .where("admin_approval_required", "==", true)
-            .orderBy("name")
             .get();
 
         const users = employeesSnapshot.docs.map(doc => ({
