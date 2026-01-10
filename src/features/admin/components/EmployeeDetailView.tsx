@@ -124,10 +124,6 @@ interface EditableEmployeeData {
   feedbackSheetUrl: string;
 }
 
-interface CallableResponse {
-  message: string;
-}
-
 // Firestore update function
 const updateEmployee = async (
   id: string,
@@ -1104,7 +1100,9 @@ export default function EmployeeDetailView({
             <StatCard
               title="Standup Attendance"
               value={`${Math.round(
-                (performanceData.standupAttendance.present /
+                ((performanceData.standupAttendance.present +
+                  performanceData.standupAttendance.absent +
+                  performanceData.standupAttendance.unavailable) /
                   performanceData.workingDays) *
                   100
               )}%`}
@@ -1114,7 +1112,9 @@ export default function EmployeeDetailView({
             <StatCard
               title="Learning Attendance"
               value={`${Math.round(
-                (performanceData.learningAttendance.present /
+                ((performanceData.learningAttendance.present +
+                  performanceData.learningAttendance.absent +
+                  performanceData.learningAttendance.unavailable) /
                   performanceData.workingDays) *
                   100
               )}%`}
