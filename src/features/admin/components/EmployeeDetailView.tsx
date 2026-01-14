@@ -21,6 +21,7 @@ import {
   Activity,
   ShieldCheck,
   ShieldOff,
+  BrainCircuit,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -79,6 +80,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { getUserFriendlyErrorMessage } from "@/lib/errorHandler";
+import { useEmployeeLearningPoints } from "@/features/learning-hours/hooks/useEmployeeLearningPoints";
 
 ChartJS.register(
   CategoryScale,
@@ -409,7 +411,125 @@ const FeedbackTabContent = ({
   );
 };
 
-// --- HEADER COMPONENT ---
+// --- Learning History Tab ---
+const LearningHistoryTabContent = ({
+  employeeId,
+  month,
+}: {
+  employeeId: string;
+  month: string;
+}) => {
+  const { learningPoints, isLoading, error } = useEmployeeLearningPoints(
+    employeeId,
+    month
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3 p-1">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-32 w-full rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center bg-red-50 text-red-600 rounded-lg">
+        {error}
+      </div>
+    );
+  }
+
+  if (learningPoints.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 bg-muted/30 rounded-xl border border-dashed text-muted-foreground">
+        <BrainCircuit className="h-10 w-10 mb-3 opacity-20" />
+        <p>No learning history for this month.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {learningPoints.map((point) => (
+        <Card
+          key={point.id}
+          className="overflow-hidden hover:bg-muted/10 transition-colors"
+        >
+          <CardContent className="p-5">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                      point.point_type === "R1"
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        : point.point_type === "R2"
+                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                        : "bg-orange-50 text-orange-700 border-orange-200"
+                    }`}
+                  >
+                    {point.point_type}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                    {point.framework_category}
+                  </span>
+                </div>
+                <h4 className="font-semibold text-lg text-foreground leading-tight">
+                  {point.task_name}
+                </h4>
+              </div>
+              <div className="text-xs text-muted-foreground font-medium whitespace-nowrap bg-muted/50 px-2 py-1 rounded">
+                {point.createdAt
+                  ? format(point.createdAt.toDate(), "MMM dd, yyyy")
+                  : "N/A"}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 mt-1 text-sm border-t border-border/50">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                  Situation
+                </span>
+                <p className="text-muted-foreground/90 line-clamp-3">
+                  {point.situation}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                  Behavior
+                </span>
+                <p className="text-muted-foreground/90 line-clamp-3">
+                  {point.behavior}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                  Impact
+                </span>
+                <p className="text-muted-foreground/90 line-clamp-3">
+                  {point.impact}
+                </p>
+              </div>
+            </div>
+            {point.action_item && (
+              <div className="mt-4 pt-3 border-t border-border/50">
+                <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider block mb-1">
+                  Action Item
+                </span>
+                <p className="text-sm text-foreground/90">
+                  {point.action_item}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
 const EmployeeDetailHeader = ({
   employee,
   onActionComplete,
@@ -508,7 +628,7 @@ const EmployeeDetailHeader = ({
       toast({
         title: "Role Updated",
         description: `${employee.name} has been ${actionLabel}.`,
-        className: "bg-blue-500 text-white",
+        className: "bg-indigo-500 text-white",
       });
       onActionComplete();
     } catch (err) {
@@ -688,7 +808,7 @@ const EmployeeDetailHeader = ({
             <AlertDialogTrigger asChild>
               <TriggerComponent
                 {...props}
-                className="gap-2 text-blue-600 focus:text-blue-700"
+                className="gap-2 text-indigo-600 focus:text-indigo-700"
                 variant={isDropdown ? undefined : "outline"}
                 size={isDropdown ? undefined : "sm"}
               >
@@ -888,7 +1008,7 @@ const EmployeeDetailHeader = ({
               {employee.name}
             </h1>
             {employee.isAdmin && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Admin
               </span>
@@ -1107,7 +1227,7 @@ export default function EmployeeDetailView({
                   100
               )}%`}
               icon={Activity}
-              color="text-blue-600"
+              color="text-indigo-600"
             />
             <StatCard
               title="Learning Attendance"
@@ -1126,12 +1246,15 @@ export default function EmployeeDetailView({
       ) : null}
 
       <Tabs defaultValue="performance" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <Activity className="h-4 w-4" /> Performance
           </TabsTrigger>
           <TabsTrigger value="feedback" className="flex items-center gap-2">
             <Star className="h-4 w-4" /> Feedback
+          </TabsTrigger>
+          <TabsTrigger value="learning" className="flex items-center gap-2">
+            <BrainCircuit className="h-4 w-4" /> Learning History
           </TabsTrigger>
         </TabsList>
         <TabsContent value="performance" className="mt-2 space-y-6">
@@ -1196,6 +1319,12 @@ export default function EmployeeDetailView({
               />
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="learning" className="mt-2">
+          <LearningHistoryTabContent
+            employeeId={employee.id}
+            month={selectedMonth}
+          />
         </TabsContent>
       </Tabs>
     </div>

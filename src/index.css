@@ -1,7 +1,7 @@
 /* src/index.css */
 
 /* 1. Font Import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 /* 2. Tailwind Setup */
 @tailwind base;
@@ -82,7 +82,7 @@
   /* Base body styles */
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
   }
 }
 
@@ -100,7 +100,6 @@
 }
 
 @keyframes pulse-slow {
-
   0%,
   100% {
     opacity: 0.15;
@@ -165,7 +164,6 @@
 
 /* 6. Float Animation (example) */
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -180,11 +178,76 @@
   animation: float 6s ease-in-out infinite;
 }
 
+/* 7. Wave Animations for Landing Page */
+@keyframes wave-horizontal {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-wave-slow {
+  animation: wave-horizontal 15s linear infinite;
+}
+
+.animate-wave-slower {
+  animation: wave-horizontal 20s linear infinite;
+}
+
+.animate-wave-medium {
+  animation: wave-horizontal 10s linear infinite;
+}
+
 /* 7. Custom Scrollbar Hiding Utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* 8. Enhanced UI Utility Classes */
+.card-interactive {
+  @apply transition-all duration-200 ease-out;
+}
+.card-interactive:hover {
+  @apply shadow-md -translate-y-0.5;
+}
+
+.nav-item-active {
+  @apply bg-primary/5 border-l-2 border-primary;
+}
+
+/* 9. Custom Scrollbar Styling */
+.styled-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.styled-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+.styled-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full;
+}
+.styled-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
+}
+
+/* 10. Focus Ring Improvements */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+}
+
+/* 11. Section Header Styling */
+.section-label {
+  @apply text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2;
+}
+
+/* 12. Gradient Text Effect */
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70;
 }

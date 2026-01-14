@@ -36,12 +36,11 @@ import {
   CalendarIcon,
   Clock,
   Info,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import {
-  formatErrorForDisplay,
-} from "@/lib/errorHandler";
+import { formatErrorForDisplay } from "@/lib/errorHandler";
 
 export const ScheduleStandupForm = ({
   todayDocId,
@@ -52,6 +51,7 @@ export const ScheduleStandupForm = ({
   adminName: string;
   onSuccess?: () => void;
 }) => {
+  // [LOGIC PRESERVED] - State and handlers unchanged
   const { toast } = useToast();
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(
@@ -132,55 +132,80 @@ export const ScheduleStandupForm = ({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
+      className="w-full max-w-md mx-auto"
     >
-      <Card className="w-full max-w-md shadow-2xl shadow-primary/10 border-border/50">
-        <CardHeader className="text-center p-6">
-          <div className="mx-auto bg-primary/10 text-primary rounded-full h-14 w-14 flex items-center justify-center mb-2 ring-4 ring-background">
-            <CalendarClock className="h-7 w-7" />
-          </div>
-          <CardTitle className="text-2xl font-bold">
-            Schedule Today&rsquo;s Standup
-          </CardTitle>
-          <CardDescription>
-            Set the date and time for the daily meeting.
-          </CardDescription>
-        </CardHeader>
+      <Card className="shadow-xl border-border/50 overflow-hidden">
+        {/* Decorative Header */}
+        <div className="relative bg-muted/20 pt-8 pb-10 px-6 text-center">
+          {/* Background Decorations */}
+          <div
+            className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute bottom-0 left-0 w-24 h-24 bg-secondary/30 rounded-full blur-2xl"
+            aria-hidden="true"
+          />
 
-        <CardContent className="p-6 pt-0 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="relative z-10">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="mx-auto bg-background/50 backdrop-blur-sm p-3 rounded-2xl w-16 h-16 flex items-center justify-center border border-border/50 mb-4 shadow-sm"
+            >
+              <CalendarClock className="h-8 w-8 text-primary" />
+            </motion.div>
+            <CardTitle className="text-2xl font-bold">
+              Schedule Standup
+            </CardTitle>
+            <CardDescription className="max-w-xs mx-auto mt-2 text-muted-foreground">
+              Set the date and time for the daily team meeting.
+            </CardDescription>
+          </div>
+        </div>
+
+        <CardContent className="p-6 space-y-6">
+          <div className="grid grid-cols-1 gap-5">
             <div className="space-y-2">
-              <Label htmlFor="date-picker">Date</Label>
+              <Label htmlFor="date-picker" className="text-sm font-semibold">
+                Date
+              </Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     id="date-picker"
                     variant="outline"
                     className={cn(
-                      "w-full h-10 justify-start text-left font-normal",
+                      "w-full h-11 justify-start text-left font-normal border-input hover:bg-accent/50",
                       !scheduledDate && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
                     {scheduledDate ? (
-                      format(scheduledDate, "MMM dd, yyyy")
+                      format(scheduledDate, "MMMM dd, yyyy")
                     ) : (
                       <span>Select date</span>
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={scheduledDate}
                     onSelect={setScheduledDate}
                     initialFocus
                     disabled={(d) => startOfDay(d) < startOfDay(new Date())}
+                    className="rounded-md border"
                   />
                 </PopoverContent>
               </Popover>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="time-input">Time</Label>
+              <Label htmlFor="time-input" className="text-sm font-semibold">
+                Time
+              </Label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -188,17 +213,20 @@ export const ScheduleStandupForm = ({
                   type="time"
                   value={scheduledTimeInput}
                   onChange={(e) => setScheduledTimeInput(e.target.value)}
-                  className="pl-9 h-10"
+                  className="pl-10 h-11"
                 />
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">
-              Quick Select
-            </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Quick Select
+              </Label>
+              <Sparkles className="h-3 w-3 text-amber-500" />
+            </div>
+            <div className="grid grid-cols-4 gap-2">
               {timeSuggestions.map((time) => (
                 <Button
                   key={time}
@@ -206,8 +234,9 @@ export const ScheduleStandupForm = ({
                   size="sm"
                   onClick={() => setScheduledTimeInput(time)}
                   className={cn(
+                    "text-xs h-9 transition-all hover:border-primary/50 hover:bg-primary/5",
                     scheduledTimeInput === time &&
-                      "bg-primary/10 border-primary text-primary"
+                      "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary/20"
                   )}
                 >
                   {format(parse(time, "HH:mm", new Date()), "h:mm a")}
@@ -216,20 +245,21 @@ export const ScheduleStandupForm = ({
             </div>
           </div>
 
-          <Alert className="bg-muted/50 border-border/50">
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              Standups can only be scheduled for today or future dates in
+          <Alert className="bg-muted/30 border-dashed border-border text-xs">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            <AlertDescription className="text-muted-foreground ml-2">
+              Standups can only be scheduled for today or future dates using
               24-hour format.
             </AlertDescription>
           </Alert>
         </CardContent>
+
         <CardFooter className="p-6 pt-0">
           <Button
             onClick={handleSchedule}
             disabled={isScheduling}
             size="lg"
-            className="w-full text-base"
+            className="w-full h-11 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
           >
             {isScheduling ? (
               <>
