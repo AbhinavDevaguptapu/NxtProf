@@ -10,6 +10,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   FilePlus,
   Lock,
@@ -40,17 +41,30 @@ import {
   Pencil,
   Eye,
   BookOpen,
+  Sparkles,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Send,
+  ArrowRight,
+  Info,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { LearningPoint } from "../types";
-import { LearningPointForm } from "./LearningPointForm";
 import { LearningPointFormFields } from "./LearningPointFormFields";
-import { LearningPointSummaryModal } from "./LearningPointSummaryModal";
 import { analyzeTask } from "@/features/task-analyzer/services/geminiService";
 import { TaskData, AnalysisResult } from "@/features/task-analyzer/types";
 import { AIAssistant } from "./AIAssistant";
 import { Suggestions } from "../services/learningPointsAIService";
 import { getUserFriendlyErrorMessage } from "@/lib/errorHandler";
+import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@radix-ui/react-tooltip";
 
 // --- FORM SCHEMA ---
 const formSchema = z
@@ -115,9 +129,13 @@ type LearningPointsListProps = {
 const InlineLearningPointForm = ({
   onFormSubmit,
   onCancel,
+  initialData,
+  isEditing = false,
 }: {
   onFormSubmit: (data: any) => void;
   onCancel: () => void;
+  initialData?: any;
+  isEditing?: boolean;
 }) => {
   const [analysisScore, setAnalysisScore] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -133,7 +151,7 @@ const InlineLearningPointForm = ({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       date: new Date(),
       task_name: "",
       framework_category: "",
@@ -281,7 +299,7 @@ const InlineLearningPointForm = ({
   const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
     const submissionData = {
       ...data,
-      date: Timestamp.fromDate(data.date),
+      date: Timestamp.fromDate(data.date || new Date()),
     };
     onFormSubmit(submissionData);
     form.reset();
@@ -390,88 +408,155 @@ const InlineLearningPointForm = ({
 
   return (
     <FormProvider {...form}>
-      <div className="relative">
+      <Card className="relative overflow-hidden border-border/50 shadow-md">
+        {/* Decorative top border */}
+
         <form
           onSubmit={form.handleSubmit(handleFormSubmit)}
-          className="space-y-6 p-6 border rounded-lg bg-background"
+          className="p-6 space-y-8"
         >
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <FilePlus className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-xl font-bold">
+              {isEditing ? "Edit Learning Point" : "New Learning Point"}
+            </h3>
+          </div>
+
           <LearningPointFormFields />
 
-          <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
-            {!isR3Point && (
-              <Button
-                type="button"
-                onClick={handleAnalysis}
-                disabled={analysisDisabled}
-                className="w-full sm:w-auto"
-              >
-                {isAnalyzing ? "Analyzing..." : "Get Analysis and Confirmation"}
-              </Button>
-            )}
-            <Button
-              type="submit"
-              disabled={isSubmitDisabled}
-              className="w-full sm:w-auto"
-            >
-              Submit
-            </Button>
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-6 border-t">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={onCancel}
               className="w-full sm:w-auto"
             >
               Cancel
             </Button>
+
+            {!isR3Point && (
+              <Button
+                type="button"
+                onClick={handleAnalysis}
+                disabled={analysisDisabled}
+                variant="secondary"
+                className="w-full sm:w-auto bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/50"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" /> Analyze & Verify
+                  </>
+                )}
+              </Button>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isSubmitDisabled}
+              className="w-full sm:w-auto min-w-[120px]"
+            >
+              Submit
+            </Button>
           </div>
         </form>
 
-        <AIAssistant onApplySuggestions={handleApplyAISuggestions} />
-      </div>
+        {!isEditing && (
+          <AIAssistant onApplySuggestions={handleApplyAISuggestions} />
+        )}
+      </Card>
 
       <AlertDialog
         open={!!analysisError}
         onOpenChange={() => setAnalysisError(null)}
       >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Analysis Failed</AlertDialogTitle>
-            <AlertDialogDescription>{analysisError}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setAnalysisError(null)}>
-              OK
+          <div className="flex flex-col items-center text-center gap-4 py-4">
+            <div className="p-3 bg-red-100 text-red-600 rounded-full">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <AlertDialogTitle>Analysis Failed</AlertDialogTitle>
+              <AlertDialogDescription>{analysisError}</AlertDialogDescription>
+            </div>
+          </div>
+
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogAction
+              onClick={() => setAnalysisError(null)}
+              className="min-w-[120px]"
+            >
+              Okay, got it
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] w-[95vw]">
-          <DialogHeader>
-            <DialogTitle>Analysis Result</DialogTitle>
-            <DialogDescription>
-              Here are your analysis Results:
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-4">
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col p-0 overflow-hidden gap-0">
+          <div className="p-6 pb-2 border-b bg-muted/20">
+            <div className="flex items-center gap-3 mb-1">
+              <div
+                className={cn(
+                  "p-2 rounded-lg",
+                  analysisScore !== null && analysisScore >= 75
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                )}
+              >
+                {analysisScore !== null && analysisScore >= 75 ? (
+                  <CheckCircle2 className="h-6 w-6" />
+                ) : (
+                  <AlertTriangle className="h-6 w-6" />
+                )}
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Analysis Result</DialogTitle>
+                <DialogDescription>
+                  Based on task framework best practices.
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-6">
               {analysisScore !== null && (
-                <div className="text-lg font-semibold">
-                  Score:{" "}
-                  <span
-                    className={
-                      analysisScore >= 75 ? "text-green-600" : "text-red-600"
-                    }
-                  >
-                    {analysisScore.toFixed(2)}%
+                <div className="flex items-center justify-between p-4 bg-background border rounded-xl shadow-sm">
+                  <span className="font-semibold text-muted-foreground">
+                    Quality Score
                   </span>
+                  <div className="flex items-baseline gap-1">
+                    <span
+                      className={cn(
+                        "text-3xl font-bold",
+                        analysisScore >= 75 ? "text-green-600" : "text-red-600"
+                      )}
+                    >
+                      {analysisScore.toFixed(0)}
+                    </span>
+                    <span className="text-muted-foreground font-medium">
+                      /100
+                    </span>
+                  </div>
                 </div>
               )}
+
               {analysisRationale && (
-                <p className="text-sm text-muted-foreground">
-                  {analysisRationale}
-                </p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Info className="h-4 w-4 text-primary" /> Analysis Rationale
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/50">
+                    {analysisRationale}
+                  </p>
+                </div>
               )}
 
               {/* Display corrections if available */}
@@ -482,80 +567,84 @@ const InlineLearningPointForm = ({
                   fullAnalysisResult.correctedBehavior ||
                   fullAnalysisResult.correctedImpact ||
                   fullAnalysisResult.correctedActionItem) && (
-                  <div className="mt-6 p-4 bg-muted/50 border rounded-lg">
-                    <h4 className="font-semibold text-foreground mb-3">
-                      Suggested Improvements:
+                  <div className="space-y-4">
+                    <h4 className="font-semibold flex items-center gap-2 text-amber-600">
+                      <Sparkles className="h-4 w-4" /> Suggested Improvements
                     </h4>
-                    <div className="space-y-2 text-sm">
+                    <div className="grid gap-4">
                       {fullAnalysisResult.correctedRecipient && (
-                        <div>
-                          <strong className="text-primary">Recipient:</strong>
-                          <p className="text-muted-foreground mt-1">
+                        <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-lg">
+                          <strong className="text-xs uppercase tracking-wider text-muted-foreground block mb-1">
+                            Recipient
+                          </strong>
+                          <p className="text-sm">
                             {fullAnalysisResult.correctedRecipient}
                           </p>
                         </div>
                       )}
-                      {fullAnalysisResult.correctedSituation && (
-                        <div>
-                          <strong className="text-primary">Situation:</strong>
-                          <p className="text-muted-foreground mt-1">
-                            {fullAnalysisResult.correctedSituation}
-                          </p>
-                        </div>
-                      )}
-                      {fullAnalysisResult.correctedBehavior && (
-                        <div>
-                          <strong className="text-primary">Behavior:</strong>
-                          <p className="text-muted-foreground mt-1">
-                            {fullAnalysisResult.correctedBehavior}
-                          </p>
-                        </div>
-                      )}
-                      {fullAnalysisResult.correctedImpact && (
-                        <div>
-                          <strong className="text-primary">Impact:</strong>
-                          <p className="text-muted-foreground mt-1">
-                            {fullAnalysisResult.correctedImpact}
-                          </p>
-                        </div>
-                      )}
-                      {fullAnalysisResult.correctedActionItem && (
-                        <div>
-                          <strong className="text-primary">Action Item:</strong>
-                          <p className="text-muted-foreground mt-1">
-                            {fullAnalysisResult.correctedActionItem}
-                          </p>
-                        </div>
+
+                      {/* Similar blocks for other corrected fields... simplified for brevity but functionality remains */}
+                      {[
+                        {
+                          label: "Situation",
+                          val: fullAnalysisResult.correctedSituation,
+                        },
+                        {
+                          label: "Behavior",
+                          val: fullAnalysisResult.correctedBehavior,
+                        },
+                        {
+                          label: "Impact",
+                          val: fullAnalysisResult.correctedImpact,
+                        },
+                        {
+                          label: "Action Item",
+                          val: fullAnalysisResult.correctedActionItem,
+                        },
+                      ].map(
+                        (field) =>
+                          field.val && (
+                            <div
+                              key={field.label}
+                              className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-lg"
+                            >
+                              <strong className="text-xs uppercase tracking-wider text-muted-foreground block mb-1">
+                                {field.label}
+                              </strong>
+                              <p className="text-sm">{field.val}</p>
+                            </div>
+                          )
                       )}
                     </div>
                   </div>
                 )}
-
-              {/* Replace Suggestions Button */}
-              {fullAnalysisResult &&
-                fullAnalysisResult.status === "Needs improvement" &&
-                hasCorrections && (
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      onClick={() => setIsConfirmDialogOpen(true)}
-                      className="w-full sm:w-auto"
-                    >
-                      <span className="hidden sm:inline">
-                        Replace Suggestions
-                      </span>
-                      <span className="sm:hidden">Replace</span>
-                    </Button>
-                  </div>
-                )}
-
-              {analysisScore < 75 && (
-                <p className="text-sm text-red-600">
-                  Your score is below 75%. Please improve your points and re-run
-                  the analysis.
-                </p>
-              )}
             </div>
-          </ScrollArea>
+          </div>
+
+          <div className="p-4 border-t bg-muted/20 flex flex-col sm:flex-row gap-3 justify-end items-center">
+            {analysisScore !== null && analysisScore < 75 && (
+              <p className="text-xs text-red-600 font-medium mr-auto">
+                Score &lt; 75%: Action required to submit.
+              </p>
+            )}
+
+            {/* Replace Suggestions Button */}
+            {fullAnalysisResult &&
+              fullAnalysisResult.status === "Needs improvement" &&
+              hasCorrections && (
+                <Button
+                  onClick={() => setIsConfirmDialogOpen(true)}
+                  className="w-full sm:w-auto"
+                  variant="default"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" /> Accept Improvements
+                </Button>
+              )}
+
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              Close
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -564,20 +653,20 @@ const InlineLearningPointForm = ({
         open={isConfirmDialogOpen}
         onOpenChange={setIsConfirmDialogOpen}
       >
-        <AlertDialogContent className="sm:max-w-[450px] w-[95vw]">
+        <AlertDialogContent className="sm:max-w-[450px]">
           <AlertDialogHeader>
             <AlertDialogTitle>Replace with AI Suggestions?</AlertDialogTitle>
             <AlertDialogDescription>
-              Do you want to really replace? AI suggestions are sometimes
-              inaccurate.
+              This will overwrite your current entries with the AI-improved
+              versions.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsConfirmDialogOpen(false)}>
-              No, Keep My Data
+              Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleApplySuggestions}>
-              Yes, Replace with AI Suggestions
+              Apply Changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -632,253 +721,334 @@ export const LearningPointsList = ({
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteConfirmPoint(null);
-  };
-
   return (
-    <>
-      <div className="mt-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-              My Learning Points
-            </h2>
-            {!isFormOpen && (
-              <a
-                href="https://d2rj3iig8nko29.cloudfront.net/website-static/task-framework.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex items-center gap-1.5 mt-1"
-              >
-                <BookOpen className="h-4 w-4" />
-                View Task Framework Guide
-              </a>
-            )}
-          </div>
-          {!isFormOpen && (
-            <Button onClick={() => setIsFormOpen(true)} disabled={isDayLocked}>
-              <FilePlus className="mr-2 h-4 w-4" />
-              Add New Point
-            </Button>
-          )}
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 border-b pb-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">
+            My Learning Points
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Reflect on your daily tasks using the{" "}
+            <a
+              href="https://d2rj3iig8nko29.cloudfront.net/website-static/task-framework.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Task Framework
+            </a>
+            .
+          </p>
         </div>
-
-        <AnimatePresence>
-          {isFormOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-6"
-            >
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
-                <p className="text-sm text-muted-foreground text-center sm:text-left">
-                  Please refer the Guide before writing points.
-                </p>
-                <a
-                  href="https://d2rj3iig8nko29.cloudfront.net/website-static/task-framework.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-semibold text-primary hover:underline flex items-center gap-1.5 p-2 rounded-md bg-primary/10"
-                >
-                  <BookOpen className="h-4 w-4" />
-                  View Task Framework Guide
-                </a>
-              </div>
-              <InlineLearningPointForm
-                onFormSubmit={handleAddFormSubmit}
-                onCancel={() => setIsFormOpen(false)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {isDayLocked && (
-          <Alert className="mb-4 border-red-400 text-red-700">
-            <Lock className="h-4 w-4 !text-red-700" />
-            <AlertTitle>Day Locked</AlertTitle>
-            <AlertDescription>
-              The learning session for today has been ended by an admin. You can
-              no longer add or edit points for today.
-            </AlertDescription>
-          </Alert>
+        {!isFormOpen && (
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            disabled={isDayLocked}
+            size="lg"
+            className="shadow-md transition-transform hover:scale-[1.02]"
+          >
+            <FilePlus className="mr-2 h-5 w-5" />
+            Add Learning Point
+          </Button>
         )}
+      </div>
 
-        <AnimatePresence mode="wait">
-          {points.length > 0 ? (
-            <motion.div
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              key="points-grid"
-            >
-              {points.map((point) => {
-                const isEditable = point.editable && !isDayLocked;
-                return (
-                  <motion.div
-                    key={point.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
+      <AnimatePresence>
+        {isFormOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <InlineLearningPointForm
+              onFormSubmit={handleAddFormSubmit}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isDayLocked && (
+        <Alert
+          variant="destructive"
+          className="border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200"
+        >
+          <Lock className="h-4 w-4" />
+          <AlertTitle>Session Locked</AlertTitle>
+          <AlertDescription>
+            This session has been closed by an admin. Points can no longer be
+            added or edited.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {points.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AnimatePresence mode="popLayout">
+            {points.map((point) => {
+              const isEditable = point.editable && !isDayLocked;
+              return (
+                <motion.div
+                  key={point.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                >
+                  <Card
+                    className={cn(
+                      "flex flex-col h-full transition-all duration-200 hover:shadow-md",
+                      !isEditable
+                        ? "bg-muted/30 opacity-90"
+                        : "bg-card border-border/60"
+                    )}
                   >
-                    <Card
-                      key={`card-${point.id}-${point.createdAt?.toString()}`}
-                      className={`flex flex-col h-full ${
-                        !isEditable
-                          ? "bg-gray-50/30 border-gray-200"
-                          : "bg-background border-border"
-                      }`}
-                    >
-                      <CardHeader>
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg truncate pr-2">
-                              {point.task_name}
-                            </CardTitle>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                    <CardHeader className="pb-3 space-y-3">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
                             <Badge
-                              variant={isEditable ? "outline" : "secondary"}
-                            >
-                              {isEditable ? (
-                                <Unlock className="h-3 w-3 mr-1" />
-                              ) : (
-                                <Lock className="h-3 w-3 mr-1" />
+                              variant="outline"
+                              className={cn(
+                                "font-mono text-[10px] uppercase tracking-wider",
+                                point.point_type === "R1"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : point.point_type === "R2"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                                  : "bg-orange-50 text-orange-700 border-orange-200"
                               )}
-                              {isEditable ? "Editable" : "Locked"}
+                            >
+                              {point.point_type}
                             </Badge>
-                            <Badge variant="default">{point.point_type}</Badge>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] truncate max-w-[150px]"
+                            >
+                              {point.framework_category}
+                            </Badge>
                           </div>
+                          <h3 className="font-semibold text-lg leading-tight line-clamp-2">
+                            {point.task_name}
+                          </h3>
                         </div>
-                        <CardDescription>
-                          {point.createdAt
-                            ? format(point.createdAt.toDate(), "PPP p")
-                            : "Date not available"}
-                        </CardDescription>
-                      </CardHeader>
 
-                      <CardFooter className="flex flex-col gap-3 mt-auto pt-4">
-                        <p className="text-xs text-muted-foreground w-full">
-                          To: {point.recipient}
-                        </p>
-                        <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-end sm:items-center sm:gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setViewingPoint(point)}
-                            className="w-full sm:w-auto sm:mr-0"
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            <span className="hidden sm:inline">
-                              View Summary
-                            </span>
-                            <span className="sm:hidden">View</span>
-                          </Button>
-                          {isEditable && (
-                            <>
+                        <div className="flex items-center gap-1">
+                          {isEditable ? (
+                            <div className="flex bg-muted rounded-md p-0.5">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
+                                className="h-7 w-7 p-0 hover:bg-background shadow-none"
                                 onClick={() => handleOpenFormForEdit(point)}
-                                className="w-full sm:w-auto"
                               >
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="h-7 w-7 p-0 hover:bg-background  hover:text-red-500 shadow-none"
                                 onClick={() => handleDeleteClick(point)}
-                                className="w-full sm:w-auto hover:bg-destructive/10 hover:text-destructive transition-colors"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
-                            </>
+                            </div>
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Lock className="h-4 w-4 text-muted-foreground/50" />
+                                </TooltipTrigger>
+                                <TooltipContent>Locked</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </div>
-                      </CardFooter>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          ) : (
-            !isLoading &&
-            !isFormOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center p-8 border-2 border-dashed rounded-lg"
-              >
-                <h3 className="text-xl font-semibold">
-                  No Learning Points Yet
-                </h3>
-                <p className="text-muted-foreground mt-2">
-                  Click &quot;Add New Point&quot; to get started.
-                </p>
-              </motion.div>
-            )
-          )}
-        </AnimatePresence>
-      </div>
+                      </div>
+                    </CardHeader>
 
-      <LearningPointForm
-        isOpen={isEditingFormOpen}
-        onClose={() => setIsEditingFormOpen(false)}
-        onSubmit={handleEditFormSubmit}
-        defaultValues={editingPoint}
-      />
+                    <CardContent className="pb-3 text-sm text-muted-foreground line-clamp-3">
+                      <p className="line-clamp-3">{point.situation}</p>
+                    </CardContent>
 
-      <LearningPointSummaryModal
-        isOpen={!!viewingPoint}
-        onClose={() => setViewingPoint(null)}
-        point={viewingPoint}
-      />
+                    <CardFooter className="mt-auto pt-3 border-t bg-muted/10 flex justify-between items-center text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                          <Send className="h-3 w-3" /> {point.recipient}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {point.createdAt
+                            ? format(point.createdAt.toDate(), "MMM d, h:mm a")
+                            : ""}
+                        </span>
+                      </div>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-primary font-semibold"
+                        onClick={() => setViewingPoint(point)}
+                      >
+                        View Details <ArrowRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      ) : (
+        !isFormOpen && (
+          <div className="text-center py-20 px-4 border-2 border-dashed border-muted-foreground/20 rounded-xl bg-muted/5">
+            <div className="mx-auto bg-muted rounded-full overflow-hidden w-16 h-16 flex items-center justify-center mb-4">
+              <Sparkles className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">
+              No learning points yet
+            </h3>
+            <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+              Start capturing your daily learnings by clicking the "Add Learning
+              Point" button above.
+            </p>
+            <Button
+              onClick={() => setIsFormOpen(true)}
+              disabled={isDayLocked}
+              variant="outline"
+            >
+              Start Writing
+            </Button>
+          </div>
+        )
+      )}
+
+      {/* EDIT MODAL */}
+      <Dialog open={isEditingFormOpen} onOpenChange={setIsEditingFormOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+          <div className="p-6">
+            <InlineLearningPointForm
+              isEditing={true}
+              initialData={
+                editingPoint
+                  ? {
+                      ...editingPoint,
+                      date:
+                        editingPoint.date &&
+                        typeof editingPoint.date.toDate === "function"
+                          ? editingPoint.date.toDate()
+                          : editingPoint.date || new Date(),
+                    }
+                  : undefined
+              }
+              onFormSubmit={handleEditFormSubmit}
+              onCancel={() => setIsEditingFormOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* VIEW DETAILS MODAL */}
+      {viewingPoint && (
+        <Dialog
+          open={!!viewingPoint}
+          onOpenChange={(open) => !open && setViewingPoint(null)}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline">{viewingPoint.point_type}</Badge>
+                <Badge>{viewingPoint.framework_category}</Badge>
+              </div>
+              <DialogTitle className="text-xl">
+                {viewingPoint.task_name}
+              </DialogTitle>
+              <DialogDescription>
+                Created on{" "}
+                {viewingPoint.createdAt
+                  ? format(viewingPoint.createdAt.toDate(), "PPP p")
+                  : ""}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto pr-2">
+              <div className="space-y-6 text-sm">
+                <section className="space-y-2">
+                  <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">
+                    Situation
+                  </h4>
+                  <p className="leading-relaxed">{viewingPoint.situation}</p>
+                </section>
+                <section className="space-y-2">
+                  <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">
+                    Behavior
+                  </h4>
+                  <p className="leading-relaxed">{viewingPoint.behavior}</p>
+                </section>
+                <section className="space-y-2">
+                  <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">
+                    Impact
+                  </h4>
+                  <p className="leading-relaxed">{viewingPoint.impact}</p>
+                </section>
+                {viewingPoint.action_item && (
+                  <section className="space-y-2">
+                    <h4 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">
+                      Action Item
+                    </h4>
+                    <p className="leading-relaxed">
+                      {viewingPoint.action_item}
+                    </p>
+                  </section>
+                )}
+                <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-xs">
+                  <span className="font-semibold">Recipient:</span>{" "}
+                  {viewingPoint.recipient}
+                  {viewingPoint.task_link && (
+                    <>
+                      <span className="mx-2 text-muted-foreground/50">|</span>
+                      <a
+                        href={viewingPoint.task_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        View Task Link
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!deleteConfirmPoint}
-        onOpenChange={() => setDeleteConfirmPoint(null)}
+        onOpenChange={(open) => !open && setDeleteConfirmPoint(null)}
       >
-        <AlertDialogContent className="sm:max-w-[425px] w-[95vw]">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-red-500" />
-              Delete Learning Point
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>Are you sure you want to delete this learning point?</p>
-              {deleteConfirmPoint && (
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="font-medium text-sm">
-                    {deleteConfirmPoint.task_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Created:{" "}
-                    {deleteConfirmPoint.createdAt
-                      ? format(deleteConfirmPoint.createdAt.toDate(), "PPP p")
-                      : "Unknown"}
-                  </p>
-                </div>
-              )}
-              <p className="text-sm text-red-600 font-medium">
-                This action cannot be undone.
-              </p>
+            <AlertDialogTitle>Delete Learning Point?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;
+              {deleteConfirmPoint?.task_name}&quot;? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDeleteCancel}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
               Delete Point
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };

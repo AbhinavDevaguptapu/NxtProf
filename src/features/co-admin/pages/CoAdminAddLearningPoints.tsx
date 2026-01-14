@@ -21,7 +21,7 @@ const CoAdminAddLearningPoints: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
             Add Learning Points
@@ -30,7 +30,7 @@ const CoAdminAddLearningPoints: React.FC = () => {
             Log your learning activities and manage attendance.
           </p>
         </div>
-      </div>
+      </div> */}
 
       <div className="w-full">
         <LearningPointsList

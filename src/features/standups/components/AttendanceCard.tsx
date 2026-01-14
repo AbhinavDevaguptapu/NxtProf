@@ -15,11 +15,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Check, Info, UserMinus, UserX, X } from "lucide-react";
+import { Check, Info, UserMinus, UserX, X, Mail } from "lucide-react";
 import { motion, LayoutGroup } from "framer-motion";
 import type { Employee, AttendanceStatus } from "../types";
 
-// --- Configuration (No changes needed) ---
+// --- Configuration ---
+// [LOGIC PRESERVED] - Status config unchanged
 const statusConfig: Record<
   AttendanceStatus,
   { label: string; icon: React.ElementType; className: string }
@@ -49,7 +50,8 @@ const statusConfig: Record<
   },
 };
 
-// --- Component Props (No changes needed) ---
+// --- Component Props ---
+// [LOGIC PRESERVED] - Props interface unchanged
 interface AttendanceCardProps {
   employee: Employee;
   status: AttendanceStatus;
@@ -68,6 +70,7 @@ export const AttendanceCard = ({
   onMarkUnavailable,
   isInteractive,
 }: AttendanceCardProps) => {
+  // [LOGIC PRESERVED] - Initials logic unchanged
   const getInitials = (name: string) => {
     const names = name.split(" ");
     if (names.length > 1) {
@@ -76,34 +79,78 @@ export const AttendanceCard = ({
     return name.substring(0, 2);
   };
 
+  // Get status indicator color
+  const getStatusColor = (status: AttendanceStatus) => {
+    switch (status) {
+      case "Present":
+        return "bg-green-500";
+      case "Absent":
+        return "bg-red-500";
+      case "Missed":
+        return "bg-amber-500";
+      default:
+        return "bg-muted-foreground/30";
+    }
+  };
+
   return (
-    <Card className="flex flex-col h-full transition-shadow hover:shadow-lg rounded-xl overflow-hidden">
-      {/* IMPROVEMENT: Added responsive gap for better spacing on small screens */}
-      <CardHeader className="flex flex-row items-center gap-3 sm:gap-4 p-4">
-        <Avatar>
-          <AvatarFallback>{getInitials(employee.name)}</AvatarFallback>
-        </Avatar>
+    <Card
+      className={cn(
+        "flex flex-col h-full transition-all duration-200 rounded-xl overflow-hidden",
+        "border border-border/50 hover:border-border",
+        "shadow-sm hover:shadow-lg",
+        isInteractive && "cursor-default"
+      )}
+    >
+      <CardHeader className="flex flex-row items-center gap-3 p-4 pb-3">
+        {/* Avatar with status indicator */}
+        <div className="relative">
+          <Avatar className="h-11 w-11 border-2 border-background shadow-sm">
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+              {getInitials(employee.name)}
+            </AvatarFallback>
+          </Avatar>
+          {/* Status dot */}
+          <span
+            className={cn(
+              "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-card",
+              getStatusColor(status)
+            )}
+            aria-hidden="true"
+          />
+        </div>
+
         <div className="flex-1 min-w-0">
-          <CardTitle className="text-base font-semibold truncate">
+          <CardTitle className="text-base font-semibold truncate text-foreground">
             {employee.name}
           </CardTitle>
-          <CardDescription className="text-xs truncate">
-            {employee.email}
+          <CardDescription className="text-xs truncate flex items-center gap-1 mt-0.5">
+            <Mail className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+            <span className="truncate">{employee.email}</span>
           </CardDescription>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 pt-0 flex-grow flex flex-col justify-end">
+      <CardContent className="p-4 pt-0 flex-grow flex flex-col justify-end gap-3">
+        {/* Reason Display */}
         {status === "Not Available" && reason && (
-          <div className="mb-4 text-xs text-muted-foreground bg-muted/50 p-2.5 rounded-md flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <p>{reason}</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg flex items-start gap-2 border border-border/30"
+          >
+            <Info
+              className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/70"
+              aria-hidden="true"
+            />
+            <p className="leading-relaxed">{reason}</p>
+          </motion.div>
         )}
 
+        {/* Interactive or Display controls */}
         {isInteractive ? (
           <InteractiveControls
-            employeeId={employee.id} // Pass employeeId for stable key
+            employeeId={employee.id}
             currentStatus={status}
             onSetStatus={(newStatus) => onSetStatus(employee.id, newStatus)}
             onMarkUnavailable={() => onMarkUnavailable(employee)}
@@ -124,21 +171,21 @@ const InteractiveControls = ({
   onSetStatus,
   onMarkUnavailable,
 }: {
-  employeeId: string; // Use a stable ID
+  employeeId: string;
   currentStatus: AttendanceStatus;
   onSetStatus: (status: AttendanceStatus) => void;
   onMarkUnavailable: () => void;
 }) => {
+  // [LOGIC PRESERVED] - Controls array unchanged
   const controls: AttendanceStatus[] = [
     "Present",
     "Absent",
     "Missed",
     "Not Available",
   ];
+
   return (
-    // CHANGED: Replaced flexbox with a responsive CSS Grid layout.
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-muted p-1 rounded-lg">
-      {/* IMPROVEMENT: Use a stable, unique ID for LayoutGroup to prevent re-render issues. */}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-muted/50 p-1.5 rounded-xl border border-border/30">
       <LayoutGroup id={`controls-${employeeId}`}>
         {controls.map((status) => {
           const isActive = currentStatus === status;
@@ -147,24 +194,26 @@ const InteractiveControls = ({
             <TooltipProvider key={status} delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
+                  {/* [LOGIC PRESERVED] - Click handlers unchanged */}
                   <motion.button
                     onClick={() =>
                       status === "Not Available"
                         ? onMarkUnavailable()
                         : onSetStatus(status)
                     }
-                    // CHANGED: Removed `flex-1` and adjusted styling for grid.
                     className={cn(
-                      "relative h-9 px-2 text-xs font-semibold rounded-md transition-colors flex items-center justify-center",
+                      "relative h-9 px-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center",
                       !isActive &&
-                        "hover:bg-background/50 text-muted-foreground"
+                        "hover:bg-background/80 text-muted-foreground"
                     )}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     {isActive && (
                       <motion.div
                         layoutId="active-pill"
                         className={cn(
-                          "absolute inset-0 rounded-md border",
+                          "absolute inset-0 rounded-lg border shadow-sm",
                           className
                         )}
                         transition={{
@@ -177,19 +226,19 @@ const InteractiveControls = ({
                     <motion.span
                       animate={{ opacity: 1, scale: 1 }}
                       initial={{ opacity: 0, scale: 0.8 }}
-                      // CHANGED: Removed redundant active class, color is inherited correctly.
-                      className="relative z-10 flex items-center"
+                      className="relative z-10 flex items-center gap-1"
                     >
-                      <Icon className="h-3.5 w-3.5 mr-1.5" />
+                      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       <span className="hidden sm:inline">{label}</span>
-                      {/* IMPROVEMENT: Show only the icon on the smallest screens to save space. */}
                       <span className="sm:hidden">
                         {status === "Not Available" ? "N/A" : label}
                       </span>
                     </motion.span>
                   </motion.button>
                 </TooltipTrigger>
-                <TooltipContent>{status}</TooltipContent>
+                <TooltipContent side="top" className="text-xs">
+                  {status}
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
@@ -199,17 +248,17 @@ const InteractiveControls = ({
   );
 };
 
-// No changes needed for StatusDisplay, it's already solid.
 const StatusDisplay = ({ status }: { status: AttendanceStatus }) => {
   const { label, icon: Icon, className } = statusConfig[status];
   return (
     <div
       className={cn(
-        "h-9 px-3 text-sm font-semibold rounded-md flex items-center justify-center border",
+        "h-10 px-4 text-sm font-semibold rounded-lg flex items-center justify-center border shadow-sm",
         className
       )}
     >
-      <Icon className="h-4 w-4 mr-2" /> {label}
+      <Icon className="h-4 w-4 mr-2" aria-hidden="true" />
+      <span>{label}</span>
     </div>
   );
 };

@@ -92,11 +92,24 @@ interface SidebarContentProps extends SidebarProps {
 // --- Reusable Sub-Components ---
 
 const Logo = ({ onClick }: { onClick: () => void }) => (
-  <div className="flex items-center space-x-3 cursor-pointer" onClick={onClick}>
-    <div className="flex-shrink-0 bg-primary/10 p-2 rounded-lg">
+  <div
+    className="flex items-center gap-3 cursor-pointer group"
+    onClick={onClick}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => e.key === "Enter" && onClick()}
+  >
+    <div className="flex-shrink-0 bg-primary/10 p-2.5 rounded-xl transition-colors group-hover:bg-primary/15">
       <FileText className="h-6 w-6 text-primary" />
     </div>
-    <h1 className="text-xl font-bold text-gray-900 dark:text-white">NxtProf</h1>
+    <div className="flex flex-col">
+      <h1 className="text-lg font-bold text-foreground tracking-tight">
+        NxtProf
+      </h1>
+      <span className="text-[10px] text-muted-foreground font-medium -mt-0.5">
+        Team Management
+      </span>
+    </div>
   </div>
 );
 
@@ -109,15 +122,28 @@ const NavItem = ({
   isActive: boolean;
   onClick: () => void;
 }) => (
-  <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }}>
+  <motion.div
+    whileHover={{ x: 2 }}
+    transition={{ duration: 0.15, ease: "easeOut" }}
+  >
     <Button
-      variant={isActive ? "secondary" : "ghost"}
-      className="w-full justify-start text-sm font-medium h-11 px-3 rounded-lg"
+      variant="ghost"
+      className={`w-full justify-start text-sm font-medium h-10 px-3 rounded-lg transition-all duration-200 ${
+        isActive
+          ? "bg-primary/5 border-l-2 border-primary text-foreground font-semibold"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border-l-2 border-transparent"
+      }`}
       onClick={onClick}
     >
-      <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+      <item.icon
+        className={`mr-3 h-[18px] w-[18px] flex-shrink-0 transition-colors ${
+          isActive ? "text-primary" : ""
+        }`}
+      />
       <span className="truncate">{item.label}</span>
-      {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+      {isActive && (
+        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+      )}
     </Button>
   </motion.div>
 );
@@ -131,58 +157,56 @@ const UserProfile = ({
 }) => {
   const { user, isAdmin, isCoAdmin } = useUserAuth();
 
+  const getRoleBadge = () => {
+    if (isAdmin)
+      return { label: "Admin", className: "bg-primary/10 text-primary" };
+    if (isCoAdmin)
+      return { label: "Co-Admin", className: "bg-muted text-muted-foreground" };
+    return { label: "Member", className: "bg-muted text-muted-foreground" };
+  };
+
+  const role = getRoleBadge();
+
   return (
-    <div className="px-4 pt-4 mt-auto border-t border-gray-200 dark:border-gray-800">
+    <div className="px-3 py-4 mt-auto border-t border-border">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full justify-start p-2 h-auto rounded-lg"
+            className="w-full justify-start p-2 h-auto rounded-xl hover:bg-muted/50 transition-colors"
           >
-            <div className="flex items-center space-x-3 min-w-0">
-              <Avatar className="h-9 w-9 border">
+            <div className="flex items-center gap-3 min-w-0 w-full">
+              <Avatar className="h-10 w-10 border-2 border-border">
                 <AvatarImage
                   src={user?.photoURL || undefined}
                   alt={user?.displayName || "User"}
                 />
-                <AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                   {user?.displayName?.charAt(0) ?? user?.email?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-start min-w-0 flex-1 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                    {user?.displayName || "User"}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {isAdmin
-                    ? "Administrator"
-                    : isCoAdmin
-                    ? "Co-Administrator"
-                    : "Team Member"}
+                <span className="font-semibold text-sm text-foreground truncate max-w-[140px]">
+                  {user?.displayName || "User"}
+                </span>
+                <span
+                  className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md mt-0.5 ${role.className}`}
+                >
+                  {role.label}
                 </span>
               </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" side="top" forceMount>
           <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold leading-none">
-                  {user?.displayName}
-                </p>
-              </div>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user?.email}
+            <div className="flex flex-col space-y-1.5">
+              <p className="text-sm font-semibold leading-none">
+                {user?.displayName}
               </p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {isAdmin
-                  ? "Administrator"
-                  : isCoAdmin
-                  ? "Co-Administrator"
-                  : "Team Member"}
+              <p className="text-xs leading-none text-muted-foreground truncate">
+                {user?.email}
               </p>
             </div>
           </DropdownMenuLabel>
@@ -193,7 +217,7 @@ const UserProfile = ({
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={onLogout}
-            className="cursor-pointer text-red-600 focus:text-red-600 dark:focus:text-red-500"
+            className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
           >
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
@@ -311,20 +335,12 @@ const SidebarContent = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
+    <div className="flex flex-col h-full bg-background border-r border-border">
       <div className="px-4 py-5">
         <Logo onClick={() => handleNavClick("home")} />
       </div>
 
-      <nav
-        className="sidebar-nav flex-1 px-4 space-y-1.5 overflow-y-auto"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-      >
-        <style>{`
-                    .sidebar-nav::-webkit-scrollbar {
-                        display: none;
-                    }
-                `}</style>
+      <nav className="sidebar-nav flex-1 px-3 space-y-1 overflow-y-auto styled-scrollbar py-2">
         {navItems.map((item) => {
           if (item.id === "learning-hours" && (isAdminOrCoAdmin || isUser)) {
             const subItems = isAdminOrCoAdmin
@@ -339,12 +355,12 @@ const SidebarContent = ({
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-sm font-medium h-11 px-3 rounded-lg"
+                    className="w-full justify-start text-sm font-medium h-10 px-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 border-l-2 border-transparent transition-all duration-200"
                   >
-                    <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                    <item.icon className="mr-3 h-[18px] w-[18px] flex-shrink-0" />
                     <span className="truncate">{item.label}</span>
                     <ChevronRight
-                      className={`ml-auto h-4 w-4 transition-transform ${
+                      className={`ml-auto h-4 w-4 transition-transform duration-200 ${
                         learningHoursOpen ? "rotate-90" : ""
                       }`}
                     />
