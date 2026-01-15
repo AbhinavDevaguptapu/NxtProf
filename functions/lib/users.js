@@ -39,27 +39,30 @@ exports.approveUser = exports.getUnapprovedUsers = exports.getArchivedEmployees 
  */
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const v2_1 = require("firebase-functions/v2");
 const utils_1 = require("./utils");
+const validation_1 = require("./validation");
 exports.addAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => {
-    var _a;
     if (!request.auth)
         throw new https_1.HttpsError("unauthenticated", "Login required.");
     const caller = request.auth.token;
     if (caller.isAdmin !== true)
         throw new https_1.HttpsError("permission-denied", "Admins only.");
-    const email = (_a = request.data.email) === null || _a === void 0 ? void 0 : _a.trim();
-    if (!email)
-        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
+    // Validate input using Zod
+    const { email } = (0, validation_1.validateInput)(validation_1.roleManagementSchema, request.data);
     try {
         const user = await admin.auth().getUserByEmail(email);
-        await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isAdmin: true }));
+        await admin
+            .auth()
+            .setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isAdmin: true }));
+        v2_1.logger.info("Admin role added", { email, addedBy: request.auth.uid });
         return { message: `${email} is now an admin.` };
     }
     catch (err) {
         if (err.code === "auth/user-not-found") {
             throw new https_1.HttpsError("not-found", "User not found.");
         }
-        console.error("addAdminRole error:", err);
+        v2_1.logger.error("addAdminRole failed", { error: err.message, email });
         throw new https_1.HttpsError("internal", "Could not set admin role.");
     }
 });
@@ -166,7 +169,10 @@ exports.archiveEmployee = (0, https_1.onCall)({ cors: true }, async (request) =>
     }
     try {
         await admin.auth().updateUser(uid, { disabled: true });
-        await admin.firestore().doc(`employees/${uid}`).update({ archived: true });
+        await admin
+            .firestore()
+            .doc(`employees/${uid}`)
+            .update({ archived: true });
         return { message: "Employee archived successfully." };
     }
     catch (error) {
@@ -185,7 +191,10 @@ exports.unarchiveEmployee = (0, https_1.onCall)({ cors: true }, async (request) 
     }
     try {
         await admin.auth().updateUser(uid, { disabled: false });
-        await admin.firestore().doc(`employees/${uid}`).update({ archived: false });
+        await admin
+            .firestore()
+            .doc(`employees/${uid}`)
+            .update({ archived: false });
         return { message: "Employee unarchived successfully." };
     }
     catch (error) {
@@ -200,20 +209,23 @@ exports.getEmployeesWithAdminStatus = (0, https_1.onCall)({ cors: true }, async 
         throw new https_1.HttpsError("permission-denied", "Only admins and co-admins can view the employee list.");
     }
     try {
-        const listUsersResult = await admin.auth().listUsers(1000);
+        // Execute both queries in parallel for better performance
+        const [listUsersResult, employeesSnapshot] = await Promise.all([
+            admin.auth().listUsers(1000),
+            admin.firestore().collection("employees").orderBy("name").get(),
+        ]);
         const adminUids = new Set();
         const coAdminUids = new Set();
-        listUsersResult.users.forEach(u => {
+        listUsersResult.users.forEach((u) => {
             var _a, _b;
             if ((_a = u.customClaims) === null || _a === void 0 ? void 0 : _a.isAdmin)
                 adminUids.add(u.uid);
             if ((_b = u.customClaims) === null || _b === void 0 ? void 0 : _b.isCoAdmin)
                 coAdminUids.add(u.uid);
         });
-        const employeesSnapshot = await admin.firestore().collection("employees").orderBy("name").get();
         const employeesWithStatus = employeesSnapshot.docs
-            .filter(doc => doc.data().archived !== true) // Filter in code
-            .map(doc => (Object.assign(Object.assign({ id: doc.id }, doc.data()), { isAdmin: adminUids.has(doc.id), isCoAdmin: coAdminUids.has(doc.id) })));
+            .filter((doc) => doc.data().archived !== true) // Filter in code
+            .map((doc) => (Object.assign(Object.assign({ id: doc.id }, doc.data()), { isAdmin: adminUids.has(doc.id), isCoAdmin: coAdminUids.has(doc.id) })));
         return employeesWithStatus;
     }
     catch (error) {
@@ -227,8 +239,13 @@ exports.getArchivedEmployees = (0, https_1.onCall)({ cors: true }, async (reques
         throw new https_1.HttpsError("permission-denied", "Only admins can view the archived employee list.");
     }
     try {
-        const employeesSnapshot = await admin.firestore().collection("employees").where("archived", "==", true).orderBy("name").get();
-        const employees = employeesSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+        const employeesSnapshot = await admin
+            .firestore()
+            .collection("employees")
+            .where("archived", "==", true)
+            .orderBy("name")
+            .get();
+        const employees = employeesSnapshot.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data())));
         return employees;
     }
     catch (error) {
@@ -242,11 +259,12 @@ exports.getUnapprovedUsers = (0, https_1.onCall)({ cors: true }, async (request)
         throw new https_1.HttpsError("permission-denied", "Only admins can view unapproved users.");
     }
     try {
-        const employeesSnapshot = await admin.firestore().collection("employees")
+        const employeesSnapshot = await admin
+            .firestore()
+            .collection("employees")
             .where("admin_approval_required", "==", true)
-            .orderBy("name")
             .get();
-        const users = employeesSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+        const users = employeesSnapshot.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data())));
         return users;
     }
     catch (error) {
@@ -265,7 +283,7 @@ exports.approveUser = (0, https_1.onCall)({ cors: true }, async (request) => {
     }
     try {
         await admin.firestore().doc(`employees/${uid}`).update({
-            admin_approval_required: false
+            admin_approval_required: false,
         });
         return { message: "User approved successfully." };
     }

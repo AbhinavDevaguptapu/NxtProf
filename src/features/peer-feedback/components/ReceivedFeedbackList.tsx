@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, parseISO } from "date-fns";
-import { Loader2, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { Feedback } from "../types";
 import { calculateOverallRating } from "../utils/ratingUtils";
 import {
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import FeedbackCard from "./FeedbackCard";
+import { FeedbackListSkeleton } from "@/components/common/Skeletons";
 
 interface ReceivedFeedbackListProps {
   feedback: Feedback[];
@@ -47,12 +48,7 @@ const ReceivedFeedbackList = ({
   );
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-48">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="ml-2">Loading your feedback...</p>
-      </div>
-    );
+    return <FeedbackListSkeleton count={3} />;
   }
 
   if (feedback.length === 0) {

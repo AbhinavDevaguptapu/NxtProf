@@ -14,12 +14,7 @@ import {
   isToday,
 } from "date-fns";
 import { db } from "@/integrations/firebase/client";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import {
   Card,
   CardHeader,
@@ -72,14 +67,18 @@ const getStatusClass = (s?: AttendanceStatus) => {
 
 const getStatusLabel = (s?: AttendanceStatus) => {
   switch (s) {
-    case "Present": return "Present";
-    case "Absent": return "Absent";
-    case "Missed": return "Missed";
-    case "Not Available": return "N/A";
-    default: return "Not Marked";
+    case "Present":
+      return "Present";
+    case "Absent":
+      return "Absent";
+    case "Missed":
+      return "Missed";
+    case "Not Available":
+      return "N/A";
+    default:
+      return "Not Marked";
   }
-}
-
+};
 
 // --- Main Component ---
 
@@ -154,13 +153,15 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
           if (statuses.standup === "Present") stats.standup.present++;
           else if (statuses.standup === "Missed") stats.standup.missed++;
           else if (statuses.standup === "Absent") stats.standup.absent++;
-          else if (statuses.standup === "Not Available") stats.standup.notAvailable++;
+          else if (statuses.standup === "Not Available")
+            stats.standup.notAvailable++;
 
           // Learning Hour stats
           if (statuses.learning === "Present") stats.learning.present++;
           else if (statuses.learning === "Missed") stats.learning.missed++;
           else if (statuses.learning === "Absent") stats.learning.absent++;
-          else if (statuses.learning === "Not Available") stats.learning.notAvailable++;
+          else if (statuses.learning === "Not Available")
+            stats.learning.notAvailable++;
         }
       } catch (error) {
         console.error("Error parsing date:", dateStr, error);
@@ -179,45 +180,86 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [month]);
 
-  const handleMonthChange = (direction: 'next' | 'prev') => {
+  const handleMonthChange = (direction: "next" | "prev") => {
     setDirection(direction);
-    setMonth(prevMonth => direction === 'next' ? addMonths(prevMonth, 1) : subMonths(prevMonth, 1));
-  }
+    setMonth((prevMonth) =>
+      direction === "next" ? addMonths(prevMonth, 1) : subMonths(prevMonth, 1)
+    );
+  };
 
   // --- Reusable Sub-components ---
 
-  const StatCard = ({ title, stats, icon }: { title: string, stats: { present: number, missed: number, absent: number, notAvailable: number }, icon: React.ReactNode }) => {
+  const StatCard = ({
+    title,
+    stats,
+    icon,
+  }: {
+    title: string;
+    stats: {
+      present: number;
+      missed: number;
+      absent: number;
+      notAvailable: number;
+    };
+    icon: React.ReactNode;
+  }) => {
     const considered = stats.present + stats.missed;
     const totalConducted = considered + stats.absent + stats.notAvailable;
-    const percentage = considered > 0 ? Math.round(((stats.present + stats.absent + stats.notAvailable) / totalConducted) * 100) : 0;
+    const percentage =
+      considered > 0
+        ? Math.round(
+            ((stats.present + stats.absent + stats.notAvailable) /
+              totalConducted) *
+              100
+          )
+        : 0;
 
     const colorClass = useMemo(() => {
-      if (percentage >= 90) return 'bg-green-500';
-      if (percentage >= 75) return 'bg-yellow-500';
-      return 'bg-red-500';
+      if (percentage >= 90) return "bg-green-500";
+      if (percentage >= 75) return "bg-yellow-500";
+      return "bg-red-500";
     }, [percentage]);
 
     return (
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">{icon} {title}</CardTitle>
-            <p className="text-sm text-muted-foreground">Total: <span className="font-bold text-primary">{totalConducted}</span></p>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              {icon} {title}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Total:{" "}
+              <span className="font-bold text-primary">{totalConducted}</span>
+            </p>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <p>Present: <span className="font-bold">{stats.present}</span></p>
-            <p>Missed: <span className="font-bold">{stats.missed}</span></p>
-            <p>Absent: <span className="font-bold">{stats.absent}</span></p>
-            <p>N/A: <span className="font-bold">{stats.notAvailable}</span></p>
+            <p>
+              Present: <span className="font-bold">{stats.present}</span>
+            </p>
+            <p>
+              Missed: <span className="font-bold">{stats.missed}</span>
+            </p>
+            <p>
+              Absent: <span className="font-bold">{stats.absent}</span>
+            </p>
+            <p>
+              N/A: <span className="font-bold">{stats.notAvailable}</span>
+            </p>
           </div>
           <div>
             <div className="flex justify-between items-end mb-1">
-              <h5 className="text-sm font-medium text-muted-foreground">Attendance</h5>
+              <h5 className="text-sm font-medium text-muted-foreground">
+                Attendance
+              </h5>
               <p className="font-bold">{percentage}%</p>
             </div>
-            <Progress value={percentage} className="h-2" indicatorClassName={colorClass} />
+            <Progress
+              value={percentage}
+              className="h-2"
+              indicatorClassName={colorClass}
+            />
           </div>
         </CardContent>
       </Card>
@@ -241,7 +283,8 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
                 "hover:bg-accent hover:text-accent-foreground",
                 !isCurrentMonth && "text-muted-foreground/50 bg-muted/20",
                 isSundayDate && !isTodayDate && "text-red-500/70",
-                isTodayDate && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                isTodayDate &&
+                  "ring-2 ring-primary ring-offset-2 ring-offset-background"
               )}
             >
               <span className="text-sm font-medium">{format(date, "d")}</span>
@@ -258,8 +301,28 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
               <p className="font-semibold">{format(date, "MMMM d, yyyy")}</p>
               {!isSundayDate ? (
                 <>
-                  <p>Standup: <span className={cn("font-medium", getStatusClass(status?.standup))}>{getStatusLabel(status?.standup)}</span></p>
-                  <p>Learning: <span className={cn("font-medium", getStatusClass(status?.learning))}>{getStatusLabel(status?.learning)}</span></p>
+                  <p>
+                    Standup:{" "}
+                    <span
+                      className={cn(
+                        "font-medium",
+                        getStatusClass(status?.standup)
+                      )}
+                    >
+                      {getStatusLabel(status?.standup)}
+                    </span>
+                  </p>
+                  <p>
+                    Learning:{" "}
+                    <span
+                      className={cn(
+                        "font-medium",
+                        getStatusClass(status?.learning)
+                      )}
+                    >
+                      {getStatusLabel(status?.learning)}
+                    </span>
+                  </p>
                 </>
               ) : (
                 <p className="font-medium text-red-500">Sunday (Off-day)</p>
@@ -281,11 +344,19 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
     ];
     return (
       <div className="mt-4 pt-4 border-t">
-        <h4 className="text-sm font-medium text-muted-foreground mb-2">Legend (S=Standup, L=Learning)</h4>
+        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+          Legend (S=Standup, L=Learning)
+        </h4>
         <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
           {legendItems.map(({ status, label }) => (
-            <div key={label} className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <span className={cn("font-bold", getStatusClass(status))}>S/L</span>: {label}
+            <div
+              key={label}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground"
+            >
+              <span className={cn("font-bold", getStatusClass(status))}>
+                S/L
+              </span>
+              : {label}
             </div>
           ))}
         </div>
@@ -293,19 +364,92 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
     );
   };
 
-
   if (loading)
     return (
-      <div className="flex justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="space-y-6">
+        {/* Monthly Summary Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="h-7 w-48 bg-muted animate-pulse rounded-lg" />
+            <div className="h-4 w-64 bg-muted animate-pulse rounded-lg mt-2" />
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            {[1, 2].map((i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="h-5 w-24 bg-muted animate-pulse rounded" />
+                    <div className="h-4 w-16 bg-muted animate-pulse rounded" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {[1, 2, 3, 4].map((j) => (
+                      <div
+                        key={j}
+                        className="h-4 w-20 bg-muted animate-pulse rounded"
+                      />
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                      <div className="h-4 w-12 bg-muted animate-pulse rounded" />
+                    </div>
+                    <div className="h-2 w-full bg-muted animate-pulse rounded" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Calendar Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div className="h-6 w-40 bg-muted animate-pulse rounded" />
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 bg-muted animate-pulse rounded" />
+                <div className="h-5 w-32 bg-muted animate-pulse rounded" />
+                <div className="h-8 w-8 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Week headers */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div key={i} className="h-8 flex items-center justify-center">
+                  <div className="h-4 w-8 bg-muted animate-pulse rounded" />
+                </div>
+              ))}
+            </div>
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-muted/50 animate-pulse rounded-lg"
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
 
   const calendarAnimationVariants = {
     // ... (animation logic remains the same)
-    enter: (direction: "next" | "prev") => ({ opacity: 0, x: direction === "next" ? 50 : -50 }),
+    enter: (direction: "next" | "prev") => ({
+      opacity: 0,
+      x: direction === "next" ? 50 : -50,
+    }),
     center: { opacity: 1, x: 0 },
-    exit: (direction: "next" | "prev") => ({ opacity: 0, x: direction === "next" ? -50 : 50 }),
+    exit: (direction: "next" | "prev") => ({
+      opacity: 0,
+      x: direction === "next" ? -50 : 50,
+    }),
   };
 
   return (
@@ -341,13 +485,23 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
           <div className="flex justify-between items-center">
             <CardTitle>Attendance Calendar</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleMonthChange('prev')}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleMonthChange("prev")}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="font-medium text-center w-32">
                 {format(month, "MMMM yyyy")}
               </span>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleMonthChange('next')}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleMonthChange("next")}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -357,7 +511,10 @@ export const UserAttendanceView = ({ userId }: { userId: string }) => {
           {/* Week day headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+              <div
+                key={day}
+                className="h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground"
+              >
                 {day}
               </div>
             ))}

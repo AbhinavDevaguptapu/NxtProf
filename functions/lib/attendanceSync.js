@@ -40,14 +40,13 @@ exports.scheduledSync = exports.syncAttendanceToSheet = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
+const v2_1 = require("firebase-functions/v2");
 const googleapis_1 = require("googleapis");
-const functions = __importStar(require("firebase-functions"));
 const utils_1 = require("./utils");
+const validation_1 = require("./validation");
 async function _syncAttendanceToSheet(data) {
-    const { date, sessionType } = data;
-    if (!date || !sessionType) {
-        throw new https_1.HttpsError("invalid-argument", "Missing 'date' or 'sessionType'.");
-    }
+    // Validate input using Zod schema
+    const { date, sessionType } = (0, validation_1.validateInput)(validation_1.syncToSheetSchema, data);
     const SPREADSHEET_ID = (0, utils_1.getAttendanceSpreadsheetId)();
     const db = admin.firestore();
     const collectionName = sessionType === "standups" ? "attendance" : "learning_hours_attendance";
@@ -55,18 +54,23 @@ async function _syncAttendanceToSheet(data) {
     const q = db.collection(collectionName).where(idField, "==", date);
     const snapshot = await q.get();
     if (snapshot.empty) {
-        console.log(`No Firestore records found for ${date}. Sheet was not modified.`);
-        return { success: true, message: `No Firestore records found for ${date}. Sheet was not modified.` };
+        v2_1.logger.info("No Firestore records found", { date, sessionType });
+        return {
+            success: true,
+            message: `No Firestore records found for ${date}. Sheet was not modified.`,
+        };
     }
-    const recordsToSync = snapshot.docs.map(doc => {
+    const recordsToSync = snapshot.docs.map((doc) => {
         const data = doc.data();
         const options = {
             hour12: true,
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'Asia/Kolkata'
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: "Asia/Kolkata",
         };
-        const scheduledTime = data.scheduled_at ? new Date(data.scheduled_at.toMillis()).toLocaleTimeString('en-US', options) : "N/A";
+        const scheduledTime = data.scheduled_at
+            ? new Date(data.scheduled_at.toMillis()).toLocaleTimeString("en-US", options)
+            : "N/A";
         return [
             data.standup_id || data.learning_hour_id,
             scheduledTime,
@@ -80,7 +84,9 @@ async function _syncAttendanceToSheet(data) {
     });
     try {
         const sheets = googleapis_1.google.sheets({ version: "v4", auth: (0, utils_1.getSheetsAuth)() });
-        const spreadsheetMeta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+        const spreadsheetMeta = await sheets.spreadsheets.get({
+            spreadsheetId: SPREADSHEET_ID,
+        });
         const allSheets = spreadsheetMeta.data.sheets;
         if (!allSheets || allSheets.length < 2) {
             throw new https_1.HttpsError("not-found", "The spreadsheet must contain at least two sheets.");
@@ -97,14 +103,22 @@ async function _syncAttendanceToSheet(data) {
         const sheetId = props.sheetId;
         const sheetName = props.title;
         const rangeToRead = `${sheetName}!A2:A`;
-        const existingData = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: rangeToRead });
+        const existingData = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: rangeToRead,
+        });
         const rowsToDelete = [];
         if (existingData.data.values) {
             existingData.data.values.forEach((row, index) => {
                 if (row[0] === date) {
                     rowsToDelete.push({
                         deleteDimension: {
-                            range: { sheetId, dimension: "ROWS", startIndex: index + 1, endIndex: index + 2 },
+                            range: {
+                                sheetId,
+                                dimension: "ROWS",
+                                startIndex: index + 1,
+                                endIndex: index + 2,
+                            },
                         },
                     });
                 }
@@ -115,7 +129,7 @@ async function _syncAttendanceToSheet(data) {
                 spreadsheetId: SPREADSHEET_ID,
                 requestBody: { requests: rowsToDelete.reverse() },
             });
-            functions.logger.info(`Deleted ${rowsToDelete.length} old rows for date ${date}.`);
+            v2_1.logger.info("Deleted old rows", { count: rowsToDelete.length, date });
         }
         if (recordsToSync.length > 0) {
             await sheets.spreadsheets.values.append({
@@ -124,18 +138,33 @@ async function _syncAttendanceToSheet(data) {
                 valueInputOption: "USER_ENTERED",
                 requestBody: { values: recordsToSync },
             });
-            return { success: true, message: `Successfully synced ${recordsToSync.length} records.` };
+            return {
+                success: true,
+                message: `Successfully synced ${recordsToSync.length} records.`,
+            };
         }
         else {
-            return { success: true, message: `No Firestore records found for ${date}. Existing sheet data was cleared.` };
+            return {
+                success: true,
+                message: `No Firestore records found for ${date}. Existing sheet data was cleared.`,
+            };
         }
     }
     catch (err) {
-        functions.logger.error("Error during Google Sheets operation:", err);
+        v2_1.logger.error("Google Sheets sync failed", {
+            error: err.message,
+            date: data.date,
+            sessionType: data.sessionType,
+        });
         throw new https_1.HttpsError("internal", "An error occurred while syncing to the sheet. " + err.message);
     }
 }
-exports.syncAttendanceToSheet = (0, https_1.onCall)({ timeoutSeconds: 120, memory: "256MiB", secrets: ["SHEETS_SA_KEY"], cors: true }, async (request) => {
+exports.syncAttendanceToSheet = (0, https_1.onCall)({
+    timeoutSeconds: 120,
+    memory: "256MiB",
+    secrets: ["SHEETS_SA_KEY"],
+    cors: true,
+}, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
     }
@@ -145,25 +174,39 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({ timeoutSeconds: 120, memor
     return await _syncAttendanceToSheet(request.data);
 });
 exports.scheduledSync = (0, scheduler_1.onSchedule)({
-    schedule: '30 19 * * 1-6',
-    timeZone: 'Asia/Kolkata',
+    schedule: "30 19 * * 1-6",
+    timeZone: "Asia/Kolkata",
     secrets: ["SHEETS_SA_KEY"],
     timeoutSeconds: 300,
-    memory: "256MiB"
+    memory: "256MiB",
 }, async (event) => {
-    console.log('Running scheduled sync for event:', event.scheduleTime);
     const today = new Date();
-    const dateString = today.toISOString().split('T')[0];
+    const dateString = today.toISOString().split("T")[0];
+    v2_1.logger.info("Starting scheduled sync", {
+        scheduleTime: event.scheduleTime,
+        date: dateString,
+    });
     try {
-        console.log(`Starting standups sync for ${dateString}`);
-        const standupResult = await _syncAttendanceToSheet({ date: dateString, sessionType: 'standups' });
-        console.log('Standups sync completed:', standupResult.message);
-        console.log(`Starting learning hours sync for ${dateString}`);
-        const learningHoursResult = await _syncAttendanceToSheet({ date: dateString, sessionType: 'learning_hours' });
-        console.log('Learning hours sync completed:', learningHoursResult.message);
+        const standupResult = await _syncAttendanceToSheet({
+            date: dateString,
+            sessionType: "standups",
+        });
+        v2_1.logger.info("Standups sync completed", {
+            message: standupResult.message,
+        });
+        const learningHoursResult = await _syncAttendanceToSheet({
+            date: dateString,
+            sessionType: "learning_hours",
+        });
+        v2_1.logger.info("Learning hours sync completed", {
+            message: learningHoursResult.message,
+        });
     }
     catch (error) {
-        console.error('Scheduled sync failed:', error);
+        v2_1.logger.error("Scheduled sync failed", {
+            error: error.message,
+            date: dateString,
+        });
     }
 });
 //# sourceMappingURL=attendanceSync.js.map

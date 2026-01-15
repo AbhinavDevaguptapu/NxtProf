@@ -338,7 +338,10 @@ const FeedbackFilters = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+              {Array.from(
+                { length: 5 },
+                (_, i) => new Date().getFullYear() - i
+              ).map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
@@ -874,9 +877,51 @@ export default function FeedbackPage() {
   // Initial loading screen for auth and profile fetching
   if (userAuthLoading || (!employeeData && !chartError)) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Loading Your Dashboard...</p>
+      <div className="w-full max-w-6xl mx-auto space-y-6">
+        {/* Header skeleton */}
+        <div className="mb-6 space-y-2">
+          <div className="h-8 w-64 bg-muted animate-pulse rounded-lg" />
+          <div className="h-5 w-96 bg-muted animate-pulse rounded-lg" />
+        </div>
+        {/* Filters skeleton */}
+        <div className="p-4 border rounded-lg space-y-4">
+          <div className="h-6 w-20 bg-muted animate-pulse rounded" />
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-10 w-28 bg-muted animate-pulse rounded-md"
+              />
+            ))}
+          </div>
+        </div>
+        {/* Chart skeleton */}
+        <div className="border rounded-lg p-6 space-y-4">
+          <div className="flex justify-between items-start">
+            <div className="space-y-2">
+              <div className="h-6 w-48 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="h-10 w-36 bg-muted animate-pulse rounded-md" />
+          </div>
+          <div className="h-[300px] bg-muted/30 animate-pulse rounded-lg" />
+        </div>
+        {/* AI Summary skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <div key={i} className="border rounded-lg p-6 space-y-4">
+              <div className="h-6 w-48 bg-muted animate-pulse rounded" />
+              <div className="space-y-3">
+                {[1, 2].map((j) => (
+                  <div
+                    key={j}
+                    className="h-20 bg-muted/50 animate-pulse rounded-lg"
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

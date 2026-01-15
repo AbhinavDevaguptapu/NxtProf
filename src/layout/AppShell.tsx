@@ -1,26 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sidebar } from "@/components/common/Sidebar";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { useUserAuth } from "@/context/UserAuthContext";
-import UserHome from "@/features/home/pages/Index";
-import AdminHome from "@/features/admin/pages/AdminHome";
-import ProfilePage from "@/features/profile/pages/ProfilePage";
-import StandupsPage from "@/features/standups/pages/Standups";
-import Attendance from "@/features/attendance/pages/Attendance";
-import FeedbackPage from "@/features/feedback/pages/FeedbackPage";
-import LearningHours from "@/features/learning-hours/pages/LearningHours";
-import OnboardingVideoPage from "@/features/onboarding/pages/OnBoardingPage";
-import AdminEmployeeDashboard from "@/features/admin/pages/AdminEmployeeDashboard";
-
-import PeerFeedbackPage from "@/features/peer-feedback/pages/PeerFeedbackPage";
-import AdminPeerFeedback from "@/features/admin/pages/AdminPeerFeedback";
-import AdminLearningHours from "@/features/admin/pages/AdminLearningHours";
 import FloatingNav from "@/components/common/FloatingNav";
-import DailyObservationsPage from "@/features/daily-observations/pages/DailyObservationsPage";
-import ArchivedEmployeesPage from "@/features/admin/pages/ArchivedEmployeesPage";
-import CoAdminAddLearningPoints from "@/features/co-admin/pages/CoAdminAddLearningPoints";
-import UserApprovalPage from "@/features/admin/pages/UserApprovalPage";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+
+// Lazy load feature components for code splitting
+const UserHome = lazy(() => import("@/features/home/pages/Index"));
+const AdminHome = lazy(() => import("@/features/admin/pages/AdminHome"));
+const ProfilePage = lazy(() => import("@/features/profile/pages/ProfilePage"));
+const StandupsPage = lazy(() => import("@/features/standups/pages/Standups"));
+const Attendance = lazy(() => import("@/features/attendance/pages/Attendance"));
+const FeedbackPage = lazy(
+  () => import("@/features/feedback/pages/FeedbackPage")
+);
+const LearningHours = lazy(
+  () => import("@/features/learning-hours/pages/LearningHours")
+);
+const OnboardingVideoPage = lazy(
+  () => import("@/features/onboarding/pages/OnBoardingPage")
+);
+const AdminEmployeeDashboard = lazy(
+  () => import("@/features/admin/pages/AdminEmployeeDashboard")
+);
+const PeerFeedbackPage = lazy(
+  () => import("@/features/peer-feedback/pages/PeerFeedbackPage")
+);
+const AdminPeerFeedback = lazy(
+  () => import("@/features/admin/pages/AdminPeerFeedback")
+);
+const AdminLearningHours = lazy(
+  () => import("@/features/admin/pages/AdminLearningHours")
+);
+const DailyObservationsPage = lazy(
+  () => import("@/features/daily-observations/pages/DailyObservationsPage")
+);
+const ArchivedEmployeesPage = lazy(
+  () => import("@/features/admin/pages/ArchivedEmployeesPage")
+);
+const CoAdminAddLearningPoints = lazy(
+  () => import("@/features/co-admin/pages/CoAdminAddLearningPoints")
+);
+const UserApprovalPage = lazy(
+  () => import("@/features/admin/pages/UserApprovalPage")
+);
 
 export type ViewType =
   | "home"
@@ -32,7 +56,6 @@ export type ViewType =
   | "onboardingKit"
   | "manage-employees"
   | "employee-detail"
-
   | "peer-feedback"
   | "admin-peer-feedback"
   | "learning-hours-points"
@@ -50,6 +73,16 @@ const AccessDenied = () => (
   <p className="text-lg md:text-base">
     You do not have permission to view this page.
   </p>
+);
+
+// Loading fallback for lazy-loaded components
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="relative h-12 w-12">
+      <div className="absolute inset-0 rounded-full border-[3px] border-muted animate-spin"></div>
+      <div className="absolute inset-2 rounded-full border-[3px] border-primary border-t-transparent animate-spin"></div>
+    </div>
+  </div>
 );
 
 // Function to get the initial view from the URL hash
@@ -151,7 +184,9 @@ export default function AppShell() {
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
             >
-              {renderContent()}
+              <Suspense fallback={<PageLoader />}>
+                <ErrorBoundary>{renderContent()}</ErrorBoundary>
+              </Suspense>
             </motion.div>
           </AnimatePresence>
         </main>

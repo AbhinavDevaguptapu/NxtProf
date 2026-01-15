@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/firebase/client";
 import {
-    collection,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    Timestamp,
-    getDocs,
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  Timestamp,
 } from "firebase/firestore";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useAdminAuth } from "@/context/AdminAuthContext";
@@ -16,68 +15,82 @@ import { calculateLearningStreak } from "@/lib/calculate-learning-streak";
 // Define the type for the streak state
 type Streak = number | "N/A" | null;
 
+/**
+ * Fetches all scheduled learning hour sessions and returns their dates.
+ */
+async function fetchScheduledSessions(): Promise<Set<string>> {
+  const snapshot = await getDocs(query(collection(db, "learning_hours")));
+  const dates = new Set<string>();
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    if (data.scheduled_at) {
+      dates.add(data.scheduled_at.toDate().toISOString().split("T")[0]);
+    }
+  });
+  return dates;
+}
+
+/**
+ * Fetches learning hours attendance for a user and calculates streak.
+ */
+async function fetchLearningStreak(
+  userId: string,
+  conductedDates: Set<string>
+): Promise<number> {
+  const attendanceRef = collection(db, "learning_hours_attendance");
+  const q = query(
+    attendanceRef,
+    where("employee_id", "==", userId),
+    orderBy("scheduled_at", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+  const entries = snapshot.docs.map(
+    (d) =>
+      d.data() as {
+        status: string;
+        scheduled_at: Timestamp;
+      }
+  );
+
+  return calculateLearningStreak(entries, conductedDates);
+}
+
 export function useLearningStreak() {
-    const { user } = useUserAuth();
-    const { admin } = useAdminAuth(); // <-- Use admin context
+  const { user } = useUserAuth();
+  const { admin } = useAdminAuth();
 
-    const [learningStreak, setLearningStreak] = useState<Streak>(null);
-    const [loading, setLoading] = useState(false);
+  // Query 1: Fetch scheduled sessions (cached for all users)
+  const { data: conductedDates, isLoading: sessionsLoading } = useQuery({
+    queryKey: ["learningHoursSessions"],
+    queryFn: fetchScheduledSessions,
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
 
-    useEffect(() => {
-        let unsubscribe = () => { };
+  // Query 2: Fetch learning streak (depends on sessions being loaded)
+  const { data: learningStreak, isLoading: streakLoading } = useQuery<Streak>({
+    queryKey: ["learningStreak", user?.uid],
+    queryFn: () => fetchLearningStreak(user!.uid, conductedDates!),
+    enabled: !!user && !admin && !!conductedDates,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 2,
+  });
 
-        // Handle user state
-        if (user) {
-            setLoading(true);
+  // Return "N/A" for admins
+  if (admin) {
+    return { learningStreak: "N/A" as Streak, loading: false };
+  }
 
-            // --- POINT TO THE CORRECT COLLECTION ---
-            const attendanceRef = collection(db, "learning_hours_attendance");
-            const q = query(
-                attendanceRef,
-                where("employee_id", "==", user.uid),
-                orderBy("scheduled_at", "desc")
-            );
+  // Return null for logged out users
+  if (!user) {
+    return { learningStreak: null, loading: false };
+  }
 
-
-            // Use real-time listener
-            unsubscribe = onSnapshot(q, async (snapshot) => {
-                const entries = snapshot.docs.map((d) => d.data() as {
-                    status: string;
-                    scheduled_at: Timestamp;
-                });
-
-                // Get all scheduled learning hour dates
-                const scheduledSessionsQuery = query(collection(db, "learning_hours"));
-                const scheduledSessionsSnapshot = await getDocs(scheduledSessionsQuery);
-                const allConductedDates = new Set<string>();
-                scheduledSessionsSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.scheduled_at) {
-                        allConductedDates.add(data.scheduled_at.toDate().toISOString().split('T')[0]);
-                    }
-                });
-
-                setLearningStreak(calculateLearningStreak(entries, allConductedDates));
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching learning streak:", error);
-                setLoading(false);
-            });
-
-            // Handle admin state
-        } else if (admin) {
-            setLearningStreak("N/A");
-            setLoading(false);
-
-            // Handle logged out state
-        } else {
-            setLearningStreak(null);
-            setLoading(false);
-        }
-
-        // Cleanup the listener on unmount
-        return unsubscribe;
-    }, [user, admin]);
-
-    return { learningStreak, loading };
+  return {
+    learningStreak: learningStreak ?? null,
+    loading: sessionsLoading || streakLoading,
+  };
 }
