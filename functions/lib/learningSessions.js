@@ -36,12 +36,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getLearningPointsByDate = exports.endLearningSessionAndLockPoints = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const v2_1 = require("firebase-functions/v2");
 const utils_1 = require("./utils");
 /**
  * Ends a learning session and locks all associated learning points.
  * This function is callable only by an admin.
-*/
-exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) => {
+ */
+exports.endLearningSessionAndLockPoints = (0, https_1.onCall)({ cors: true }, async (request) => {
     const db = admin.firestore();
     // 1. Authentication & Authorization Check
     if (!request.auth) {
@@ -57,10 +58,12 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
     try {
         const batch = db.batch();
         // 2. Find all learning points associated with this session
-        const pointsQuery = db.collection("learning_points").where("sessionId", "==", sessionId);
+        const pointsQuery = db
+            .collection("learning_points")
+            .where("sessionId", "==", sessionId);
         const pointsSnapshot = await pointsQuery.get();
         if (!pointsSnapshot.empty) {
-            pointsSnapshot.forEach(doc => {
+            pointsSnapshot.forEach((doc) => {
                 // Add an update operation to the batch to lock each point
                 batch.update(doc.ref, { editable: false });
             });
@@ -69,14 +72,28 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)(async (request) =>
         const sessionRef = db.doc(`learning_hours/${sessionId}`);
         batch.update(sessionRef, {
             status: "ended",
-            endedAt: admin.firestore.FieldValue.serverTimestamp()
+            endedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // 4. Commit all the changes at once
         await batch.commit();
-        return { success: true, message: `Session ended and ${pointsSnapshot.size} points were locked.` };
+        v2_1.logger.info("Learning session ended and points locked", {
+            sessionId,
+            pointsLocked: pointsSnapshot.size,
+            adminId: request.auth.uid,
+            timestamp: new Date().toISOString(),
+        });
+        return {
+            success: true,
+            message: `Session ended and ${pointsSnapshot.size} points were locked.`,
+        };
     }
     catch (error) {
-        console.error("Error ending session and locking points:", error);
+        v2_1.logger.error("Error ending learning session", {
+            sessionId,
+            adminId: request.auth.uid,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
         throw new https_1.HttpsError("internal", "An unexpected error occurred while ending the session.");
     }
 });
@@ -128,7 +145,8 @@ exports.getLearningPointsByDate = (0, https_1.onCall)({ cors: true }, async (req
     const endDate = new Date(startDate);
     endDate.setUTCDate(startDate.getUTCDate() + 1);
     try {
-        const baseQuery = db.collection("learning_points")
+        const baseQuery = db
+            .collection("learning_points")
             .where("createdAt", ">=", startDate)
             .where("createdAt", "<", endDate);
         // Allow all users to see all learning points for today's learning
@@ -136,11 +154,16 @@ exports.getLearningPointsByDate = (0, https_1.onCall)({ cors: true }, async (req
         if (snapshot.empty) {
             return [];
         }
-        const points = snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+        const points = snapshot.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data())));
         return points;
     }
     catch (error) {
-        console.error("Error fetching learning points:", error);
+        v2_1.logger.error("Error fetching learning points", {
+            userId: request.auth.uid,
+            date: date || "today",
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
         throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching learning points.");
     }
 });

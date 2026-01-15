@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.givePeerFeedback = exports.getPeerFeedbackLockStatus = exports.togglePeerFeedbackLock = exports.adminGetAllPeerFeedback = exports.getMyReceivedFeedback = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const v2_1 = require("firebase-functions/v2");
 // Function to get feedback received by the current user (anonymous)
 exports.getMyReceivedFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
     const db = admin.firestore();
@@ -43,8 +44,16 @@ exports.getMyReceivedFeedback = (0, https_1.onCall)({ cors: true }, async (reque
         throw new https_1.HttpsError("unauthenticated", "You must be logged in to view your feedback.");
     }
     const myId = request.auth.uid;
-    const givenSnapshot = await db.collection("givenPeerFeedback").where("targetId", "==", myId).orderBy("createdAt", "desc").get();
-    const feedback = givenSnapshot.docs.map(doc => {
+    v2_1.logger.info("Fetching received feedback", {
+        userId: myId,
+        timestamp: new Date().toISOString(),
+    });
+    const givenSnapshot = await db
+        .collection("givenPeerFeedback")
+        .where("targetId", "==", myId)
+        .orderBy("createdAt", "desc")
+        .get();
+    const feedback = givenSnapshot.docs.map((doc) => {
         const data = doc.data();
         const timestamp = data.createdAt;
         return {
@@ -53,8 +62,15 @@ exports.getMyReceivedFeedback = (0, https_1.onCall)({ cors: true }, async (reque
             workEfficiency: data.workEfficiency,
             easeOfWork: data.easeOfWork,
             remarks: data.remarks,
-            submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString()
+            submittedAt: timestamp
+                ? timestamp.toDate().toISOString()
+                : new Date().toISOString(),
         };
+    });
+    v2_1.logger.info("Received feedback fetched", {
+        userId: myId,
+        count: feedback.length,
+        timestamp: new Date().toISOString(),
     });
     return feedback;
 });
@@ -65,31 +81,40 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)({ cors: true }, async (req
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can access this information.");
     }
-    const givenSnapshot = await db.collection("givenPeerFeedback").orderBy("createdAt", "desc").get();
+    const givenSnapshot = await db
+        .collection("givenPeerFeedback")
+        .orderBy("createdAt", "desc")
+        .get();
     const feedback = await Promise.all(givenSnapshot.docs.map(async (doc) => {
         var _a, _b, _c, _d;
         const data = doc.data();
         const [giverDoc, receiverDoc] = await Promise.all([
             db.collection("employees").doc(data.giverId).get(),
-            db.collection("employees").doc(data.targetId).get()
+            db.collection("employees").doc(data.targetId).get(),
         ]);
         // Skip feedback if either giver or receiver is archived
-        if (((_a = giverDoc.data()) === null || _a === void 0 ? void 0 : _a.archived) === true || ((_b = receiverDoc.data()) === null || _b === void 0 ? void 0 : _b.archived) === true) {
+        if (((_a = giverDoc.data()) === null || _a === void 0 ? void 0 : _a.archived) === true ||
+            ((_b = receiverDoc.data()) === null || _b === void 0 ? void 0 : _b.archived) === true) {
             return null;
         }
         const timestamp = data.createdAt;
         return {
             id: doc.id,
             giver: { id: data.giverId, name: ((_c = giverDoc.data()) === null || _c === void 0 ? void 0 : _c.name) || "Unknown" },
-            receiver: { id: data.targetId, name: ((_d = receiverDoc.data()) === null || _d === void 0 ? void 0 : _d.name) || "Unknown" },
+            receiver: {
+                id: data.targetId,
+                name: ((_d = receiverDoc.data()) === null || _d === void 0 ? void 0 : _d.name) || "Unknown",
+            },
             projectOrTask: data.projectOrTask,
             workEfficiency: data.workEfficiency,
             easeOfWork: data.easeOfWork,
             remarks: data.remarks,
-            submittedAt: timestamp ? timestamp.toDate().toISOString() : new Date().toISOString()
+            submittedAt: timestamp
+                ? timestamp.toDate().toISOString()
+                : new Date().toISOString(),
         };
     }));
-    return feedback.filter(item => item !== null);
+    return feedback.filter((item) => item !== null);
 });
 exports.togglePeerFeedbackLock = (0, https_1.onCall)({ cors: true }, async (request) => {
     var _a;
@@ -134,7 +159,9 @@ exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) =
     }
     const { targetId, projectOrTask, workEfficiency, easeOfWork, remarks } = request.data;
     // Input validation and sanitization
-    if (!targetId || typeof targetId !== "string" || targetId.trim().length === 0) {
+    if (!targetId ||
+        typeof targetId !== "string" ||
+        targetId.trim().length === 0) {
         throw new https_1.HttpsError("invalid-argument", "Valid targetId is required.");
     }
     if (!projectOrTask || typeof projectOrTask !== "string") {
@@ -151,11 +178,16 @@ exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) =
     const sanitizedProjectOrTask = projectOrTask.trim().substring(0, 255); // Limit length
     const sanitizedRemarks = remarks.trim().substring(0, 1000); // Limit length
     // Validate rating ranges
-    if (workEfficiency < 0 || workEfficiency > 5 || easeOfWork < 0 || easeOfWork > 5) {
+    if (workEfficiency < 0 ||
+        workEfficiency > 5 ||
+        easeOfWork < 0 ||
+        easeOfWork > 5) {
         throw new https_1.HttpsError("invalid-argument", "Ratings must be between 0 and 5.");
     }
     // Validate lengths
-    if (sanitizedTargetId.length > 128 || sanitizedProjectOrTask.length === 0 || sanitizedRemarks.length === 0) {
+    if (sanitizedTargetId.length > 128 ||
+        sanitizedProjectOrTask.length === 0 ||
+        sanitizedRemarks.length === 0) {
         throw new https_1.HttpsError("invalid-argument", "Input validation failed.");
     }
     const giverId = request.auth.uid;
@@ -173,7 +205,8 @@ exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) =
         try {
             await db.runTransaction(async (transaction) => {
                 // Check for existing feedback within transaction
-                const existingFeedbackQuery = db.collection("givenPeerFeedback")
+                const existingFeedbackQuery = db
+                    .collection("givenPeerFeedback")
                     .where("giverId", "==", giverId)
                     .where("targetId", "==", sanitizedTargetId)
                     .where("createdAt", ">=", startOfMonth)
@@ -192,7 +225,7 @@ exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) =
                     workEfficiency,
                     easeOfWork,
                     remarks: sanitizedRemarks,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 };
                 transaction.set(feedbackRef, feedback);
             });
@@ -207,7 +240,12 @@ exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) =
         return { success: true };
     }
     catch (error) {
-        console.error("Error giving peer feedback:", error);
+        v2_1.logger.error("Error giving peer feedback", {
+            userId: giverId,
+            targetId: sanitizedTargetId,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
         if (error instanceof https_1.HttpsError) {
             throw error;
         }

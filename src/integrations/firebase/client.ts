@@ -9,22 +9,26 @@
  * - Uses Vite environment variables prefixed with `VITE_FIREBASE_`.
  * - Exports:
  *   - `auth`: Firebase Authentication instance.
- *   - `db`: Firestore database instance.
+ *   - `db`: Firestore database instance with offline persistence.
  *   - `storage`: Firebase Storage instance.
  */
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore"; // <-- IMPORT FIRESTORE
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Your Firebase configuration using environment variables
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
@@ -32,5 +36,12 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize and export Firebase services
 export const auth = getAuth(app);
-export const db = getFirestore(app); // <-- INITIALIZE AND EXPORT DB
-export const storage = getStorage(app); // <-- INITIALIZE AND EXPORT STORAGE
+
+// Initialize Firestore with offline persistence for better performance
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
+
+export const storage = getStorage(app);

@@ -120,7 +120,7 @@ export const useAddObservation = () => {
       toast.success(result.data.message || "Observation added successfully!");
       queryClient.invalidateQueries({ queryKey: ["observations"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const message = getUserFriendlyErrorMessage(
         error,
         "Could not add your observation. Please try again."
@@ -145,7 +145,7 @@ export const useUpdateObservation = () => {
       toast.success(result.data.message || "Observation updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["observations"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const message = getUserFriendlyErrorMessage(
         error,
         "Could not update your observation. Please try again."
@@ -170,7 +170,7 @@ export const useDeleteObservation = () => {
       toast.success(result.data.message || "Observation deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ["observations"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const message = getUserFriendlyErrorMessage(
         error,
         "Could not delete your observation. Please try again."

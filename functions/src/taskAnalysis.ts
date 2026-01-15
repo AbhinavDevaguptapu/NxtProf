@@ -2,6 +2,7 @@
  * @file Cloud Functions for task analysis and Google Sheet data retrieval.
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getGeminiKey } from "./utils";
 
@@ -13,7 +14,13 @@ export const analyzeTask = onCall<{ prompt: string }>(
     cors: true,
   },
   async (request) => {
+    const startTime = Date.now();
+    const userId = request.auth?.uid || "anonymous";
+
     if (!request.auth) {
+      logger.warn("Unauthenticated analyzeTask attempt", {
+        timestamp: new Date().toISOString(),
+      });
       throw new HttpsError("unauthenticated", "Authentication required.");
     }
 
@@ -21,16 +28,31 @@ export const analyzeTask = onCall<{ prompt: string }>(
 
     // Input validation and sanitization
     if (!prompt || typeof prompt !== "string") {
+      logger.warn("Invalid prompt provided", {
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       throw new HttpsError("invalid-argument", "A valid prompt is required.");
     }
 
     const sanitizedPrompt = prompt.trim();
     if (sanitizedPrompt.length === 0 || sanitizedPrompt.length > 20000) {
+      logger.warn("Prompt length validation failed", {
+        userId,
+        promptLength: sanitizedPrompt.length,
+        timestamp: new Date().toISOString(),
+      });
       throw new HttpsError(
         "invalid-argument",
         "Prompt must be between 1 and 20000 characters."
       );
     }
+
+    logger.info("Task analysis started", {
+      userId,
+      promptLength: sanitizedPrompt.length,
+      timestamp: new Date().toISOString(),
+    });
 
     try {
       const model = new GoogleGenerativeAI(getGeminiKey()).getGenerativeModel({
@@ -48,14 +70,29 @@ export const analyzeTask = onCall<{ prompt: string }>(
 
       try {
         const obj = JSON.parse(js);
+        const duration = Date.now() - startTime;
+        logger.info("Task analysis completed", {
+          userId,
+          durationMs: duration,
+          timestamp: new Date().toISOString(),
+        });
         return obj;
-      } catch (parseError) {
-        console.error("Failed to parse AI response as JSON:", parseError);
-        console.error("AI Response text:", aiTxt);
+      } catch (parseError: any) {
+        logger.error("Failed to parse AI response", {
+          userId,
+          error: parseError.message,
+          timestamp: new Date().toISOString(),
+        });
         throw new HttpsError("internal", "Failed to process AI response.");
       }
-    } catch (e) {
-      console.error("AI processing error:", e);
+    } catch (e: any) {
+      const duration = Date.now() - startTime;
+      logger.error("AI processing failed", {
+        userId,
+        error: e.message,
+        durationMs: duration,
+        timestamp: new Date().toISOString(),
+      });
       throw new HttpsError("internal", "Failed to generate AI summary.");
     }
   }

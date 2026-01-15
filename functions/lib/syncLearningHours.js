@@ -35,6 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.autoSyncLearningPoints = exports.syncLearningPointsToSheet = exports.syncLearningHoursByDate = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const v2_1 = require("firebase-functions/v2");
 const googleapis_1 = require("googleapis");
 const admin = __importStar(require("firebase-admin"));
 const date_fns_1 = require("date-fns");
@@ -171,7 +173,7 @@ exports.syncLearningHoursByDate = (0, https_1.onCall)({
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
-    cors: true
+    cors: true,
 }, async (request) => {
     // 1. Auth check
     if (!request.auth) {
@@ -201,7 +203,7 @@ exports.syncLearningPointsToSheet = (0, https_1.onCall)({
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
-    cors: true
+    cors: true,
 }, async (request) => {
     // 1. Auth check
     if (!request.auth) {
@@ -226,30 +228,31 @@ exports.syncLearningPointsToSheet = (0, https_1.onCall)({
     }
     return await _syncLearningPoints(sanitizedSessionId);
 });
-const scheduler_1 = require("firebase-functions/v2/scheduler");
-const functions = __importStar(require("firebase-functions"));
 exports.autoSyncLearningPoints = (0, scheduler_1.onSchedule)({
-    schedule: '0 19 * * 1-6',
-    timeZone: 'Asia/Kolkata',
+    schedule: "0 19 * * 1-6",
+    timeZone: "Asia/Kolkata",
     secrets: ["SHEETS_SA_KEY"],
     timeoutSeconds: 540,
-    memory: "512MiB"
-}, async (event) => {
+    memory: "512MiB",
+}, async () => {
     const today = new Date();
     const dateString = (0, date_fns_1.format)(today, "yyyy-MM-dd");
-    functions.logger.info(`Running scheduled learning points sync for ${dateString}`);
+    v2_1.logger.info("Starting scheduled learning points sync", {
+        date: dateString,
+    });
     try {
         const result = await _syncLearningPoints(dateString);
-        functions.logger.info(`Learning points sync completed for ${dateString}: ${result.message}`);
+        v2_1.logger.info("Learning points sync completed", {
+            date: dateString,
+            message: result.message,
+        });
     }
     catch (error) {
-        // Check if it's an HttpsError and log accordingly
-        if (error.code) {
-            functions.logger.error(`Scheduled sync for ${dateString} failed with code ${error.code}:`, error.message);
-        }
-        else {
-            functions.logger.error(`Scheduled sync for ${dateString} failed with an unexpected error:`, error);
-        }
+        v2_1.logger.error("Scheduled learning points sync failed", {
+            date: dateString,
+            code: error.code || "unknown",
+            message: error.message,
+        });
     }
 });
 //# sourceMappingURL=syncLearningHours.js.map

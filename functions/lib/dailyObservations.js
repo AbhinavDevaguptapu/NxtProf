@@ -40,12 +40,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteObservation = exports.updateObservation = exports.addObservation = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const v2_1 = require("firebase-functions/v2");
 const admin = __importStar(require("firebase-admin"));
 const zod_1 = require("zod");
-// --- Initialization ---
-if (admin.apps.length === 0) {
-    admin.initializeApp();
-}
 // --- Validation Schemas ---
 const observationSchema = zod_1.z.object({
     observationText: zod_1.z.string().min(10, {
@@ -91,7 +88,9 @@ exports.addObservation = (0, https_1.onCall)({ cors: true }, async (request) => 
     ensureAuthenticated(request);
     const validation = observationSchema.safeParse(request.data);
     if (!validation.success) {
-        const errorMessage = validation.error.errors.map((e) => e.message).join(", ");
+        const errorMessage = validation.error.errors
+            .map((e) => e.message)
+            .join(", ");
         throw new https_1.HttpsError("invalid-argument", errorMessage);
     }
     const { observationText } = validation.data;
@@ -101,7 +100,10 @@ exports.addObservation = (0, https_1.onCall)({ cors: true }, async (request) => 
         const authorName = user.displayName || "Unknown User";
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        await admin.firestore().collection("observations").add({
+        await admin
+            .firestore()
+            .collection("observations")
+            .add({
             userId: uid,
             authorName,
             observationText,
@@ -109,10 +111,18 @@ exports.addObservation = (0, https_1.onCall)({ cors: true }, async (request) => 
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        v2_1.logger.info("Observation added", {
+            userId: uid,
+            timestamp: new Date().toISOString(),
+        });
         return { success: true, message: "Observation added successfully." };
     }
     catch (error) {
-        console.error("Error adding observation:", error);
+        v2_1.logger.error("Error adding observation", {
+            userId: uid,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
         throw new https_1.HttpsError("internal", "An unexpected error occurred while adding the observation.");
     }
 });
@@ -123,7 +133,9 @@ exports.updateObservation = (0, https_1.onCall)({ cors: true }, async (request) 
     ensureAuthenticated(request);
     const validation = updateObservationSchema.safeParse(request.data);
     if (!validation.success) {
-        const errorMessage = validation.error.errors.map((e) => e.message).join(", ");
+        const errorMessage = validation.error.errors
+            .map((e) => e.message)
+            .join(", ");
         throw new https_1.HttpsError("invalid-argument", errorMessage);
     }
     const { id, observationText } = validation.data;
@@ -134,10 +146,20 @@ exports.updateObservation = (0, https_1.onCall)({ cors: true }, async (request) 
             observationText,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        v2_1.logger.info("Observation updated", {
+            userId: uid,
+            observationId: id,
+            timestamp: new Date().toISOString(),
+        });
         return { success: true, message: "Observation updated successfully." };
     }
     catch (error) {
-        console.error("Error updating observation:", error);
+        v2_1.logger.error("Error updating observation", {
+            userId: uid,
+            observationId: id,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
         if (error instanceof https_1.HttpsError)
             throw error;
         throw new https_1.HttpsError("internal", "An unexpected error occurred while updating the observation.");
@@ -153,10 +175,20 @@ exports.deleteObservation = (0, https_1.onCall)({ cors: true }, async (request) 
     try {
         const observationRef = await verifyObservationOwnership(id, uid);
         await observationRef.delete();
+        v2_1.logger.info("Observation deleted", {
+            userId: uid,
+            observationId: id,
+            timestamp: new Date().toISOString(),
+        });
         return { success: true, message: "Observation deleted successfully." };
     }
     catch (error) {
-        console.error("Error deleting observation:", error);
+        v2_1.logger.error("Error deleting observation", {
+            userId: uid,
+            observationId: id,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+        });
         if (error instanceof https_1.HttpsError)
             throw error;
         throw new https_1.HttpsError("internal", "An unexpected error occurred while deleting the observation.");

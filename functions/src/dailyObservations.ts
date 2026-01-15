@@ -5,13 +5,9 @@
  */
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { z } from "zod";
-
-// --- Initialization ---
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
 
 // --- Validation Schemas ---
 const observationSchema = z.object({
@@ -37,31 +33,38 @@ const ensureAuthenticated = (request: any) => {
   }
 };
 
-
-
 const verifyObservationOwnership = async (id: string, uid: string) => {
-    const observationRef = admin.firestore().collection("observations").doc(id);
-    const doc = await observationRef.get();
+  const observationRef = admin.firestore().collection("observations").doc(id);
+  const doc = await observationRef.get();
 
-    if (!doc.exists) {
-        throw new HttpsError("not-found", "The requested observation does not exist.");
-    }
+  if (!doc.exists) {
+    throw new HttpsError(
+      "not-found",
+      "The requested observation does not exist."
+    );
+  }
 
-    const observation = doc.data()!;
-    if (observation.userId !== uid) {
-        throw new HttpsError("permission-denied", "You are not authorized to modify this observation.");
-    }
+  const observation = doc.data()!;
+  if (observation.userId !== uid) {
+    throw new HttpsError(
+      "permission-denied",
+      "You are not authorized to modify this observation."
+    );
+  }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const observationDate = observation.observationDate.toDate();
-    observationDate.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const observationDate = observation.observationDate.toDate();
+  observationDate.setHours(0, 0, 0, 0);
 
-    if (today.getTime() !== observationDate.getTime()) {
-        throw new HttpsError("permission-denied", "Observations can only be modified on the day they were created.");
-    }
+  if (today.getTime() !== observationDate.getTime()) {
+    throw new HttpsError(
+      "permission-denied",
+      "Observations can only be modified on the day they were created."
+    );
+  }
 
-    return observationRef;
+  return observationRef;
 };
 
 // --- Cloud Functions ---
@@ -74,7 +77,9 @@ export const addObservation = onCall({ cors: true }, async (request) => {
 
   const validation = observationSchema.safeParse(request.data);
   if (!validation.success) {
-    const errorMessage = validation.error.errors.map((e) => e.message).join(", ");
+    const errorMessage = validation.error.errors
+      .map((e) => e.message)
+      .join(", ");
     throw new HttpsError("invalid-argument", errorMessage);
   }
 
@@ -87,19 +92,33 @@ export const addObservation = onCall({ cors: true }, async (request) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    await admin.firestore().collection("observations").add({
-      userId: uid,
-      authorName,
-      observationText,
-      observationDate: admin.firestore.Timestamp.fromDate(today),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    await admin
+      .firestore()
+      .collection("observations")
+      .add({
+        userId: uid,
+        authorName,
+        observationText,
+        observationDate: admin.firestore.Timestamp.fromDate(today),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
+    logger.info("Observation added", {
+      userId: uid,
+      timestamp: new Date().toISOString(),
+    });
     return { success: true, message: "Observation added successfully." };
-  } catch (error) {
-    console.error("Error adding observation:", error);
-    throw new HttpsError("internal", "An unexpected error occurred while adding the observation.");
+  } catch (error: any) {
+    logger.error("Error adding observation", {
+      userId: uid,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+    throw new HttpsError(
+      "internal",
+      "An unexpected error occurred while adding the observation."
+    );
   }
 });
 
@@ -111,7 +130,9 @@ export const updateObservation = onCall({ cors: true }, async (request) => {
 
   const validation = updateObservationSchema.safeParse(request.data);
   if (!validation.success) {
-    const errorMessage = validation.error.errors.map((e) => e.message).join(", ");
+    const errorMessage = validation.error.errors
+      .map((e) => e.message)
+      .join(", ");
     throw new HttpsError("invalid-argument", errorMessage);
   }
 
@@ -124,14 +145,26 @@ export const updateObservation = onCall({ cors: true }, async (request) => {
       observationText,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    logger.info("Observation updated", {
+      userId: uid,
+      observationId: id,
+      timestamp: new Date().toISOString(),
+    });
     return { success: true, message: "Observation updated successfully." };
   } catch (error: any) {
-    console.error("Error updating observation:", error);
+    logger.error("Error updating observation", {
+      userId: uid,
+      observationId: id,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
     if (error instanceof HttpsError) throw error;
-    throw new HttpsError("internal", "An unexpected error occurred while updating the observation.");
+    throw new HttpsError(
+      "internal",
+      "An unexpected error occurred while updating the observation."
+    );
   }
 });
-
 
 /**
  * Deletes an observation from the Firestore database.
@@ -145,10 +178,23 @@ export const deleteObservation = onCall({ cors: true }, async (request) => {
   try {
     const observationRef = await verifyObservationOwnership(id, uid);
     await observationRef.delete();
+    logger.info("Observation deleted", {
+      userId: uid,
+      observationId: id,
+      timestamp: new Date().toISOString(),
+    });
     return { success: true, message: "Observation deleted successfully." };
   } catch (error: any) {
-    console.error("Error deleting observation:", error);
+    logger.error("Error deleting observation", {
+      userId: uid,
+      observationId: id,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
     if (error instanceof HttpsError) throw error;
-    throw new HttpsError("internal", "An unexpected error occurred while deleting the observation.");
+    throw new HttpsError(
+      "internal",
+      "An unexpected error occurred while deleting the observation."
+    );
   }
 });

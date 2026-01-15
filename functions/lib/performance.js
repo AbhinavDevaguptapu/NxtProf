@@ -36,11 +36,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getEmployeePerformanceSummary = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const v2_1 = require("firebase-functions/v2");
 const date_fns_1 = require("date-fns");
-if (admin.apps.length === 0) {
-    admin.initializeApp();
-}
 exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, async (request) => {
+    var _a;
+    const startTime = Date.now();
+    const userId = ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) || "anonymous";
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
     }
@@ -51,22 +52,42 @@ exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, asyn
     if (!employeeId || !month) {
         throw new https_1.HttpsError("invalid-argument", "Both employee and month parameters are required.");
     }
+    v2_1.logger.info("Performance summary requested", {
+        userId,
+        targetEmployeeId: employeeId,
+        month,
+        timestamp: new Date().toISOString(),
+    });
     const db = admin.firestore();
     const targetMonth = (0, date_fns_1.parseISO)(month + "-01");
     const monthStart = (0, date_fns_1.startOfMonth)(targetMonth);
     const monthEnd = (0, date_fns_1.endOfMonth)(targetMonth);
     // Calculate working days in the month (excluding Sundays)
-    const daysInInterval = (0, date_fns_1.eachDayOfInterval)({ start: monthStart, end: monthEnd });
-    const workingDaysInMonth = daysInInterval.filter(day => (0, date_fns_1.getDay)(day) !== 0).length; // 0 is Sunday
+    const daysInInterval = (0, date_fns_1.eachDayOfInterval)({
+        start: monthStart,
+        end: monthEnd,
+    });
+    const workingDaysInMonth = daysInInterval.filter((day) => (0, date_fns_1.getDay)(day) !== 0).length; // 0 is Sunday
     try {
-        // 1. Fetch Standup Attendance
-        const standupQuery = db.collection("attendance")
+        // Build queries
+        const standupQuery = db
+            .collection("attendance")
             .where("employee_id", "==", employeeId)
             .where("standup_id", ">=", (0, date_fns_1.format)(monthStart, "yyyy-MM-dd"))
             .where("standup_id", "<=", (0, date_fns_1.format)(monthEnd, "yyyy-MM-dd"));
-        const standupSnapshot = await standupQuery.get();
+        const learningQuery = db
+            .collection("learning_hours_attendance")
+            .where("employee_id", "==", employeeId)
+            .where("learning_hour_id", ">=", (0, date_fns_1.format)(monthStart, "yyyy-MM-dd"))
+            .where("learning_hour_id", "<=", (0, date_fns_1.format)(monthEnd, "yyyy-MM-dd"));
+        // Execute both queries in parallel for better performance
+        const [standupSnapshot, learningSnapshot] = await Promise.all([
+            standupQuery.get(),
+            learningQuery.get(),
+        ]);
+        // Process standup attendance
         const standupStats = { present: 0, absent: 0, missed: 0, unavailable: 0 };
-        standupSnapshot.forEach(doc => {
+        standupSnapshot.forEach((doc) => {
             const status = doc.data().status;
             if (status === "Present")
                 standupStats.present++;
@@ -77,14 +98,14 @@ exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, asyn
             else if (status === "Not Available")
                 standupStats.unavailable++;
         });
-        // 2. Fetch Learning Hours Attendance
-        const learningQuery = db.collection("learning_hours_attendance")
-            .where("employee_id", "==", employeeId)
-            .where("learning_hour_id", ">=", (0, date_fns_1.format)(monthStart, "yyyy-MM-dd"))
-            .where("learning_hour_id", "<=", (0, date_fns_1.format)(monthEnd, "yyyy-MM-dd"));
-        const learningSnapshot = await learningQuery.get();
-        const learningStats = { present: 0, absent: 0, missed: 0, unavailable: 0 };
-        learningSnapshot.forEach(doc => {
+        // Process learning hours attendance
+        const learningStats = {
+            present: 0,
+            absent: 0,
+            missed: 0,
+            unavailable: 0,
+        };
+        learningSnapshot.forEach((doc) => {
             const status = doc.data().status;
             if (status === "Present")
                 learningStats.present++;
@@ -98,7 +119,7 @@ exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, asyn
         // 3. Presence Donut Chart Data (based on standup attendance)
         const attendedDays = standupStats.present + standupStats.unavailable;
         const presencePercentage = workingDaysInMonth > 0 ? (attendedDays / workingDaysInMonth) * 100 : 0;
-        return {
+        const result = {
             standupAttendance: standupStats,
             learningAttendance: learningStats,
             monthlyChart: {
@@ -106,11 +127,24 @@ exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, asyn
                 learningDays: learningStats.present,
             },
             presenceChart: Object.assign(Object.assign({}, standupStats), { presencePercentage: presencePercentage.toFixed(1) }),
-            workingDays: workingDaysInMonth
+            workingDays: workingDaysInMonth,
         };
+        v2_1.logger.info("Performance summary completed", {
+            userId,
+            targetEmployeeId: employeeId,
+            durationMs: Date.now() - startTime,
+            timestamp: new Date().toISOString(),
+        });
+        return result;
     }
     catch (error) {
-        console.error("Error fetching employee performance summary:", error);
+        v2_1.logger.error("Error fetching performance summary", {
+            userId,
+            targetEmployeeId: employeeId,
+            error: error.message,
+            durationMs: Date.now() - startTime,
+            timestamp: new Date().toISOString(),
+        });
         throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching the performance summary.");
     }
 });

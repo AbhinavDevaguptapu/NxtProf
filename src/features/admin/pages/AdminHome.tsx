@@ -173,11 +173,42 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">
-          Loading Dashboard...
-        </p>
+      <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
+          <div className="space-y-3">
+            <div className="h-8 w-64 bg-muted animate-pulse rounded-lg" />
+            <div className="h-5 w-96 bg-muted animate-pulse rounded-lg" />
+          </div>
+          <div className="h-8 w-40 bg-muted animate-pulse rounded-full" />
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2 space-y-6">
+            <div className="h-6 w-48 bg-muted animate-pulse rounded-lg" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-48 bg-muted animate-pulse rounded-xl"
+                />
+              ))}
+            </div>
+            <div className="h-32 bg-muted animate-pulse rounded-xl" />
+          </div>
+          <div className="xl:col-span-1 space-y-6">
+            <div className="h-6 w-32 bg-muted animate-pulse rounded-lg" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 bg-muted animate-pulse rounded-xl"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
