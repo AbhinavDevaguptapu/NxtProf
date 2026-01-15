@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Table,
@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ReasonModal } from "./ReasonModal";
 
@@ -76,6 +78,32 @@ export const AttendanceReport = ({
   const [editedReasons, setEditedReasons] = useState<Record<string, string>>(
     {}
   );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery) return employees;
+    const lowerQuery = searchQuery.toLowerCase();
+    return employees.filter(
+      (emp) =>
+        emp.name.toLowerCase().includes(lowerQuery) ||
+        emp.email.toLowerCase().includes(lowerQuery)
+    );
+  }, [employees, searchQuery]);
+
+  const handleBulkUpdate = (status: AttendanceStatus) => {
+    const newAtt = { ...editedAtt };
+    const newReasons = { ...editedReasons };
+
+    selectedIds.forEach((id) => {
+      newAtt[id] = status;
+      if (status === "Not Available") {
+        newReasons[id] = "Bulk update";
+      }
+    });
+    setEditedAtt(newAtt);
+    setEditedReasons(newReasons);
+  };
 
   const fetchData = useCallback(
     async (date: Date) => {
@@ -135,6 +163,7 @@ export const AttendanceReport = ({
     });
     setEditedAtt(initialEdits);
     setEditing(true);
+    setSelectedIds(new Set());
   };
 
   const handleSave = async () => {
@@ -329,17 +358,104 @@ export const AttendanceReport = ({
                   </p>
                 </Card>
               </div>
+              <div className="flex flex-col gap-4">
+               <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+              {editing && selectedIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-md mb-2">
+                  <span className="text-sm font-medium mr-2">
+                    {selectedIds.size} selected
+                  </span>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                      onClick={() => handleBulkUpdate("Present")}
+                    >
+                      Present
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-200"
+                      onClick={() => handleBulkUpdate("Absent")}
+                    >
+                      Absent
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                      onClick={() => handleBulkUpdate("Missed")}
+                    >
+                      Missed
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+                      onClick={() => handleBulkUpdate("Not Available")}
+                    >
+                      N/A
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="overflow-auto rounded-md border max-h-[50vh]">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background/95 backdrop-blur z-10">
                     <TableRow>
+                      {editing && (
+                        <TableHead className="w-[50px]">
+
+                          <Checkbox
+                            checked={
+                              filteredEmployees.length > 0 &&
+                              filteredEmployees.every((e) => selectedIds.has(e.id))
+                            }
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                const newIds = new Set(selectedIds);
+                                filteredEmployees.forEach((e) => newIds.add(e.id));
+                                setSelectedIds(newIds);
+                              } else {
+                                const newIds = new Set(selectedIds);
+                                filteredEmployees.forEach((e) => newIds.delete(e.id));
+                                setSelectedIds(newIds);
+                              }
+                            }}
+                          />
+                        </TableHead>
+                      )}
                       <TableHead className="w-[200px]">Name</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {employees.map((emp) => (
+                    {filteredEmployees.map((emp) => (
                       <TableRow key={emp.id}>
+                        {editing && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.has(emp.id)}
+                              onCheckedChange={(checked) => {
+                                const newSet = new Set(selectedIds);
+                                if (checked) newSet.add(emp.id);
+                                else newSet.delete(emp.id);
+                                setSelectedIds(newSet);
+                              }}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="font-medium">
                           {emp.name}
                         </TableCell>
