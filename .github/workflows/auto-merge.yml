@@ -1,0 +1,26 @@
+name: Auto Merge Fork PRs
+
+on:
+  # Triggers when a PR is opened or updated
+  pull_request_target:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    # SECURITY CHECK: Only run if the PR is from your specific second account
+    if: github.actor == 'niatInstructor'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} --merge --auto
