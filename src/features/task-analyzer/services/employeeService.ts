@@ -1,20 +1,12 @@
-import { getFunctions, httpsCallable, Functions } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { Employee } from "../types";
-
-let functionsInstance: Functions;
-
-function getFunctionsInstance(): Functions {
-  if (!functionsInstance) {
-    functionsInstance = getFunctions();
-  }
-  return functionsInstance;
-}
 
 export const getEmployees = async (): Promise<Employee[]> => {
   try {
     const getEmployeesFunction = httpsCallable<unknown, Employee[]>(
-      getFunctionsInstance(),
-      "getEmployeesWithAdminStatus"
+      functions,
+      "getEmployeesWithAdminStatus",
     );
     const result = await getEmployeesFunction();
     return result.data;

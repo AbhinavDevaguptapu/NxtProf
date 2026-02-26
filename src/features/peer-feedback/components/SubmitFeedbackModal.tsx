@@ -20,7 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -33,10 +34,9 @@ import {
   formatErrorForDisplay,
 } from "@/lib/errorHandler";
 
-const functions = getFunctions();
 const givePeerFeedback = httpsCallable(
   functions,
-  "peerFeedback-givePeerFeedback"
+  "peerFeedback-givePeerFeedback",
 );
 
 const validateRemarks = (value: string) => {
@@ -55,7 +55,7 @@ const formSchema = z.object({
     .string()
     .refine(
       validateRemarks,
-      "Remarks must be at least 10 characters long and cannot consist mostly of spaces."
+      "Remarks must be at least 10 characters long and cannot consist mostly of spaces.",
     )
     .max(2000),
 });
@@ -115,7 +115,7 @@ const SubmitFeedbackModal = ({
         error: (err) => {
           const message = getUserFriendlyErrorMessage(
             err,
-            "Unable to submit your feedback. Please try again."
+            "Unable to submit your feedback. Please try again.",
           );
           return message;
         },
@@ -125,7 +125,7 @@ const SubmitFeedbackModal = ({
       const { description } = formatErrorForDisplay(
         error,
         "Submission Failed",
-        "submitting"
+        "submitting",
       );
       toast.error(description);
     } finally {

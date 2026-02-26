@@ -160,6 +160,7 @@ async function _syncAttendanceToSheet(data) {
     }
 }
 exports.syncAttendanceToSheet = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 120,
     memory: "256MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -174,6 +175,7 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
     return await _syncAttendanceToSheet(request.data);
 });
 exports.scheduledSync = (0, scheduler_1.onSchedule)({
+    region: "asia-south1",
     schedule: "30 19 * * 1-6",
     timeZone: "Asia/Kolkata",
     secrets: ["SHEETS_SA_KEY"],

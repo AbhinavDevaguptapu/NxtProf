@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import {
   Table,
   TableBody,
@@ -23,7 +24,6 @@ interface PendingUser {
 }
 
 export default function UserApprovalPage() {
-  const functions = getFunctions();
   const [users, setUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export default function UserApprovalPage() {
       console.error("Error fetching users:", error);
       const message = getUserFriendlyErrorMessage(
         error,
-        "Unable to load pending users. Please try again."
+        "Unable to load pending users. Please try again.",
       );
       toast.error(message);
     } finally {
@@ -65,7 +65,7 @@ export default function UserApprovalPage() {
       console.error("Error approving user:", error);
       const message = getUserFriendlyErrorMessage(
         error,
-        "Could not approve this user. Please try again."
+        "Could not approve this user. Please try again.",
       );
       toast.error(message);
     } finally {

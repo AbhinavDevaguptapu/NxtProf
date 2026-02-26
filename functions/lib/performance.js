@@ -38,7 +38,7 @@ const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const v2_1 = require("firebase-functions/v2");
 const date_fns_1 = require("date-fns");
-exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getEmployeePerformanceSummary = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     const startTime = Date.now();
     const userId = ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) || "anonymous";

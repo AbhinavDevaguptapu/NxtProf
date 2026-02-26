@@ -10,6 +10,7 @@ const TIME_ZONE = "Asia/Kolkata";
 // Function to schedule standup
 export const scheduleDailyStandup = onSchedule(
   {
+    region: "asia-south1",
     schedule: "every day 08:00",
     timeZone: TIME_ZONE,
   },
@@ -38,7 +39,7 @@ export const scheduleDailyStandup = onSchedule(
     // 2. Create the full timestamp string for 8:45 AM IST
     const standupTimeInZone = zonedTimeToUtc(
       `${dateString}T08:45:00`,
-      TIME_ZONE
+      TIME_ZONE,
     );
 
     try {
@@ -59,12 +60,13 @@ export const scheduleDailyStandup = onSchedule(
         timestamp: new Date().toISOString(),
       });
     }
-  }
+  },
 );
 
 // Function to automatically start the standup
 export const startScheduledStandup = onSchedule(
   {
+    region: "asia-south1",
     schedule: "every mon,tue,wed,thu,fri,sat 08:45",
     timeZone: TIME_ZONE,
   },
@@ -102,12 +104,13 @@ export const startScheduledStandup = onSchedule(
         timestamp: new Date().toISOString(),
       });
     }
-  }
+  },
 );
 
 // Function to automatically end the standup
 export const endActiveStandup = onSchedule(
   {
+    region: "asia-south1",
     schedule: "every mon,tue,wed,thu,fri,sat 09:00",
     timeZone: TIME_ZONE,
   },
@@ -169,5 +172,5 @@ export const endActiveStandup = onSchedule(
         timestamp: new Date().toISOString(),
       });
     }
-  }
+  },
 );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,10 +35,9 @@ export const AdminAttendanceView = () => {
   const handleSync = async (sessionType: SessionType) => {
     setIsSyncing(true);
     try {
-      const functions = getFunctions();
       const syncAttendanceToSheet = httpsCallable(
         functions,
-        "syncAttendanceToSheet"
+        "syncAttendanceToSheet",
       );
       const date = format(selectedDate, "yyyy-MM-dd");
 
@@ -45,7 +45,7 @@ export const AdminAttendanceView = () => {
         title: "Syncing Data...",
         description: `Please wait while we sync ${sessionType.replace(
           "_",
-          " "
+          " ",
         )} attendance for ${date}.`,
       });
 
@@ -61,7 +61,7 @@ export const AdminAttendanceView = () => {
       console.error("Sync failed:", error);
       const message = getUserFriendlyErrorMessage(
         error,
-        "Failed to sync attendance data. Please try again or contact support."
+        "Failed to sync attendance data. Please try again or contact support.",
       );
 
       toast({
@@ -99,7 +99,7 @@ export const AdminAttendanceView = () => {
                   variant={"outline"}
                   className={cn(
                     "w-full sm:w-[280px] justify-start text-left font-normal",
-                    !selectedDate && "text-muted-foreground"
+                    !selectedDate && "text-muted-foreground",
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />

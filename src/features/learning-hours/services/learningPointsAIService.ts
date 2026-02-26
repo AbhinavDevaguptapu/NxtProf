@@ -1,4 +1,5 @@
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { TASK_FRAMEWORK_MD } from "@/features/task-analyzer/constants";
 
 export type Suggestions = {
@@ -16,7 +17,7 @@ type AIResponse = Suggestions | { error: string };
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const getLearningPointSuggestions = async (
-  userStory: string
+  userStory: string,
 ): Promise<Suggestions> => {
   const prompt = `
 You are an expert Mentor and empathetic Coach for the 'Essentials of Task Framework' program. Your goal is to help users translate their raw, unstructured experiences into professional, structured learning points using the SBIA format. Your feedback should be supportive and psychologically safe.
@@ -71,7 +72,6 @@ You MUST return a **raw JSON object** with no markdown, no comments, and no extr
 }
     `;
 
-  const functions = getFunctions();
   const analyzeTaskFunction = httpsCallable(functions, "analyzeTask");
 
   const maxRetries = 3;
@@ -113,7 +113,7 @@ You MUST return a **raw JSON object** with no markdown, no comments, and no extr
 
       if (isRetriable && i < maxRetries - 1) {
         console.warn(
-          `Attempt ${i + 1} failed. Retrying in ${currentDelay}ms...`
+          `Attempt ${i + 1} failed. Retrying in ${currentDelay}ms...`,
         );
         await sleep(currentDelay);
         currentDelay *= 2;

@@ -42,7 +42,7 @@ const https_1 = require("firebase-functions/v2/https");
 const v2_1 = require("firebase-functions/v2");
 const utils_1 = require("./utils");
 const validation_1 = require("./validation");
-exports.addAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.addAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     if (!request.auth)
         throw new https_1.HttpsError("unauthenticated", "Login required.");
     const caller = request.auth.token;
@@ -66,7 +66,7 @@ exports.addAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw new https_1.HttpsError("internal", "Could not set admin role.");
     }
 });
-exports.removeAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.removeAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a, _b;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can modify roles.");
@@ -88,7 +88,7 @@ exports.removeAdminRole = (0, https_1.onCall)({ cors: true }, async (request) =>
         throw new https_1.HttpsError("internal", "Could not remove admin role.");
     }
 });
-exports.addCoAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.addCoAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (!request.auth)
         throw new https_1.HttpsError("unauthenticated", "Login required.");
@@ -111,7 +111,7 @@ exports.addCoAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => 
         throw new https_1.HttpsError("internal", "Could not set Co-Admin role.");
     }
 });
-exports.removeCoAdminRole = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.removeCoAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a, _b;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can modify roles.");
@@ -133,7 +133,7 @@ exports.removeCoAdminRole = (0, https_1.onCall)({ cors: true }, async (request) 
         throw new https_1.HttpsError("internal", "Could not remove Co-Admin role.");
     }
 });
-exports.deleteEmployee = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.deleteEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
@@ -155,7 +155,7 @@ exports.deleteEmployee = (0, https_1.onCall)({ cors: true }, async (request) => 
         throw new https_1.HttpsError("internal", error.message || "An unknown error occurred.");
     }
 });
-exports.archiveEmployee = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.archiveEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can archive employees.");
@@ -180,7 +180,7 @@ exports.archiveEmployee = (0, https_1.onCall)({ cors: true }, async (request) =>
         throw new https_1.HttpsError("internal", error.message || "An unknown error occurred.");
     }
 });
-exports.unarchiveEmployee = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.unarchiveEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can unarchive employees.");
@@ -202,7 +202,7 @@ exports.unarchiveEmployee = (0, https_1.onCall)({ cors: true }, async (request) 
         throw new https_1.HttpsError("internal", error.message || "An unknown error occurred.");
     }
 });
-exports.getEmployeesWithAdminStatus = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getEmployeesWithAdminStatus = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     const caller = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.token;
     if (!(caller === null || caller === void 0 ? void 0 : caller.isAdmin) && !(caller === null || caller === void 0 ? void 0 : caller.isCoAdmin)) {
@@ -233,7 +233,7 @@ exports.getEmployeesWithAdminStatus = (0, https_1.onCall)({ cors: true }, async 
         throw new https_1.HttpsError("internal", "Failed to fetch employee data.");
     }
 });
-exports.getArchivedEmployees = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getArchivedEmployees = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can view the archived employee list.");
@@ -253,7 +253,7 @@ exports.getArchivedEmployees = (0, https_1.onCall)({ cors: true }, async (reques
         throw new https_1.HttpsError("internal", "Failed to fetch archived employee data.");
     }
 });
-exports.getUnapprovedUsers = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getUnapprovedUsers = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can view unapproved users.");
@@ -272,7 +272,7 @@ exports.getUnapprovedUsers = (0, https_1.onCall)({ cors: true }, async (request)
         throw new https_1.HttpsError("internal", "Failed to fetch unapproved users.");
     }
 });
-exports.approveUser = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.approveUser = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can approve users.");

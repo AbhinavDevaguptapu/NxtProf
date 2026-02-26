@@ -42,7 +42,7 @@ const utils_1 = require("./utils");
  * Ends a learning session and locks all associated learning points.
  * This function is callable only by an admin.
  */
-exports.endLearningSessionAndLockPoints = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.endLearningSessionAndLockPoints = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     const db = admin.firestore();
     // 1. Authentication & Authorization Check
     if (!request.auth) {
@@ -97,7 +97,7 @@ exports.endLearningSessionAndLockPoints = (0, https_1.onCall)({ cors: true }, as
         throw new https_1.HttpsError("internal", "An unexpected error occurred while ending the session.");
     }
 });
-exports.getLearningPointsByDate = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getLearningPointsByDate = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }

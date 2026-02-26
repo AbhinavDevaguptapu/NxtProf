@@ -101,6 +101,7 @@ async function getFilteredFeedbackData(requestData) {
     return [];
 }
 exports.getFeedbackChartData = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 60,
     memory: "256MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -198,6 +199,7 @@ exports.getFeedbackChartData = (0, https_1.onCall)({
     return { totalFeedbacks, graphData, graphTimeseries };
 });
 exports.getFeedbackAiSummary = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 120,
     memory: "512MiB",
     secrets: ["GEMINI_KEY", "SHEETS_SA_KEY"],
@@ -281,6 +283,7 @@ exports.getFeedbackAiSummary = (0, https_1.onCall)({
     }
 });
 exports.getRawFeedback = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 60,
     memory: "256MiB",
     secrets: ["SHEETS_SA_KEY"],

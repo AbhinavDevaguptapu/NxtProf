@@ -8,6 +8,7 @@ import { getGeminiKey } from "./utils";
 
 export const analyzeTask = onCall<{ prompt: string }>(
   {
+    region: "asia-south1",
     timeoutSeconds: 120,
     memory: "512MiB",
     secrets: ["GEMINI_KEY"],
@@ -44,7 +45,7 @@ export const analyzeTask = onCall<{ prompt: string }>(
       });
       throw new HttpsError(
         "invalid-argument",
-        "Prompt must be between 1 and 20000 characters."
+        "Prompt must be between 1 and 20000 characters.",
       );
     }
 
@@ -95,5 +96,5 @@ export const analyzeTask = onCall<{ prompt: string }>(
       });
       throw new HttpsError("internal", "Failed to generate AI summary.");
     }
-  }
+  },
 );

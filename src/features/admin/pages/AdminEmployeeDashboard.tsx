@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { Input } from "@/components/ui/input";
 import {
   Loader2,
@@ -52,10 +53,9 @@ function useEmployees() {
     setLoading(true);
     setError(null);
     try {
-      const functions = getFunctions();
       const getEmployees = httpsCallable(
         functions,
-        "getEmployeesWithAdminStatus"
+        "getEmployeesWithAdminStatus",
       );
       const result = await getEmployees();
       const data = result.data as Employee[];
@@ -138,7 +138,7 @@ const EmployeeListItem: React.FC<{
       aria-label={`Select employee ${employee.name}`}
       className={cn(
         "flex items-center gap-2.5 w-full p-2.5 rounded-lg transition-colors text-left overflow-hidden",
-        isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+        isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted",
       )}
     >
       <EmployeeAvatar
@@ -152,7 +152,7 @@ const EmployeeListItem: React.FC<{
           <span
             className={cn(
               "font-medium text-sm truncate block",
-              isSelected ? "text-primary-foreground" : "text-foreground"
+              isSelected ? "text-primary-foreground" : "text-foreground",
             )}
           >
             {employee.name}
@@ -163,7 +163,7 @@ const EmployeeListItem: React.FC<{
                 "text-[9px] font-medium px-1 rounded shrink-0",
                 isSelected
                   ? "bg-primary-foreground/20 text-primary-foreground"
-                  : "bg-indigo-100 text-indigo-700"
+                  : "bg-indigo-100 text-indigo-700",
               )}
             >
               Admin
@@ -175,7 +175,7 @@ const EmployeeListItem: React.FC<{
                 "text-[9px] font-medium px-1 rounded shrink-0",
                 isSelected
                   ? "bg-primary-foreground/20 text-primary-foreground"
-                  : "bg-orange-100 text-orange-700"
+                  : "bg-orange-100 text-orange-700",
               )}
             >
               Co-Admin
@@ -185,7 +185,7 @@ const EmployeeListItem: React.FC<{
         <span
           className={cn(
             "text-xs truncate block",
-            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+            isSelected ? "text-primary-foreground/70" : "text-muted-foreground",
           )}
         >
           {employee.email}
@@ -212,7 +212,7 @@ const EmployeeList: React.FC<{
     return employees.filter(
       (emp) =>
         emp.name.toLowerCase().includes(query) ||
-        emp.email.toLowerCase().includes(query)
+        emp.email.toLowerCase().includes(query),
     );
   }, [employees, search]);
 
@@ -344,7 +344,7 @@ const ContentPlaceholder: React.FC<{
           <div
             className={cn(
               "absolute inset-0 rounded-full opacity-20 blur-xl scale-150",
-              bgClassName
+              bgClassName,
             )}
           />
           <div className={cn("relative p-5 rounded-2xl", bgClassName)}>

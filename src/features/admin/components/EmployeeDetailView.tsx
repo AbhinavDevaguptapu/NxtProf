@@ -31,7 +31,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import EmployeeAvatar from "./EmployeeAvatar";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { format, subMonths } from "date-fns";
 import { Pie } from "react-chartjs-2";
 import {
@@ -90,7 +91,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ChartDataLabels
+  ChartDataLabels,
 );
 
 // --- TYPE DEFINITIONS ---
@@ -129,7 +130,7 @@ interface EditableEmployeeData {
 // Firestore update function
 const updateEmployee = async (
   id: string,
-  data: Partial<EditableEmployeeData>
+  data: Partial<EditableEmployeeData>,
 ): Promise<void> => {
   const employeeRef = doc(db, "employees", id);
   await updateDoc(employeeRef, data);
@@ -286,10 +287,9 @@ const FeedbackTabContent = ({
       setLoading(true);
       setError(null);
       try {
-        const functions = getFunctions();
         const getRawFeedback = httpsCallable<any, Feedback[]>(
           functions,
-          "getRawFeedback"
+          "getRawFeedback",
         );
         const result = await getRawFeedback({
           employeeId,
@@ -421,7 +421,7 @@ const LearningHistoryTabContent = ({
 }) => {
   const { learningPoints, isLoading, error } = useEmployeeLearningPoints(
     employeeId,
-    month
+    month,
   );
 
   if (isLoading) {
@@ -467,8 +467,8 @@ const LearningHistoryTabContent = ({
                       point.point_type === "R1"
                         ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                         : point.point_type === "R2"
-                        ? "bg-purple-50 text-purple-700 border-purple-200"
-                        : "bg-orange-50 text-orange-700 border-orange-200"
+                          ? "bg-purple-50 text-purple-700 border-purple-200"
+                          : "bg-orange-50 text-orange-700 border-orange-200"
                     }`}
                   >
                     {point.point_type}
@@ -584,7 +584,7 @@ const EmployeeDetailHeader = ({
     } catch (err) {
       const message = getUserFriendlyErrorMessage(
         err,
-        "Could not update profile. Please try again."
+        "Could not update profile. Please try again.",
       );
       toast({
         title: "Update Failed",
@@ -597,7 +597,7 @@ const EmployeeDetailHeader = ({
   };
 
   const handleRoleChange = async (
-    action: "promote" | "demote" | "promoteCoAdmin" | "demoteCoAdmin"
+    action: "promote" | "demote" | "promoteCoAdmin" | "demoteCoAdmin",
   ) => {
     setProcessingAction(action);
     let fnName = "";
@@ -621,7 +621,6 @@ const EmployeeDetailHeader = ({
         break;
     }
     try {
-      const functions = getFunctions();
       const callable = httpsCallable(functions, fnName);
       await callable({ email: employee.email });
 
@@ -634,7 +633,7 @@ const EmployeeDetailHeader = ({
     } catch (err) {
       const message = getUserFriendlyErrorMessage(
         err,
-        `Could not change role. Please try again.`
+        `Could not change role. Please try again.`,
       );
       toast({
         title: "Role Change Failed",
@@ -649,7 +648,6 @@ const EmployeeDetailHeader = ({
   const handleDeleteEmployee = async () => {
     setProcessingAction("delete");
     try {
-      const functions = getFunctions();
       const deleteFn = httpsCallable(functions, "deleteEmployee");
       await deleteFn({ uid: employee.id });
       toast({
@@ -661,7 +659,7 @@ const EmployeeDetailHeader = ({
     } catch (err) {
       const message = getUserFriendlyErrorMessage(
         err,
-        `Could not delete this employee. Please try again.`
+        `Could not delete this employee. Please try again.`,
       );
       toast({
         title: "Deletion Failed",
@@ -676,7 +674,6 @@ const EmployeeDetailHeader = ({
   const handleArchiveEmployee = async () => {
     setProcessingAction("archive");
     try {
-      const functions = getFunctions();
       const archiveFn = httpsCallable(functions, "archiveEmployee");
       await archiveFn({ uid: employee.id });
       toast({
@@ -688,7 +685,7 @@ const EmployeeDetailHeader = ({
     } catch (err) {
       const message = getUserFriendlyErrorMessage(
         err,
-        `Could not archive this employee. Please try again.`
+        `Could not archive this employee. Please try again.`,
       );
       toast({
         title: "Archive Failed",
@@ -1095,7 +1092,7 @@ const StatCard = ({
         <Icon
           className={`h-5 w-5 mr-3 ${color.replace(
             "text-",
-            "text-"
+            "text-",
           )} opacity-70`}
         />
       )}
@@ -1132,7 +1129,7 @@ export default function EmployeeDetailView({
   onActionComplete,
 }: EmployeeDetailViewProps) {
   const [selectedMonth, setSelectedMonth] = useState(
-    format(new Date(), "yyyy-MM")
+    format(new Date(), "yyyy-MM"),
   );
   const [performanceData, setPerformanceData] =
     useState<PerformanceData | null>(null);
@@ -1145,10 +1142,9 @@ export default function EmployeeDetailView({
       setLoading(true);
       setError(null);
       try {
-        const functions = getFunctions();
         const getPerformanceSummary = httpsCallable<any, PerformanceData>(
           functions,
-          "getEmployeePerformanceSummary"
+          "getEmployeePerformanceSummary",
         );
         const result = await getPerformanceSummary({
           employeeId: employee.id,
@@ -1224,7 +1220,7 @@ export default function EmployeeDetailView({
                   performanceData.standupAttendance.absent +
                   performanceData.standupAttendance.unavailable) /
                   performanceData.workingDays) *
-                  100
+                  100,
               )}%`}
               icon={Activity}
               color="text-indigo-600"
@@ -1236,7 +1232,7 @@ export default function EmployeeDetailView({
                   performanceData.learningAttendance.absent +
                   performanceData.learningAttendance.unavailable) /
                   performanceData.workingDays) *
-                  100
+                  100,
               )}%`}
               icon={TrendingUp}
               color="text-purple-600"

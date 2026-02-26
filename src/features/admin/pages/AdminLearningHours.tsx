@@ -40,7 +40,8 @@ import { format } from "date-fns";
 import { LearningPoint } from "@/features/learning-hours/types";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { httpsCallable, getFunctions } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { doc, getDoc } from "firebase/firestore";
@@ -77,7 +78,7 @@ const PointDetails = ({ point }: { point: LearningPoint }) => {
             key={item.label}
             className={cn(
               "space-y-1.5 p-4 rounded-xl bg-background border shadow-sm",
-              item.fullWidth && "md:col-span-2 lg:col-span-3"
+              item.fullWidth && "md:col-span-2 lg:col-span-3",
             )}
           >
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -155,10 +156,7 @@ const AdminLearningHours = () => {
     if (!date) return;
     setIsSyncing(true);
     try {
-      const syncFunction = httpsCallable(
-        getFunctions(),
-        "syncLearningHoursByDate"
-      );
+      const syncFunction = httpsCallable(functions, "syncLearningHoursByDate");
       const dateString = format(date, "yyyy-MM-dd");
       const result = (await syncFunction({ date: dateString })) as any;
       const message = result.data.message;
@@ -196,10 +194,13 @@ const AdminLearningHours = () => {
   }, [date, isAdminUser, checkSyncStatus]);
 
   const employeeMap = useMemo(() => {
-    return employees.reduce((acc, emp) => {
-      acc[emp.id] = emp.name;
-      return acc;
-    }, {} as Record<string, string>);
+    return employees.reduce(
+      (acc, emp) => {
+        acc[emp.id] = emp.name;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
   }, [employees]);
 
   const filteredLearningPoints = useMemo(() => {
@@ -218,7 +219,7 @@ const AdminLearningHours = () => {
           point.task_name.toLowerCase().includes(query) ||
           (employeeMap[point.userId] || "").toLowerCase().includes(query) ||
           point.point_type.toLowerCase().includes(query) ||
-          point.situation.toLowerCase().includes(query)
+          point.situation.toLowerCase().includes(query),
       );
     }
 
@@ -244,7 +245,7 @@ const AdminLearningHours = () => {
                 variant="outline"
                 className={cn(
                   "w-[240px] justify-start text-left font-normal border-border/60 hover:bg-muted/50",
-                  !date && "text-muted-foreground"
+                  !date && "text-muted-foreground",
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
@@ -258,7 +259,7 @@ const AdminLearningHours = () => {
                 onSelect={(d) => {
                   if (d) {
                     const correctedDate = new Date(
-                      Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+                      Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()),
                     );
                     setDate(correctedDate);
                   }
@@ -277,7 +278,7 @@ const AdminLearningHours = () => {
                 "min-w-[140px] shadow-sm",
                 isDateSynced
                   ? "bg-green-50 text-green-700 hover:bg-green-100 border-green-200 border dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
-                  : ""
+                  : "",
               )}
               variant={isDateSynced ? "outline" : "default"}
             >
@@ -291,8 +292,8 @@ const AdminLearningHours = () => {
               {isSyncing
                 ? "Syncing..."
                 : isDateSynced
-                ? "Sheet Synced"
-                : "Sync to Sheet"}
+                  ? "Sheet Synced"
+                  : "Sync to Sheet"}
             </Button>
           )}
         </div>
@@ -388,7 +389,7 @@ const AdminLearningHours = () => {
                           onClick={() => setOpenRowId(isOpen ? null : point.id)}
                           className={cn(
                             "cursor-pointer group hover:bg-muted/30 transition-colors border-b last:border-0",
-                            isOpen && "bg-muted/40"
+                            isOpen && "bg-muted/40",
                           )}
                         >
                           <TableCell className="font-medium">
@@ -412,8 +413,8 @@ const AdminLearningHours = () => {
                                 point.point_type === "R1"
                                   ? "border-indigo-200 text-indigo-700 bg-indigo-50"
                                   : point.point_type === "R2"
-                                  ? "border-purple-200 text-purple-700 bg-purple-50"
-                                  : "border-orange-200 text-orange-700 bg-orange-50"
+                                    ? "border-purple-200 text-purple-700 bg-purple-50"
+                                    : "border-orange-200 text-orange-700 bg-orange-50",
                               )}
                             >
                               {point.point_type}
@@ -429,7 +430,7 @@ const AdminLearningHours = () => {
                             <ChevronDown
                               className={cn(
                                 "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                                isOpen && "rotate-180"
+                                isOpen && "rotate-180",
                               )}
                             />
                           </TableCell>

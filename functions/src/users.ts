@@ -17,7 +17,7 @@ interface CustomDecodedIdToken extends DecodedIdToken {
 }
 
 export const addAdminRole = onCall<RoleManagementData>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (!request.auth)
       throw new HttpsError("unauthenticated", "Login required.");
@@ -42,16 +42,16 @@ export const addAdminRole = onCall<RoleManagementData>(
       logger.error("addAdminRole failed", { error: err.message, email });
       throw new HttpsError("internal", "Could not set admin role.");
     }
-  }
+  },
 );
 
 export const removeAdminRole = onCall<RoleManagementData>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can modify roles."
+        "Only admins can modify roles.",
       );
     }
     const email = request.data.email?.trim();
@@ -72,11 +72,11 @@ export const removeAdminRole = onCall<RoleManagementData>(
       console.error("removeAdminRole error:", err);
       throw new HttpsError("internal", "Could not remove admin role.");
     }
-  }
+  },
 );
 
 export const addCoAdminRole = onCall<RoleManagementData>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (!request.auth)
       throw new HttpsError("unauthenticated", "Login required.");
@@ -102,16 +102,16 @@ export const addCoAdminRole = onCall<RoleManagementData>(
       console.error("addCoAdminRole error:", err);
       throw new HttpsError("internal", "Could not set Co-Admin role.");
     }
-  }
+  },
 );
 
 export const removeCoAdminRole = onCall<RoleManagementData>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can modify roles."
+        "Only admins can modify roles.",
       );
     }
     const email = request.data.email?.trim();
@@ -132,23 +132,23 @@ export const removeCoAdminRole = onCall<RoleManagementData>(
       console.error("removeCoAdminRole error:", err);
       throw new HttpsError("internal", "Could not remove Co-Admin role.");
     }
-  }
+  },
 );
 
 export const deleteEmployee = onCall<{ uid?: string }>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated",
-        "The function must be called while authenticated."
+        "The function must be called while authenticated.",
       );
     }
     const uid = request.data.uid;
     if (!uid) {
       throw new HttpsError(
         "invalid-argument",
-        "Missing or invalid `uid` parameter."
+        "Missing or invalid `uid` parameter.",
       );
     }
 
@@ -156,7 +156,7 @@ export const deleteEmployee = onCall<{ uid?: string }>(
     if (request.auth.uid !== uid && !isUserSuperAdmin(request.auth)) {
       throw new HttpsError(
         "permission-denied",
-        "You do not have permission to delete this account."
+        "You do not have permission to delete this account.",
       );
     }
 
@@ -168,32 +168,32 @@ export const deleteEmployee = onCall<{ uid?: string }>(
       console.error("deleteEmployee error:", error);
       throw new HttpsError(
         "internal",
-        error.message || "An unknown error occurred."
+        error.message || "An unknown error occurred.",
       );
     }
-  }
+  },
 );
 
 export const archiveEmployee = onCall<{ uid?: string }>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can archive employees."
+        "Only admins can archive employees.",
       );
     }
     const uid = request.data.uid;
     if (!uid) {
       throw new HttpsError(
         "invalid-argument",
-        "Missing or invalid `uid` parameter."
+        "Missing or invalid `uid` parameter.",
       );
     }
     if (request.auth.uid === uid) {
       throw new HttpsError(
         "permission-denied",
-        "Admins cannot archive their own account."
+        "Admins cannot archive their own account.",
       );
     }
 
@@ -208,26 +208,26 @@ export const archiveEmployee = onCall<{ uid?: string }>(
       console.error("archiveEmployee error:", error);
       throw new HttpsError(
         "internal",
-        error.message || "An unknown error occurred."
+        error.message || "An unknown error occurred.",
       );
     }
-  }
+  },
 );
 
 export const unarchiveEmployee = onCall<{ uid?: string }>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can unarchive employees."
+        "Only admins can unarchive employees.",
       );
     }
     const uid = request.data.uid;
     if (!uid) {
       throw new HttpsError(
         "invalid-argument",
-        "Missing or invalid `uid` parameter."
+        "Missing or invalid `uid` parameter.",
       );
     }
 
@@ -242,20 +242,20 @@ export const unarchiveEmployee = onCall<{ uid?: string }>(
       console.error("unarchiveEmployee error:", error);
       throw new HttpsError(
         "internal",
-        error.message || "An unknown error occurred."
+        error.message || "An unknown error occurred.",
       );
     }
-  }
+  },
 );
 
 export const getEmployeesWithAdminStatus = onCall(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     const caller = request.auth?.token as CustomDecodedIdToken | undefined;
     if (!caller?.isAdmin && !caller?.isCoAdmin) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins and co-admins can view the employee list."
+        "Only admins and co-admins can view the employee list.",
       );
     }
 
@@ -285,68 +285,77 @@ export const getEmployeesWithAdminStatus = onCall(
       console.error("Error fetching employees with admin status:", error);
       throw new HttpsError("internal", "Failed to fetch employee data.");
     }
-  }
+  },
 );
 
-export const getArchivedEmployees = onCall({ cors: true }, async (request) => {
-  if (request.auth?.token.isAdmin !== true) {
-    throw new HttpsError(
-      "permission-denied",
-      "Only admins can view the archived employee list."
-    );
-  }
-
-  try {
-    const employeesSnapshot = await admin
-      .firestore()
-      .collection("employees")
-      .where("archived", "==", true)
-      .orderBy("name")
-      .get();
-    const employees = employeesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    return employees;
-  } catch (error: any) {
-    console.error("Error fetching archived employees:", error);
-    throw new HttpsError("internal", "Failed to fetch archived employee data.");
-  }
-});
-
-export const getUnapprovedUsers = onCall({ cors: true }, async (request) => {
-  if (request.auth?.token.isAdmin !== true) {
-    throw new HttpsError(
-      "permission-denied",
-      "Only admins can view unapproved users."
-    );
-  }
-
-  try {
-    const employeesSnapshot = await admin
-      .firestore()
-      .collection("employees")
-      .where("admin_approval_required", "==", true)
-      .get();
-
-    const users = employeesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    return users;
-  } catch (error: any) {
-    console.error("Error fetching unapproved users:", error);
-    throw new HttpsError("internal", "Failed to fetch unapproved users.");
-  }
-});
-
-export const approveUser = onCall<{ uid: string }>(
-  { cors: true },
+export const getArchivedEmployees = onCall(
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can approve users."
+        "Only admins can view the archived employee list.",
+      );
+    }
+
+    try {
+      const employeesSnapshot = await admin
+        .firestore()
+        .collection("employees")
+        .where("archived", "==", true)
+        .orderBy("name")
+        .get();
+      const employees = employeesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      return employees;
+    } catch (error: any) {
+      console.error("Error fetching archived employees:", error);
+      throw new HttpsError(
+        "internal",
+        "Failed to fetch archived employee data.",
+      );
+    }
+  },
+);
+
+export const getUnapprovedUsers = onCall(
+  { region: "asia-south1", cors: true },
+  async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can view unapproved users.",
+      );
+    }
+
+    try {
+      const employeesSnapshot = await admin
+        .firestore()
+        .collection("employees")
+        .where("admin_approval_required", "==", true)
+        .get();
+
+      const users = employeesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      return users;
+    } catch (error: any) {
+      console.error("Error fetching unapproved users:", error);
+      throw new HttpsError("internal", "Failed to fetch unapproved users.");
+    }
+  },
+);
+
+export const approveUser = onCall<{ uid: string }>(
+  { region: "asia-south1", cors: true },
+  async (request) => {
+    if (request.auth?.token.isAdmin !== true) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can approve users.",
       );
     }
     const uid = request.data.uid;
@@ -363,5 +372,5 @@ export const approveUser = onCall<{ uid: string }>(
       console.error("Error approving user:", error);
       throw new HttpsError("internal", "Failed to approve user.");
     }
-  }
+  },
 );

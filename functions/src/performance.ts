@@ -16,7 +16,7 @@ interface PerformanceRequest {
 }
 
 export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     const startTime = Date.now();
     const userId = request.auth?.uid || "anonymous";
@@ -27,7 +27,7 @@ export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(
     if (!request.auth.token.isAdmin) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can access performance summaries."
+        "Only admins can access performance summaries.",
       );
     }
 
@@ -35,7 +35,7 @@ export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(
     if (!employeeId || !month) {
       throw new HttpsError(
         "invalid-argument",
-        "Both employee and month parameters are required."
+        "Both employee and month parameters are required.",
       );
     }
 
@@ -57,7 +57,7 @@ export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(
       end: monthEnd,
     });
     const workingDaysInMonth = daysInInterval.filter(
-      (day) => getDay(day) !== 0
+      (day) => getDay(day) !== 0,
     ).length; // 0 is Sunday
 
     try {
@@ -142,8 +142,8 @@ export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(
       });
       throw new HttpsError(
         "internal",
-        "An unexpected error occurred while fetching the performance summary."
+        "An unexpected error occurred while fetching the performance summary.",
       );
     }
-  }
+  },
 );
