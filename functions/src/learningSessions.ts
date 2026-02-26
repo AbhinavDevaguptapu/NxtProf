@@ -12,20 +12,20 @@ interface EndSessionData {
  * This function is callable only by an admin.
  */
 export const endLearningSessionAndLockPoints = onCall<EndSessionData>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     const db = admin.firestore();
     // 1. Authentication & Authorization Check
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated",
-        "The function must be called while authenticated."
+        "The function must be called while authenticated.",
       );
     }
     if (!isUserAdmin(request.auth)) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins or co-admins can end a session."
+        "Only admins or co-admins can end a session.",
       );
     }
 
@@ -33,7 +33,7 @@ export const endLearningSessionAndLockPoints = onCall<EndSessionData>(
     if (!sessionId) {
       throw new HttpsError(
         "invalid-argument",
-        "A valid session ID must be provided."
+        "A valid session ID must be provided.",
       );
     }
 
@@ -83,19 +83,19 @@ export const endLearningSessionAndLockPoints = onCall<EndSessionData>(
       });
       throw new HttpsError(
         "internal",
-        "An unexpected error occurred while ending the session."
+        "An unexpected error occurred while ending the session.",
       );
     }
-  }
+  },
 );
 
 export const getLearningPointsByDate = onCall(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated",
-        "The function must be called while authenticated."
+        "The function must be called while authenticated.",
       );
     }
 
@@ -116,7 +116,7 @@ export const getLearningPointsByDate = onCall(
       if (!datePattern.test(sanitizedDateStr)) {
         throw new HttpsError(
           "invalid-argument",
-          "Invalid date format. Use YYYY-MM-DD."
+          "Invalid date format. Use YYYY-MM-DD.",
         );
       }
 
@@ -134,7 +134,7 @@ export const getLearningPointsByDate = onCall(
       if (targetDate > tomorrow) {
         throw new HttpsError(
           "invalid-argument",
-          "Cannot access data for future dates."
+          "Cannot access data for future dates.",
         );
       }
 
@@ -144,7 +144,7 @@ export const getLearningPointsByDate = onCall(
       if (targetDate < oneYearAgo) {
         throw new HttpsError(
           "invalid-argument",
-          "Cannot access data older than one year."
+          "Cannot access data older than one year.",
         );
       }
     } else {
@@ -188,8 +188,8 @@ export const getLearningPointsByDate = onCall(
       });
       throw new HttpsError(
         "internal",
-        "An unexpected error occurred while fetching learning points."
+        "An unexpected error occurred while fetching learning points.",
       );
     }
-  }
+  },
 );

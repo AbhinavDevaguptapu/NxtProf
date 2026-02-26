@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
 import { db } from "@/integrations/firebase/client";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 // UI Components & Icons
@@ -88,7 +89,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ChartDataLabels
+  ChartDataLabels,
 );
 
 // --- TYPE DEFINITIONS ---
@@ -247,16 +248,16 @@ const FeedbackFilters = ({
   isFiltering: boolean;
 }) => {
   const [activeButton, setActiveButton] = useState<ActiveFilter["mode"] | "">(
-    ""
+    "",
   );
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    new Date()
+    new Date(),
   );
   const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth()
+    new Date().getMonth(),
   );
   const [selectedYear, setSelectedYear] = useState<number>(
-    new Date().getFullYear()
+    new Date().getFullYear(),
   );
   const [selectedDateRange, setSelectedDateRange] = useState<
     DateRange | undefined
@@ -340,7 +341,7 @@ const FeedbackFilters = ({
             <SelectContent>
               {Array.from(
                 { length: 5 },
-                (_, i) => new Date().getFullYear() - i
+                (_, i) => new Date().getFullYear() - i,
               ).map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
@@ -370,7 +371,7 @@ const FeedbackFilters = ({
                 variant={activeButton === "range" ? "default" : "outline"}
                 className={cn(
                   "w-full sm:w-[260px] justify-start text-left font-normal",
-                  !selectedDateRange && "text-muted-foreground"
+                  !selectedDateRange && "text-muted-foreground",
                 )}
                 disabled={isFiltering}
               >
@@ -729,10 +730,9 @@ export default function FeedbackPage() {
     setRawFeedbackError(null);
     setIsFeedbackModalOpen(true); // Open modal immediately
 
-    const functions = getFunctions();
     const getRawFeedbackCallable = httpsCallable<any, RawFeedbackData>(
       functions,
-      "getRawFeedback"
+      "getRawFeedback",
     );
 
     const params: any = {
@@ -761,7 +761,7 @@ export default function FeedbackPage() {
     } catch (err) {
       console.error("Error fetching raw feedback:", err);
       setRawFeedbackError(
-        "Failed to load detailed feedback. Please try again."
+        "Failed to load detailed feedback. Please try again.",
       );
     } finally {
       setIsRawFeedbackLoading(false);
@@ -776,7 +776,7 @@ export default function FeedbackPage() {
       try {
         const q = query(
           collection(db, "employees"),
-          where("uid", "==", user.uid)
+          where("uid", "==", user.uid),
         );
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
@@ -812,14 +812,13 @@ export default function FeedbackPage() {
       setChartError(null);
       setAiError(null);
 
-      const functions = getFunctions();
       const getChartDataCallable = httpsCallable<any, ChartData>(
         functions,
-        "getFeedbackChartData"
+        "getFeedbackChartData",
       );
       const getAiSummaryCallable = httpsCallable<any, AiSummaryData>(
         functions,
-        "getFeedbackAiSummary"
+        "getFeedbackAiSummary",
       );
 
       const params: any = {
@@ -855,7 +854,7 @@ export default function FeedbackPage() {
       } catch (err) {
         console.error("Error fetching chart data:", err);
         setChartError(
-          "Failed to load your feedback charts. Please try refreshing."
+          "Failed to load your feedback charts. Please try refreshing.",
         );
       } finally {
         setIsChartLoading(false);
@@ -871,7 +870,7 @@ export default function FeedbackPage() {
         setIsAiLoading(false);
       }
     },
-    [employeeData] // Dependency array is correct
+    [employeeData], // Dependency array is correct
   );
 
   // Initial loading screen for auth and profile fetching

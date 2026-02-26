@@ -51,7 +51,7 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
     const scheduledTime = data.scheduled_at
       ? new Date(data.scheduled_at.toMillis()).toLocaleTimeString(
           "en-US",
-          options
+          options,
         )
       : "N/A";
     return [
@@ -76,7 +76,7 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
     if (!allSheets || allSheets.length < 2) {
       throw new HttpsError(
         "not-found",
-        "The spreadsheet must contain at least two sheets."
+        "The spreadsheet must contain at least two sheets.",
       );
     }
 
@@ -86,7 +86,7 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
     if (!targetSheet) {
       throw new HttpsError(
         "not-found",
-        `No sheet found at index ${targetSheetIndex}.`
+        `No sheet found at index ${targetSheetIndex}.`,
       );
     }
 
@@ -94,7 +94,7 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
     if (props.sheetId == null || props.title == null) {
       throw new HttpsError(
         "not-found",
-        `Sheet at index ${targetSheetIndex} is missing an ID or title.`
+        `Sheet at index ${targetSheetIndex} is missing an ID or title.`,
       );
     }
 
@@ -158,13 +158,14 @@ async function _syncAttendanceToSheet(data: SyncToSheetData) {
     });
     throw new HttpsError(
       "internal",
-      "An error occurred while syncing to the sheet. " + err.message
+      "An error occurred while syncing to the sheet. " + err.message,
     );
   }
 }
 
 export const syncAttendanceToSheet = onCall<SyncToSheetData>(
   {
+    region: "asia-south1",
     timeoutSeconds: 120,
     memory: "256MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -177,16 +178,17 @@ export const syncAttendanceToSheet = onCall<SyncToSheetData>(
     if (!isUserAdmin(request.auth)) {
       throw new HttpsError(
         "permission-denied",
-        "Must be an admin to run this operation."
+        "Must be an admin to run this operation.",
       );
     }
 
     return await _syncAttendanceToSheet(request.data);
-  }
+  },
 );
 
 export const scheduledSync = onSchedule(
   {
+    region: "asia-south1",
     schedule: "30 19 * * 1-6",
     timeZone: "Asia/Kolkata",
     secrets: ["SHEETS_SA_KEY"],
@@ -224,5 +226,5 @@ export const scheduledSync = onSchedule(
         date: dateString,
       });
     }
-  }
+  },
 );

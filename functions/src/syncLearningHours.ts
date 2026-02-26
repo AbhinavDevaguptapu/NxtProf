@@ -31,7 +31,7 @@ async function _syncLearningPoints(sessionId: string) {
   if (sessionData.status !== "ended") {
     throw new HttpsError(
       "failed-precondition",
-      "Session must be ended before syncing."
+      "Session must be ended before syncing.",
     );
   }
   if (sessionData.synced === true) {
@@ -108,7 +108,7 @@ async function _syncLearningPoints(sessionId: string) {
     });
     const existingRows = existingResp.data.values ?? [];
     const existingKeys = new Set(
-      existingRows.slice(1).map((row) => `${row[0]}|${row[1]}|${row[4]}`)
+      existingRows.slice(1).map((row) => `${row[0]}|${row[1]}|${row[4]}`),
     );
 
     // 4b. Prepare rows
@@ -164,6 +164,7 @@ type SyncByDateRequest = { date: string };
 // Cloud function: syncLearningHoursByDate
 export const syncLearningHoursByDate = onCall<SyncByDateRequest>(
   {
+    region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -177,7 +178,7 @@ export const syncLearningHoursByDate = onCall<SyncByDateRequest>(
     if (!isUserAdmin(request.auth)) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins may run this sync."
+        "Only admins may run this sync.",
       );
     }
 
@@ -198,17 +199,18 @@ export const syncLearningHoursByDate = onCall<SyncByDateRequest>(
     if (!datePattern.test(sanitizedDate)) {
       throw new HttpsError(
         "invalid-argument",
-        "Invalid date format. Use YYYY-MM-DD."
+        "Invalid date format. Use YYYY-MM-DD.",
       );
     }
 
     return await _syncLearningPoints(sanitizedDate);
-  }
+  },
 );
 
 // Cloud function: syncLearningPointsToSheet
 export const syncLearningPointsToSheet = onCall<SyncRequest>(
   {
+    region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -222,7 +224,7 @@ export const syncLearningPointsToSheet = onCall<SyncRequest>(
     if (!isUserAdmin(request.auth)) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins may run this sync."
+        "Only admins may run this sync.",
       );
     }
 
@@ -232,7 +234,7 @@ export const syncLearningPointsToSheet = onCall<SyncRequest>(
     if (!sessionId || typeof sessionId !== "string") {
       throw new HttpsError(
         "invalid-argument",
-        "A valid sessionId is required."
+        "A valid sessionId is required.",
       );
     }
 
@@ -248,11 +250,12 @@ export const syncLearningPointsToSheet = onCall<SyncRequest>(
     }
 
     return await _syncLearningPoints(sanitizedSessionId);
-  }
+  },
 );
 
 export const autoSyncLearningPoints = onSchedule(
   {
+    region: "asia-south1",
     schedule: "0 19 * * 1-6",
     timeZone: "Asia/Kolkata",
     secrets: ["SHEETS_SA_KEY"],
@@ -280,5 +283,5 @@ export const autoSyncLearningPoints = onSchedule(
         message: error.message,
       });
     }
-  }
+  },
 );

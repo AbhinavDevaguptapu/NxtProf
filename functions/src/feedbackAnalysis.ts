@@ -40,7 +40,7 @@ type TimeseriesGraph = {
 };
 
 async function getFilteredFeedbackData(
-  requestData: FeedbackRequestData
+  requestData: FeedbackRequestData,
 ): Promise<any[]> {
   const { employeeId, timeFrame, date, startDate, endDate } = requestData;
 
@@ -56,7 +56,7 @@ async function getFilteredFeedbackData(
   if (!sheetIdMatch)
     throw new HttpsError(
       "invalid-argument",
-      "Invalid Google Sheet URL format."
+      "Invalid Google Sheet URL format.",
     );
   const spreadsheetId = sheetIdMatch[1];
 
@@ -65,12 +65,12 @@ async function getFilteredFeedbackData(
   const targetGid = gidMatch ? parseInt(gidMatch[1], 10) : 0;
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
   const sheet = meta.data.sheets?.find(
-    (s) => s.properties?.sheetId === targetGid
+    (s) => s.properties?.sheetId === targetGid,
   );
   if (!sheet?.properties?.title)
     throw new HttpsError(
       "not-found",
-      `Sheet with GID "${targetGid}" not found.`
+      `Sheet with GID "${targetGid}" not found.`,
     );
   const range = `${sheet.properties.title}!A:D`;
   const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range });
@@ -106,6 +106,7 @@ async function getFilteredFeedbackData(
 
 export const getFeedbackChartData = onCall<FeedbackRequestData>(
   {
+    region: "asia-south1",
     timeoutSeconds: 60,
     memory: "256MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -136,7 +137,7 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
       });
       throw new HttpsError(
         "permission-denied",
-        "You can only access your own feedback data."
+        "You can only access your own feedback data.",
       );
     }
 
@@ -184,10 +185,10 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
       graphTimeseries = {
         labels: sortedKeys.map((k) => format(parseISO(k), "MMM d")),
         understanding: sortedKeys.map(
-          (k) => dailyAggregates.get(k)!.sumU / dailyAggregates.get(k)!.count
+          (k) => dailyAggregates.get(k)!.sumU / dailyAggregates.get(k)!.count,
         ),
         instructor: sortedKeys.map(
-          (k) => dailyAggregates.get(k)!.sumI / dailyAggregates.get(k)!.count
+          (k) => dailyAggregates.get(k)!.sumI / dailyAggregates.get(k)!.count,
         ),
       };
     } else if (request.data.timeFrame === "full") {
@@ -210,15 +211,15 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
       const sortedKeys = Array.from(monthlyAggregates.keys()).sort();
       graphTimeseries = {
         labels: sortedKeys.map((k) =>
-          format(parse(k, "yyyy-MM", new Date()), "MMM yyyy")
+          format(parse(k, "yyyy-MM", new Date()), "MMM yyyy"),
         ),
         understanding: sortedKeys.map(
           (k) =>
-            monthlyAggregates.get(k)!.sumU / monthlyAggregates.get(k)!.count
+            monthlyAggregates.get(k)!.sumU / monthlyAggregates.get(k)!.count,
         ),
         instructor: sortedKeys.map(
           (k) =>
-            monthlyAggregates.get(k)!.sumI / monthlyAggregates.get(k)!.count
+            monthlyAggregates.get(k)!.sumI / monthlyAggregates.get(k)!.count,
         ),
       };
     }
@@ -231,11 +232,12 @@ export const getFeedbackChartData = onCall<FeedbackRequestData>(
     });
 
     return { totalFeedbacks, graphData, graphTimeseries };
-  }
+  },
 );
 
 export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
   {
+    region: "asia-south1",
     timeoutSeconds: 120,
     memory: "512MiB",
     secrets: ["GEMINI_KEY", "SHEETS_SA_KEY"],
@@ -266,7 +268,7 @@ export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
       });
       throw new HttpsError(
         "permission-denied",
-        "You can only access your own feedback data."
+        "You can only access your own feedback data.",
       );
     }
 
@@ -290,7 +292,7 @@ export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
         model: "gemini-2.5-flash-lite",
       });
       const prompt = `From the following list of verbatim feedback comments, perform an analysis. Return a valid JSON object with two keys: "positiveFeedback" and "improvementAreas". For "positiveFeedback", return an array of up to 3 objects, where each object has a "quote" key (the verbatim positive comment) and a "keywords" key (an array of 1-3 relevant keywords from the quote). For "improvementAreas", return an array of up to 3 objects, where each object has a "theme" key (a summarized topic like 'Pacing' or 'Interaction') and a "suggestion" key (a concise, actionable suggestion for the instructor). If the comments do not contain explicit areas for improvement, analyze the context and provide general best-practice suggestions that could still enhance performance. If there are no comments that fit a category, return an empty array for that key. Comments: """${comments.join(
-        "\n"
+        "\n",
       )}"""`;
       const aiRes = await model.generateContent(prompt);
       const aiTxt = aiRes.response.text();
@@ -329,11 +331,12 @@ export const getFeedbackAiSummary = onCall<FeedbackRequestData>(
       });
       throw new HttpsError("internal", "Failed to generate AI summary.");
     }
-  }
+  },
 );
 
 export const getRawFeedback = onCall<FeedbackRequestData>(
   {
+    region: "asia-south1",
     timeoutSeconds: 60,
     memory: "256MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -365,7 +368,7 @@ export const getRawFeedback = onCall<FeedbackRequestData>(
       });
       throw new HttpsError(
         "permission-denied",
-        "You can only access your own feedback data."
+        "You can only access your own feedback data.",
       );
     }
 
@@ -389,5 +392,5 @@ export const getRawFeedback = onCall<FeedbackRequestData>(
         date: `${localTimeStr}+05:30`,
       };
     });
-  }
+  },
 );

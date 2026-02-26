@@ -9,6 +9,7 @@ const v2_1 = require("firebase-functions/v2");
 const generative_ai_1 = require("@google/generative-ai");
 const utils_1 = require("./utils");
 exports.analyzeTask = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 120,
     memory: "512MiB",
     secrets: ["GEMINI_KEY"],

@@ -43,6 +43,7 @@ const date_fns_1 = require("date-fns");
 const TIME_ZONE = "Asia/Kolkata";
 // Function to schedule standup
 exports.scheduleDailyStandup = (0, scheduler_1.onSchedule)({
+    region: "asia-south1",
     schedule: "every day 08:00",
     timeZone: TIME_ZONE,
 }, async () => {
@@ -89,6 +90,7 @@ exports.scheduleDailyStandup = (0, scheduler_1.onSchedule)({
 });
 // Function to automatically start the standup
 exports.startScheduledStandup = (0, scheduler_1.onSchedule)({
+    region: "asia-south1",
     schedule: "every mon,tue,wed,thu,fri,sat 08:45",
     timeZone: TIME_ZONE,
 }, async () => {
@@ -128,6 +130,7 @@ exports.startScheduledStandup = (0, scheduler_1.onSchedule)({
 });
 // Function to automatically end the standup
 exports.endActiveStandup = (0, scheduler_1.onSchedule)({
+    region: "asia-south1",
     schedule: "every mon,tue,wed,thu,fri,sat 09:00",
     timeZone: TIME_ZONE,
 }, async () => {

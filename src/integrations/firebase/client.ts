@@ -20,6 +20,7 @@ import {
   persistentMultipleTabManager,
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 
 // Your Firebase configuration using environment variables
 const firebaseConfig = {
@@ -45,3 +46,6 @@ export const db = initializeFirestore(app, {
 });
 
 export const storage = getStorage(app);
+
+// Initialize Cloud Functions with asia-south1 region for lower latency
+export const functions = getFunctions(app, "asia-south1");

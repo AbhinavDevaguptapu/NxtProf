@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, Variants, LayoutGroup } from "framer-motion";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import { format, formatDistanceStrict } from "date-fns";
 import React, { useState, useEffect, FC } from "react";
 
@@ -161,7 +162,7 @@ export const FilterControls: FC<{
                 "relative text-xs font-medium px-3 h-8 transition-colors",
                 isActive
                   ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => onFilterChange(filter)}
             >
@@ -176,12 +177,12 @@ export const FilterControls: FC<{
                 {filter === "all"
                   ? "All Users"
                   : filter === "Not Available"
-                  ? "N/A"
-                  : filter}
+                    ? "N/A"
+                    : filter}
               </span>
             </Button>
           );
-        }
+        },
       )}
     </div>
   </LayoutGroup>
@@ -232,17 +233,18 @@ const EndedViewLayout = ({
 
   const summaryStats = {
     Present: Object.values(savedAttendance).filter(
-      (a: any) => a.status === "Present" && activeEmployeeIds.has(a.employee_id)
+      (a: any) =>
+        a.status === "Present" && activeEmployeeIds.has(a.employee_id),
     ).length,
     Absent: Object.values(savedAttendance).filter(
-      (a: any) => a.status === "Absent" && activeEmployeeIds.has(a.employee_id)
+      (a: any) => a.status === "Absent" && activeEmployeeIds.has(a.employee_id),
     ).length,
     Missed: Object.values(savedAttendance).filter(
-      (a: any) => a.status === "Missed" && activeEmployeeIds.has(a.employee_id)
+      (a: any) => a.status === "Missed" && activeEmployeeIds.has(a.employee_id),
     ).length,
     "Not Available": Object.values(savedAttendance).filter(
       (a: any) =>
-        a.status === "Not Available" && activeEmployeeIds.has(a.employee_id)
+        a.status === "Not Available" && activeEmployeeIds.has(a.employee_id),
     ).length,
   };
 
@@ -283,7 +285,7 @@ const EndedViewLayout = ({
                   <span className="ml-auto font-bold text-green-700 dark:text-green-400">
                     {formatDistanceStrict(
                       learningHour.endedAt.toDate(),
-                      learningHour.startedAt.toDate()
+                      learningHour.startedAt.toDate(),
                     )}
                   </span>
                 </div>
@@ -408,7 +410,7 @@ export default function LearningHours() {
   } = useLearningHourSession();
 
   const [activeFilter, setActiveFilter] = useState<AttendanceStatus | "all">(
-    "all"
+    "all",
   );
 
   const {
@@ -459,7 +461,7 @@ export default function LearningHours() {
       const scheduled = learningHour.scheduledTime.toDate();
       const remainingMinutes = Math.max(
         0,
-        Math.ceil((scheduled.getTime() - now.getTime()) / (1000 * 60))
+        Math.ceil((scheduled.getTime() - now.getTime()) / (1000 * 60)),
       );
 
       toast({
@@ -484,10 +486,9 @@ export default function LearningHours() {
 
   const handleEndSession = async () => {
     setIsEndingSession(true);
-    const functions = getFunctions();
     const endSessionFunction = httpsCallable(
       functions,
-      "endLearningSessionAndLockPoints"
+      "endLearningSessionAndLockPoints",
     );
 
     try {
@@ -502,7 +503,7 @@ export default function LearningHours() {
       const { title, description } = formatErrorForDisplay(
         error,
         "Unable to End Session",
-        "ending"
+        "ending",
       );
       toast({ title, description, variant: "destructive" });
     } finally {
@@ -783,7 +784,7 @@ export default function LearningHours() {
               className={cn(
                 alreadySynced
                   ? "border-green-200 text-green-700 bg-green-50"
-                  : ""
+                  : "",
               )}
             >
               {isSyncing ? (
@@ -867,8 +868,8 @@ export default function LearningHours() {
                         status === "Present"
                           ? "text-green-600"
                           : status === "Absent"
-                          ? "text-red-600"
-                          : "text-muted-foreground";
+                            ? "text-red-600"
+                            : "text-muted-foreground";
                       return (
                         <div
                           key={emp.id}

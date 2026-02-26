@@ -1,9 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  getFunctions,
-  httpsCallable,
-  HttpsCallableResult,
-} from "firebase/functions";
+import { httpsCallable, HttpsCallableResult } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 import {
   getFirestore,
   collection,
@@ -37,7 +34,6 @@ interface DeleteObservationVars {
 }
 
 // --- Firebase Setup ---
-const functions = getFunctions();
 const db = getFirestore();
 
 // Define callables with explicit types for better safety
@@ -76,7 +72,7 @@ export const useGetObservations = (date: Date) => {
         where("observationDate", ">=", startTimestamp),
         where("observationDate", "<=", endTimestamp),
         orderBy("observationDate", "asc"),
-        orderBy("createdAt", "asc")
+        orderBy("createdAt", "asc"),
       );
 
       const querySnapshot = await getDocs(q);
@@ -123,7 +119,7 @@ export const useAddObservation = () => {
     onError: (error: unknown) => {
       const message = getUserFriendlyErrorMessage(
         error,
-        "Could not add your observation. Please try again."
+        "Could not add your observation. Please try again.",
       );
       toast.error(message);
     },
@@ -148,7 +144,7 @@ export const useUpdateObservation = () => {
     onError: (error: unknown) => {
       const message = getUserFriendlyErrorMessage(
         error,
-        "Could not update your observation. Please try again."
+        "Could not update your observation. Please try again.",
       );
       toast.error(message);
     },
@@ -173,7 +169,7 @@ export const useDeleteObservation = () => {
     onError: (error: unknown) => {
       const message = getUserFriendlyErrorMessage(
         error,
-        "Could not delete your observation. Please try again."
+        "Could not delete your observation. Please try again.",
       );
       toast.error(message);
     },

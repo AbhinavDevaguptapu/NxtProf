@@ -13,59 +13,62 @@ interface GivenPeerFeedback {
 }
 
 // Function to get feedback received by the current user (anonymous)
-export const getMyReceivedFeedback = onCall({ cors: true }, async (request) => {
-  const db = admin.firestore();
-  if (!request.auth) {
-    throw new HttpsError(
-      "unauthenticated",
-      "You must be logged in to view your feedback."
-    );
-  }
-  const myId = request.auth.uid;
+export const getMyReceivedFeedback = onCall(
+  { region: "asia-south1", cors: true },
+  async (request) => {
+    const db = admin.firestore();
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "You must be logged in to view your feedback.",
+      );
+    }
+    const myId = request.auth.uid;
 
-  logger.info("Fetching received feedback", {
-    userId: myId,
-    timestamp: new Date().toISOString(),
-  });
+    logger.info("Fetching received feedback", {
+      userId: myId,
+      timestamp: new Date().toISOString(),
+    });
 
-  const givenSnapshot = await db
-    .collection("givenPeerFeedback")
-    .where("targetId", "==", myId)
-    .orderBy("createdAt", "desc")
-    .get();
+    const givenSnapshot = await db
+      .collection("givenPeerFeedback")
+      .where("targetId", "==", myId)
+      .orderBy("createdAt", "desc")
+      .get();
 
-  const feedback = givenSnapshot.docs.map((doc) => {
-    const data = doc.data() as GivenPeerFeedback;
-    const timestamp = data.createdAt as admin.firestore.Timestamp;
-    return {
-      id: doc.id,
-      projectOrTask: data.projectOrTask,
-      workEfficiency: data.workEfficiency,
-      easeOfWork: data.easeOfWork,
-      remarks: data.remarks,
-      submittedAt: timestamp
-        ? timestamp.toDate().toISOString()
-        : new Date().toISOString(),
-    };
-  });
+    const feedback = givenSnapshot.docs.map((doc) => {
+      const data = doc.data() as GivenPeerFeedback;
+      const timestamp = data.createdAt as admin.firestore.Timestamp;
+      return {
+        id: doc.id,
+        projectOrTask: data.projectOrTask,
+        workEfficiency: data.workEfficiency,
+        easeOfWork: data.easeOfWork,
+        remarks: data.remarks,
+        submittedAt: timestamp
+          ? timestamp.toDate().toISOString()
+          : new Date().toISOString(),
+      };
+    });
 
-  logger.info("Received feedback fetched", {
-    userId: myId,
-    count: feedback.length,
-    timestamp: new Date().toISOString(),
-  });
-  return feedback;
-});
+    logger.info("Received feedback fetched", {
+      userId: myId,
+      count: feedback.length,
+      timestamp: new Date().toISOString(),
+    });
+    return feedback;
+  },
+);
 
 // Function for admins to get all feedback (not anonymous)
 export const adminGetAllPeerFeedback = onCall(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     const db = admin.firestore();
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can access this information."
+        "Only admins can access this information.",
       );
     }
 
@@ -106,20 +109,20 @@ export const adminGetAllPeerFeedback = onCall(
             ? timestamp.toDate().toISOString()
             : new Date().toISOString(),
         };
-      })
+      }),
     );
 
     return feedback.filter((item) => item !== null);
-  }
+  },
 );
 
 export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (request.auth?.token.isAdmin !== true) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can toggle the peer feedback lock."
+        "Only admins can toggle the peer feedback lock.",
       );
     }
 
@@ -133,14 +136,14 @@ export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(
       console.error("Error toggling peer feedback lock:", error);
       throw new HttpsError(
         "internal",
-        "An unexpected error occurred while toggling the lock."
+        "An unexpected error occurred while toggling the lock.",
       );
     }
-  }
+  },
 );
 
 export const getPeerFeedbackLockStatus = onCall(
-  { cors: true },
+  { region: "asia-south1", cors: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Authentication is required.");
@@ -159,10 +162,10 @@ export const getPeerFeedbackLockStatus = onCall(
       console.error("Error getting peer feedback lock status:", error);
       throw new HttpsError(
         "internal",
-        "An unexpected error occurred while fetching lock status."
+        "An unexpected error occurred while fetching lock status.",
       );
     }
-  }
+  },
 );
 
 export const givePeerFeedback = onCall<{
@@ -171,12 +174,12 @@ export const givePeerFeedback = onCall<{
   workEfficiency: number;
   easeOfWork: number;
   remarks: string;
-}>({ cors: true }, async (request) => {
+}>({ region: "asia-south1", cors: true }, async (request) => {
   const db = admin.firestore();
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",
-      "You must be logged in to give feedback."
+      "You must be logged in to give feedback.",
     );
   }
 
@@ -194,7 +197,7 @@ export const givePeerFeedback = onCall<{
   if (!projectOrTask || typeof projectOrTask !== "string") {
     throw new HttpsError(
       "invalid-argument",
-      "Valid projectOrTask is required."
+      "Valid projectOrTask is required.",
     );
   }
   if (!remarks || typeof remarks !== "string") {
@@ -218,7 +221,7 @@ export const givePeerFeedback = onCall<{
   ) {
     throw new HttpsError(
       "invalid-argument",
-      "Ratings must be between 0 and 5."
+      "Ratings must be between 0 and 5.",
     );
   }
 
@@ -240,7 +243,7 @@ export const givePeerFeedback = onCall<{
     if (lockDoc.exists && lockDoc.data()?.locked === true) {
       throw new HttpsError(
         "failed-precondition",
-        "Feedback submissions are temporarily disabled."
+        "Feedback submissions are temporarily disabled.",
       );
     }
 
@@ -254,7 +257,7 @@ export const givePeerFeedback = onCall<{
       23,
       59,
       59,
-      999
+      999,
     );
 
     try {
@@ -269,7 +272,7 @@ export const givePeerFeedback = onCall<{
           .limit(1);
 
         const existingDocSnapshot = await transaction.get(
-          existingFeedbackQuery
+          existingFeedbackQuery,
         );
 
         if (!existingDocSnapshot.empty) {
@@ -294,7 +297,7 @@ export const givePeerFeedback = onCall<{
       if (transactionError.message === "DUPLICATE_FEEDBACK") {
         throw new HttpsError(
           "failed-precondition",
-          "You have already given feedback to this user this month."
+          "You have already given feedback to this user this month.",
         );
       }
       // Re-throw other transaction errors
@@ -313,7 +316,7 @@ export const givePeerFeedback = onCall<{
     }
     throw new HttpsError(
       "internal",
-      "An unexpected error occurred while giving feedback."
+      "An unexpected error occurred while giving feedback.",
     );
   }
 });

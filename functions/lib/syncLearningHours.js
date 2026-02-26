@@ -170,6 +170,7 @@ async function _syncLearningPoints(sessionId) {
 }
 // Cloud function: syncLearningHoursByDate
 exports.syncLearningHoursByDate = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -200,6 +201,7 @@ exports.syncLearningHoursByDate = (0, https_1.onCall)({
 });
 // Cloud function: syncLearningPointsToSheet
 exports.syncLearningPointsToSheet = (0, https_1.onCall)({
+    region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
     secrets: ["SHEETS_SA_KEY"],
@@ -229,6 +231,7 @@ exports.syncLearningPointsToSheet = (0, https_1.onCall)({
     return await _syncLearningPoints(sanitizedSessionId);
 });
 exports.autoSyncLearningPoints = (0, scheduler_1.onSchedule)({
+    region: "asia-south1",
     schedule: "0 19 * * 1-6",
     timeZone: "Asia/Kolkata",
     secrets: ["SHEETS_SA_KEY"],

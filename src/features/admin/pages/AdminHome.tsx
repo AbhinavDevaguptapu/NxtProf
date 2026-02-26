@@ -98,8 +98,8 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
                 where("scheduledTime", ">=", Timestamp.fromDate(today)),
                 where("scheduledTime", "<", Timestamp.fromDate(tomorrow)),
                 orderBy("scheduledTime", "desc"),
-                limit(1)
-              )
+                limit(1),
+              ),
             ),
             getDocs(
               query(
@@ -107,13 +107,13 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
                 where("scheduledTime", ">=", Timestamp.fromDate(today)),
                 where("scheduledTime", "<", Timestamp.fromDate(tomorrow)),
                 orderBy("scheduledTime", "desc"),
-                limit(1)
-              )
+                limit(1),
+              ),
             ),
           ]);
 
         const activeEmployees = employeeDocs.docs.filter(
-          (doc) => doc.data().archived !== true
+          (doc) => doc.data().archived !== true,
         );
         setEmployeeCount(activeEmployees.length);
 
@@ -123,14 +123,14 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
             standupDoc
               .data()
               .scheduledTime.toDate()
-              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           );
           const attSnapshot = await getCountFromServer(
             query(
               collection(db, "attendance"),
               where("standup_id", "==", standupDoc.id),
-              where("status", "==", "Present")
-            )
+              where("status", "==", "Present"),
+            ),
           );
           setStandupAttendanceCount(attSnapshot.data().count);
         }
@@ -141,14 +141,14 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
             learningHourDoc
               .data()
               .scheduledTime.toDate()
-              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           );
           const attSnapshot = await getCountFromServer(
             query(
               collection(db, "learning_hours_attendance"),
               where("learning_hour_id", "==", learningHourDoc.id),
-              where("status", "==", "Present")
-            )
+              where("status", "==", "Present"),
+            ),
           );
           setLearningHourAttendanceCount(attSnapshot.data().count);
         }
@@ -167,7 +167,7 @@ const AdminHome = ({ setActiveView }: AdminHomeProps) => {
       ? Math.round(
           ((standupAttendanceCount + learningHourAttendanceCount) /
             (employeeCount * 2)) *
-            100
+            100,
         )
       : 0;
 
@@ -354,7 +354,7 @@ const StatCard = ({
     <Card
       className={cn(
         "overflow-hidden border-l-4 shadow-sm hover:shadow-md transition-all duration-300",
-        borderStyles[color]
+        borderStyles[color],
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -400,8 +400,8 @@ const AttendanceCard = ({
     percentage >= 80
       ? "text-emerald-600"
       : percentage >= 50
-      ? "text-amber-500"
-      : "text-red-500";
+        ? "text-amber-500"
+        : "text-red-500";
 
   return (
     <Card className="flex flex-col h-full shadow-sm hover:shadow-md transition-all duration-300 group">
@@ -410,7 +410,7 @@ const AttendanceCard = ({
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <div
               className={cn(
-                "p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors"
+                "p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors",
               )}
             >
               <Icon className={cn("h-4 w-4", `text-${color}-600`)} />

@@ -1,12 +1,13 @@
 import { TaskData, AnalysisResult } from "../types";
 import { TASK_FRAMEWORK_MD } from "../constants";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/integrations/firebase/client";
 
 // Helper function for creating a delay
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const analyzeTask = async (
-  taskData: TaskData
+  taskData: TaskData,
 ): Promise<AnalysisResult> => {
   const {
     task,
@@ -142,7 +143,6 @@ Example: Invalid/Empty
   "correctedActionItem": null
 }
 `;
-  const functions = getFunctions();
   const analyzeTaskFunction = httpsCallable(functions, "analyzeTask");
 
   const maxRetries = 3;
@@ -185,7 +185,7 @@ Example: Invalid/Empty
         console.warn(
           `Attempt ${
             i + 1
-          } failed with a server error. Retrying in ${currentDelay}ms...`
+          } failed with a server error. Retrying in ${currentDelay}ms...`,
         );
         await sleep(currentDelay);
         currentDelay *= 2;
@@ -193,7 +193,7 @@ Example: Invalid/Empty
         console.error(`Error on attempt ${i + 1}:`, error);
         if (i === maxRetries - 1) {
           throw new Error(
-            "Failed to get analysis from AI. Please check the console for details."
+            "Failed to get analysis from AI. Please check the console for details.",
           );
         }
       }

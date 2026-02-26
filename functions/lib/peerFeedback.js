@@ -38,7 +38,7 @@ const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const v2_1 = require("firebase-functions/v2");
 // Function to get feedback received by the current user (anonymous)
-exports.getMyReceivedFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getMyReceivedFeedback = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     const db = admin.firestore();
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "You must be logged in to view your feedback.");
@@ -75,7 +75,7 @@ exports.getMyReceivedFeedback = (0, https_1.onCall)({ cors: true }, async (reque
     return feedback;
 });
 // Function for admins to get all feedback (not anonymous)
-exports.adminGetAllPeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.adminGetAllPeerFeedback = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     const db = admin.firestore();
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
@@ -116,7 +116,7 @@ exports.adminGetAllPeerFeedback = (0, https_1.onCall)({ cors: true }, async (req
     }));
     return feedback.filter((item) => item !== null);
 });
-exports.togglePeerFeedbackLock = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.togglePeerFeedbackLock = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can toggle the peer feedback lock.");
@@ -132,7 +132,7 @@ exports.togglePeerFeedbackLock = (0, https_1.onCall)({ cors: true }, async (requ
         throw new https_1.HttpsError("internal", "An unexpected error occurred while toggling the lock.");
     }
 });
-exports.getPeerFeedbackLockStatus = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getPeerFeedbackLockStatus = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Authentication is required.");
@@ -151,7 +151,7 @@ exports.getPeerFeedbackLockStatus = (0, https_1.onCall)({ cors: true }, async (r
         throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching lock status.");
     }
 });
-exports.givePeerFeedback = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.givePeerFeedback = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     var _a;
     const db = admin.firestore();
     if (!request.auth) {
