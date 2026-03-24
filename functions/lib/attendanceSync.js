@@ -42,6 +42,7 @@ const https_1 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const v2_1 = require("firebase-functions/v2");
 const googleapis_1 = require("googleapis");
+const date_fns_tz_1 = require("date-fns-tz");
 const utils_1 = require("./utils");
 const validation_1 = require("./validation");
 async function _syncAttendanceToSheet(data) {
@@ -163,7 +164,7 @@ exports.syncAttendanceToSheet = (0, https_1.onCall)({
     region: "asia-south1",
     timeoutSeconds: 120,
     memory: "256MiB",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "ATTENDANCE_SPREADSHEET_ID"],
     cors: true,
 }, async (request) => {
     if (!request.auth) {
@@ -178,12 +179,11 @@ exports.scheduledSync = (0, scheduler_1.onSchedule)({
     region: "asia-south1",
     schedule: "30 19 * * 1-6",
     timeZone: "Asia/Kolkata",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "ATTENDANCE_SPREADSHEET_ID"],
     timeoutSeconds: 300,
     memory: "256MiB",
 }, async (event) => {
-    const today = new Date();
-    const dateString = today.toISOString().split("T")[0];
+    const dateString = (0, date_fns_tz_1.formatInTimeZone)(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
     v2_1.logger.info("Starting scheduled sync", {
         scheduleTime: event.scheduleTime,
         date: dateString,

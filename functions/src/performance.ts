@@ -9,6 +9,7 @@ import {
   eachDayOfInterval,
   getDay,
 } from "date-fns";
+import { isUserAdmin } from "./utils";
 
 interface PerformanceRequest {
   employeeId: string;
@@ -24,10 +25,10 @@ export const getEmployeePerformanceSummary = onCall<PerformanceRequest>(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Authentication is required.");
     }
-    if (!request.auth.token.isAdmin) {
+    if (!isUserAdmin(request.auth)) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can access performance summaries.",
+        "Only admins and co-admins can access performance summaries.",
       );
     }
 

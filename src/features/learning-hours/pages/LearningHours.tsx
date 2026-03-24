@@ -332,18 +332,20 @@ const EndedViewLayout = ({
         {/* Roster Column */}
         <div className="w-full lg:col-span-2 space-y-4">
           <Card className="border-none shadow-none bg-transparent">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight">
-                  Final Roster
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Showing {finalFilteredEmployees.length} of {employees.length}{" "}
-                  members.
-                </p>
+            <div className="flex flex-col gap-3 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    Final Roster
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Showing {finalFilteredEmployees.length} of{" "}
+                    {employees.length} members.
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative w-full sm:w-64">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <div className="relative w-full sm:w-64 sm:min-w-[16rem] shrink-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search roster..."
@@ -352,17 +354,19 @@ const EndedViewLayout = ({
                     className="pl-9 bg-background"
                   />
                 </div>
-                <FilterControls
-                  currentFilter={finalFilter}
-                  onFilterChange={setFinalFilter}
-                  layoutId="admin-final-filter"
-                />
+                <div className="w-full overflow-x-auto sm:overflow-x-visible">
+                  <FilterControls
+                    currentFilter={finalFilter}
+                    onFilterChange={setFinalFilter}
+                    layoutId="admin-final-filter"
+                  />
+                </div>
               </div>
             </div>
 
             <motion.div
               key={finalFilter + finalSearchQuery}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
               variants={containerVariants}
               initial="hidden"
               animate="visible"

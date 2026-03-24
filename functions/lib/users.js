@@ -67,14 +67,11 @@ exports.addAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }
     }
 });
 exports.removeAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
-    var _a, _b;
+    var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can modify roles.");
     }
-    const email = (_b = request.data.email) === null || _b === void 0 ? void 0 : _b.trim();
-    if (!email) {
-        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
-    }
+    const { email } = (0, validation_1.validateInput)(validation_1.roleManagementSchema, request.data);
     try {
         const user = await admin.auth().getUserByEmail(email);
         await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isAdmin: false }));
@@ -84,20 +81,17 @@ exports.removeAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: tru
         if (err.code === "auth/user-not-found") {
             throw new https_1.HttpsError("not-found", "User not found.");
         }
-        console.error("removeAdminRole error:", err);
+        v2_1.logger.error("removeAdminRole error:", { error: err.message, email });
         throw new https_1.HttpsError("internal", "Could not remove admin role.");
     }
 });
 exports.addCoAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
-    var _a;
     if (!request.auth)
         throw new https_1.HttpsError("unauthenticated", "Login required.");
     const caller = request.auth.token;
     if (caller.isAdmin !== true)
         throw new https_1.HttpsError("permission-denied", "Admins only.");
-    const email = (_a = request.data.email) === null || _a === void 0 ? void 0 : _a.trim();
-    if (!email)
-        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
+    const { email } = (0, validation_1.validateInput)(validation_1.roleManagementSchema, request.data);
     try {
         const user = await admin.auth().getUserByEmail(email);
         await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isCoAdmin: true }));
@@ -107,19 +101,16 @@ exports.addCoAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true
         if (err.code === "auth/user-not-found") {
             throw new https_1.HttpsError("not-found", "User not found.");
         }
-        console.error("addCoAdminRole error:", err);
+        v2_1.logger.error("addCoAdminRole error:", { error: err.message, email });
         throw new https_1.HttpsError("internal", "Could not set Co-Admin role.");
     }
 });
 exports.removeCoAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
-    var _a, _b;
+    var _a;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can modify roles.");
     }
-    const email = (_b = request.data.email) === null || _b === void 0 ? void 0 : _b.trim();
-    if (!email) {
-        throw new https_1.HttpsError("invalid-argument", "Provide a valid email.");
-    }
+    const { email } = (0, validation_1.validateInput)(validation_1.roleManagementSchema, request.data);
     try {
         const user = await admin.auth().getUserByEmail(email);
         await admin.auth().setCustomUserClaims(user.uid, Object.assign(Object.assign({}, user.customClaims), { isCoAdmin: false }));
@@ -129,7 +120,7 @@ exports.removeCoAdminRole = (0, https_1.onCall)({ region: "asia-south1", cors: t
         if (err.code === "auth/user-not-found") {
             throw new https_1.HttpsError("not-found", "User not found.");
         }
-        console.error("removeCoAdminRole error:", err);
+        v2_1.logger.error("removeCoAdminRole error:", { error: err.message, email });
         throw new https_1.HttpsError("internal", "Could not remove Co-Admin role.");
     }
 });
@@ -137,10 +128,7 @@ exports.deleteEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: true
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    const uid = request.data.uid;
-    if (!uid) {
-        throw new https_1.HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
-    }
+    const { uid } = (0, validation_1.validateInput)(validation_1.uidParamSchema, request.data);
     // A user can delete their own account, or an admin can delete any account.
     if (request.auth.uid !== uid && !(0, utils_1.isUserSuperAdmin)(request.auth)) {
         throw new https_1.HttpsError("permission-denied", "You do not have permission to delete this account.");
@@ -151,7 +139,7 @@ exports.deleteEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: true
         return { message: "User account and profile deleted." };
     }
     catch (error) {
-        console.error("deleteEmployee error:", error);
+        v2_1.logger.error("deleteEmployee error:", { error: error.message, uid });
         throw new https_1.HttpsError("internal", error.message || "An unknown error occurred.");
     }
 });
@@ -160,10 +148,7 @@ exports.archiveEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: tru
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can archive employees.");
     }
-    const uid = request.data.uid;
-    if (!uid) {
-        throw new https_1.HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
-    }
+    const { uid } = (0, validation_1.validateInput)(validation_1.uidParamSchema, request.data);
     if (request.auth.uid === uid) {
         throw new https_1.HttpsError("permission-denied", "Admins cannot archive their own account.");
     }
@@ -176,7 +161,7 @@ exports.archiveEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: tru
         return { message: "Employee archived successfully." };
     }
     catch (error) {
-        console.error("archiveEmployee error:", error);
+        v2_1.logger.error("archiveEmployee error:", { error: error.message, uid });
         throw new https_1.HttpsError("internal", error.message || "An unknown error occurred.");
     }
 });
@@ -185,10 +170,7 @@ exports.unarchiveEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: t
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can unarchive employees.");
     }
-    const uid = request.data.uid;
-    if (!uid) {
-        throw new https_1.HttpsError("invalid-argument", "Missing or invalid `uid` parameter.");
-    }
+    const { uid } = (0, validation_1.validateInput)(validation_1.uidParamSchema, request.data);
     try {
         await admin.auth().updateUser(uid, { disabled: false });
         await admin
@@ -198,7 +180,7 @@ exports.unarchiveEmployee = (0, https_1.onCall)({ region: "asia-south1", cors: t
         return { message: "Employee unarchived successfully." };
     }
     catch (error) {
-        console.error("unarchiveEmployee error:", error);
+        v2_1.logger.error("unarchiveEmployee error:", { error: error.message, uid });
         throw new https_1.HttpsError("internal", error.message || "An unknown error occurred.");
     }
 });
@@ -229,7 +211,7 @@ exports.getEmployeesWithAdminStatus = (0, https_1.onCall)({ region: "asia-south1
         return employeesWithStatus;
     }
     catch (error) {
-        console.error("Error fetching employees with admin status:", error);
+        v2_1.logger.error("Error fetching employees with admin status:", { error: error.message });
         throw new https_1.HttpsError("internal", "Failed to fetch employee data.");
     }
 });
@@ -249,7 +231,7 @@ exports.getArchivedEmployees = (0, https_1.onCall)({ region: "asia-south1", cors
         return employees;
     }
     catch (error) {
-        console.error("Error fetching archived employees:", error);
+        v2_1.logger.error("Error fetching archived employees:", { error: error.message });
         throw new https_1.HttpsError("internal", "Failed to fetch archived employee data.");
     }
 });
@@ -268,7 +250,7 @@ exports.getUnapprovedUsers = (0, https_1.onCall)({ region: "asia-south1", cors: 
         return users;
     }
     catch (error) {
-        console.error("Error fetching unapproved users:", error);
+        v2_1.logger.error("Error fetching unapproved users:", { error: error.message });
         throw new https_1.HttpsError("internal", "Failed to fetch unapproved users.");
     }
 });
@@ -277,10 +259,7 @@ exports.approveUser = (0, https_1.onCall)({ region: "asia-south1", cors: true },
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.isAdmin) !== true) {
         throw new https_1.HttpsError("permission-denied", "Only admins can approve users.");
     }
-    const uid = request.data.uid;
-    if (!uid) {
-        throw new https_1.HttpsError("invalid-argument", "Missing uid.");
-    }
+    const { uid } = (0, validation_1.validateInput)(validation_1.uidParamSchema, request.data);
     try {
         await admin.firestore().doc(`employees/${uid}`).update({
             admin_approval_required: false,
@@ -288,7 +267,7 @@ exports.approveUser = (0, https_1.onCall)({ region: "asia-south1", cors: true },
         return { message: "User approved successfully." };
     }
     catch (error) {
-        console.error("Error approving user:", error);
+        v2_1.logger.error("Error approving user:", { error: error.message, uid });
         throw new https_1.HttpsError("internal", "Failed to approve user.");
     }
 });

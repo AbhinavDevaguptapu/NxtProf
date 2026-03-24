@@ -3,6 +3,7 @@
  */
 import { JWT } from "google-auth-library";
 import { HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
 import { parse, isValid } from "date-fns";
 
 // Helper function to securely get the Gemini API Key
@@ -43,7 +44,7 @@ export function getSheetsAuth(): JWT {
     try {
         sa = JSON.parse(saRaw.trim());
     } catch (error) {
-        console.error("Invalid Service Account key format:", error);
+        logger.error("Invalid Service Account key format:", error);
         throw new HttpsError("internal", "Reporting services are temporarily unavailable.");
     }
 
@@ -71,7 +72,7 @@ export function parseDynamicDate(dateString: string): Date {
         const parsedDate = parse(dateString.trim(), formatString, new Date());
         if (isValid(parsedDate)) return parsedDate;
     }
-    console.warn(`Unrecognized date format: "${dateString}"`);
+    logger.warn(`Unrecognized date format: "${dateString}"`);
     return new Date(NaN);
 }
 

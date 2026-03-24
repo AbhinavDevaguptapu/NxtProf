@@ -6,6 +6,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions/v2";
 import { google } from "googleapis";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   getAttendanceSpreadsheetId,
   getSheetsAuth,
@@ -168,7 +169,7 @@ export const syncAttendanceToSheet = onCall<SyncToSheetData>(
     region: "asia-south1",
     timeoutSeconds: 120,
     memory: "256MiB",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "ATTENDANCE_SPREADSHEET_ID"],
     cors: true,
   },
   async (request) => {
@@ -191,13 +192,12 @@ export const scheduledSync = onSchedule(
     region: "asia-south1",
     schedule: "30 19 * * 1-6",
     timeZone: "Asia/Kolkata",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "ATTENDANCE_SPREADSHEET_ID"],
     timeoutSeconds: 300,
     memory: "256MiB",
   },
   async (event: { scheduleTime: any }) => {
-    const today = new Date();
-    const dateString = today.toISOString().split("T")[0];
+    const dateString = formatInTimeZone(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
 
     logger.info("Starting scheduled sync", {
       scheduleTime: event.scheduleTime,

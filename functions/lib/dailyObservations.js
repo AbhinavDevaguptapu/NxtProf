@@ -43,6 +43,7 @@ const https_1 = require("firebase-functions/v2/https");
 const v2_1 = require("firebase-functions/v2");
 const admin = __importStar(require("firebase-admin"));
 const zod_1 = require("zod");
+const date_fns_tz_1 = require("date-fns-tz");
 // --- Validation Schemas ---
 const observationSchema = zod_1.z.object({
     observationText: zod_1.z.string().min(10, {
@@ -55,6 +56,10 @@ const updateObservationSchema = zod_1.z.object({
         message: "Observation must be at least 10 characters long.",
     }),
 });
+const deleteObservationSchema = zod_1.z.object({
+    id: zod_1.z.string().min(1, { message: "Observation ID is required." }),
+});
+const IST_TIMEZONE = "Asia/Kolkata";
 // --- Helper Functions ---
 const ensureAuthenticated = (request) => {
     if (!request.auth) {
@@ -71,11 +76,10 @@ const verifyObservationOwnership = async (id, uid) => {
     if (observation.userId !== uid) {
         throw new https_1.HttpsError("permission-denied", "You are not authorized to modify this observation.");
     }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const observationDate = observation.observationDate.toDate();
-    observationDate.setHours(0, 0, 0, 0);
-    if (today.getTime() !== observationDate.getTime()) {
+    // Compare dates in IST timezone to avoid UTC boundary issues
+    const todayIST = (0, date_fns_tz_1.formatInTimeZone)(new Date(), IST_TIMEZONE, "yyyy-MM-dd");
+    const observationDateIST = (0, date_fns_tz_1.formatInTimeZone)(observation.observationDate.toDate(), IST_TIMEZONE, "yyyy-MM-dd");
+    if (todayIST !== observationDateIST) {
         throw new https_1.HttpsError("permission-denied", "Observations can only be modified on the day they were created.");
     }
     return observationRef;
@@ -98,8 +102,9 @@ exports.addObservation = (0, https_1.onCall)({ region: "asia-south1", cors: true
     try {
         const user = await admin.auth().getUser(uid);
         const authorName = user.displayName || "Unknown User";
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // Create IST midnight timestamp for the observation date
+        const nowIST = (0, date_fns_tz_1.formatInTimeZone)(new Date(), IST_TIMEZONE, "yyyy-MM-dd");
+        const istMidnight = new Date(`${nowIST}T00:00:00+05:30`);
         await admin
             .firestore()
             .collection("observations")
@@ -107,7 +112,7 @@ exports.addObservation = (0, https_1.onCall)({ region: "asia-south1", cors: true
             userId: uid,
             authorName,
             observationText,
-            observationDate: admin.firestore.Timestamp.fromDate(today),
+            observationDate: admin.firestore.Timestamp.fromDate(istMidnight),
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -170,7 +175,14 @@ exports.updateObservation = (0, https_1.onCall)({ region: "asia-south1", cors: t
  */
 exports.deleteObservation = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     ensureAuthenticated(request);
-    const { id } = request.data;
+    const validation = deleteObservationSchema.safeParse(request.data);
+    if (!validation.success) {
+        const errorMessage = validation.error.errors
+            .map((e) => e.message)
+            .join(", ");
+        throw new https_1.HttpsError("invalid-argument", errorMessage);
+    }
+    const { id } = validation.data;
     const { uid } = request.auth;
     try {
         const observationRef = await verifyObservationOwnership(id, uid);

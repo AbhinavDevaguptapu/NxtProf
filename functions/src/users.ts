@@ -6,7 +6,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import { DecodedIdToken } from "firebase-admin/auth";
 import { isUserSuperAdmin } from "./utils";
-import { roleManagementSchema, validateInput } from "./validation";
+import { roleManagementSchema, uidParamSchema, validateInput } from "./validation";
 
 interface RoleManagementData {
   email: string;
@@ -54,10 +54,7 @@ export const removeAdminRole = onCall<RoleManagementData>(
         "Only admins can modify roles.",
       );
     }
-    const email = request.data.email?.trim();
-    if (!email) {
-      throw new HttpsError("invalid-argument", "Provide a valid email.");
-    }
+    const { email } = validateInput(roleManagementSchema, request.data);
     try {
       const user = await admin.auth().getUserByEmail(email);
       await admin.auth().setCustomUserClaims(user.uid, {
@@ -69,7 +66,7 @@ export const removeAdminRole = onCall<RoleManagementData>(
       if (err.code === "auth/user-not-found") {
         throw new HttpsError("not-found", "User not found.");
       }
-      console.error("removeAdminRole error:", err);
+      logger.error("removeAdminRole error:", { error: err.message, email });
       throw new HttpsError("internal", "Could not remove admin role.");
     }
   },
@@ -84,9 +81,7 @@ export const addCoAdminRole = onCall<RoleManagementData>(
     if (caller.isAdmin !== true)
       throw new HttpsError("permission-denied", "Admins only.");
 
-    const email = request.data.email?.trim();
-    if (!email)
-      throw new HttpsError("invalid-argument", "Provide a valid email.");
+    const { email } = validateInput(roleManagementSchema, request.data);
 
     try {
       const user = await admin.auth().getUserByEmail(email);
@@ -99,7 +94,7 @@ export const addCoAdminRole = onCall<RoleManagementData>(
       if (err.code === "auth/user-not-found") {
         throw new HttpsError("not-found", "User not found.");
       }
-      console.error("addCoAdminRole error:", err);
+      logger.error("addCoAdminRole error:", { error: err.message, email });
       throw new HttpsError("internal", "Could not set Co-Admin role.");
     }
   },
@@ -114,10 +109,7 @@ export const removeCoAdminRole = onCall<RoleManagementData>(
         "Only admins can modify roles.",
       );
     }
-    const email = request.data.email?.trim();
-    if (!email) {
-      throw new HttpsError("invalid-argument", "Provide a valid email.");
-    }
+    const { email } = validateInput(roleManagementSchema, request.data);
     try {
       const user = await admin.auth().getUserByEmail(email);
       await admin.auth().setCustomUserClaims(user.uid, {
@@ -129,7 +121,7 @@ export const removeCoAdminRole = onCall<RoleManagementData>(
       if (err.code === "auth/user-not-found") {
         throw new HttpsError("not-found", "User not found.");
       }
-      console.error("removeCoAdminRole error:", err);
+      logger.error("removeCoAdminRole error:", { error: err.message, email });
       throw new HttpsError("internal", "Could not remove Co-Admin role.");
     }
   },
@@ -144,13 +136,7 @@ export const deleteEmployee = onCall<{ uid?: string }>(
         "The function must be called while authenticated.",
       );
     }
-    const uid = request.data.uid;
-    if (!uid) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Missing or invalid `uid` parameter.",
-      );
-    }
+    const { uid } = validateInput(uidParamSchema, request.data);
 
     // A user can delete their own account, or an admin can delete any account.
     if (request.auth.uid !== uid && !isUserSuperAdmin(request.auth)) {
@@ -165,7 +151,7 @@ export const deleteEmployee = onCall<{ uid?: string }>(
       await admin.firestore().doc(`employees/${uid}`).delete();
       return { message: "User account and profile deleted." };
     } catch (error: any) {
-      console.error("deleteEmployee error:", error);
+      logger.error("deleteEmployee error:", { error: error.message, uid });
       throw new HttpsError(
         "internal",
         error.message || "An unknown error occurred.",
@@ -183,13 +169,7 @@ export const archiveEmployee = onCall<{ uid?: string }>(
         "Only admins can archive employees.",
       );
     }
-    const uid = request.data.uid;
-    if (!uid) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Missing or invalid `uid` parameter.",
-      );
-    }
+    const { uid } = validateInput(uidParamSchema, request.data);
     if (request.auth.uid === uid) {
       throw new HttpsError(
         "permission-denied",
@@ -205,7 +185,7 @@ export const archiveEmployee = onCall<{ uid?: string }>(
         .update({ archived: true });
       return { message: "Employee archived successfully." };
     } catch (error: any) {
-      console.error("archiveEmployee error:", error);
+      logger.error("archiveEmployee error:", { error: error.message, uid });
       throw new HttpsError(
         "internal",
         error.message || "An unknown error occurred.",
@@ -223,13 +203,7 @@ export const unarchiveEmployee = onCall<{ uid?: string }>(
         "Only admins can unarchive employees.",
       );
     }
-    const uid = request.data.uid;
-    if (!uid) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Missing or invalid `uid` parameter.",
-      );
-    }
+    const { uid } = validateInput(uidParamSchema, request.data);
 
     try {
       await admin.auth().updateUser(uid, { disabled: false });
@@ -239,7 +213,7 @@ export const unarchiveEmployee = onCall<{ uid?: string }>(
         .update({ archived: false });
       return { message: "Employee unarchived successfully." };
     } catch (error: any) {
-      console.error("unarchiveEmployee error:", error);
+      logger.error("unarchiveEmployee error:", { error: error.message, uid });
       throw new HttpsError(
         "internal",
         error.message || "An unknown error occurred.",
@@ -282,7 +256,7 @@ export const getEmployeesWithAdminStatus = onCall(
         }));
       return employeesWithStatus;
     } catch (error: any) {
-      console.error("Error fetching employees with admin status:", error);
+      logger.error("Error fetching employees with admin status:", { error: error.message });
       throw new HttpsError("internal", "Failed to fetch employee data.");
     }
   },
@@ -311,7 +285,7 @@ export const getArchivedEmployees = onCall(
       }));
       return employees;
     } catch (error: any) {
-      console.error("Error fetching archived employees:", error);
+      logger.error("Error fetching archived employees:", { error: error.message });
       throw new HttpsError(
         "internal",
         "Failed to fetch archived employee data.",
@@ -343,7 +317,7 @@ export const getUnapprovedUsers = onCall(
       }));
       return users;
     } catch (error: any) {
-      console.error("Error fetching unapproved users:", error);
+      logger.error("Error fetching unapproved users:", { error: error.message });
       throw new HttpsError("internal", "Failed to fetch unapproved users.");
     }
   },
@@ -358,10 +332,7 @@ export const approveUser = onCall<{ uid: string }>(
         "Only admins can approve users.",
       );
     }
-    const uid = request.data.uid;
-    if (!uid) {
-      throw new HttpsError("invalid-argument", "Missing uid.");
-    }
+    const { uid } = validateInput(uidParamSchema, request.data);
 
     try {
       await admin.firestore().doc(`employees/${uid}`).update({
@@ -369,7 +340,7 @@ export const approveUser = onCall<{ uid: string }>(
       });
       return { message: "User approved successfully." };
     } catch (error: any) {
-      console.error("Error approving user:", error);
+      logger.error("Error approving user:", { error: error.message, uid });
       throw new HttpsError("internal", "Failed to approve user.");
     }
   },

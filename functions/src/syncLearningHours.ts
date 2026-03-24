@@ -4,6 +4,7 @@ import { logger } from "firebase-functions/v2";
 import { google } from "googleapis";
 import * as admin from "firebase-admin";
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   getLearningHoursSpreadsheetId,
   getSheetsAuth,
@@ -167,7 +168,7 @@ export const syncLearningHoursByDate = onCall<SyncByDateRequest>(
     region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "LEARNING_HOURS_SPREADSHEET_ID"],
     cors: true,
   },
   async (request) => {
@@ -213,7 +214,7 @@ export const syncLearningPointsToSheet = onCall<SyncRequest>(
     region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "LEARNING_HOURS_SPREADSHEET_ID"],
     cors: true,
   },
   async (request) => {
@@ -258,13 +259,12 @@ export const autoSyncLearningPoints = onSchedule(
     region: "asia-south1",
     schedule: "0 19 * * 1-6",
     timeZone: "Asia/Kolkata",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "LEARNING_HOURS_SPREADSHEET_ID"],
     timeoutSeconds: 540,
     memory: "512MiB",
   },
   async () => {
-    const today = new Date();
-    const dateString = format(today, "yyyy-MM-dd");
+    const dateString = formatInTimeZone(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
 
     logger.info("Starting scheduled learning points sync", {
       date: dateString,

@@ -37,6 +37,7 @@ exports.givePeerFeedback = exports.getPeerFeedbackLockStatus = exports.togglePee
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const v2_1 = require("firebase-functions/v2");
+const date_fns_tz_1 = require("date-fns-tz");
 // Function to get feedback received by the current user (anonymous)
 exports.getMyReceivedFeedback = (0, https_1.onCall)({ region: "asia-south1", cors: true }, async (request) => {
     const db = admin.firestore();
@@ -128,7 +129,7 @@ exports.togglePeerFeedbackLock = (0, https_1.onCall)({ region: "asia-south1", co
         return { success: true, locked: request.data.lock };
     }
     catch (error) {
-        console.error("Error toggling peer feedback lock:", error);
+        v2_1.logger.error("Error toggling peer feedback lock:", error);
         throw new https_1.HttpsError("internal", "An unexpected error occurred while toggling the lock.");
     }
 });
@@ -147,7 +148,7 @@ exports.getPeerFeedbackLockStatus = (0, https_1.onCall)({ region: "asia-south1",
         return { locked: ((_a = doc.data()) === null || _a === void 0 ? void 0 : _a.locked) || false };
     }
     catch (error) {
-        console.error("Error getting peer feedback lock status:", error);
+        v2_1.logger.error("Error getting peer feedback lock status:", error);
         throw new https_1.HttpsError("internal", "An unexpected error occurred while fetching lock status.");
     }
 });
@@ -199,9 +200,11 @@ exports.givePeerFeedback = (0, https_1.onCall)({ region: "asia-south1", cors: tr
             throw new https_1.HttpsError("failed-precondition", "Feedback submissions are temporarily disabled.");
         }
         // Prevent race conditions with transaction-based duplicate check and creation
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        // Calculate month boundaries in IST to avoid UTC boundary issues
+        const nowIST = (0, date_fns_tz_1.formatInTimeZone)(new Date(), "Asia/Kolkata", "yyyy-MM-dd'T'HH:mm:ss");
+        const istDate = new Date(nowIST);
+        const startOfMonth = new Date(istDate.getFullYear(), istDate.getMonth(), 1);
+        const endOfMonth = new Date(istDate.getFullYear(), istDate.getMonth() + 1, 0, 23, 59, 59, 999);
         try {
             await db.runTransaction(async (transaction) => {
                 // Check for existing feedback within transaction

@@ -13,6 +13,7 @@ exports.validateAndSanitizeDate = validateAndSanitizeDate;
  */
 const google_auth_library_1 = require("google-auth-library");
 const https_1 = require("firebase-functions/v2/https");
+const v2_1 = require("firebase-functions/v2");
 const date_fns_1 = require("date-fns");
 // Helper function to securely get the Gemini API Key
 function getGeminiKey() {
@@ -49,7 +50,7 @@ function getSheetsAuth() {
         sa = JSON.parse(saRaw.trim());
     }
     catch (error) {
-        console.error("Invalid Service Account key format:", error);
+        v2_1.logger.error("Invalid Service Account key format:", error);
         throw new https_1.HttpsError("internal", "Reporting services are temporarily unavailable.");
     }
     // Validate required fields
@@ -76,7 +77,7 @@ function parseDynamicDate(dateString) {
         if ((0, date_fns_1.isValid)(parsedDate))
             return parsedDate;
     }
-    console.warn(`Unrecognized date format: "${dateString}"`);
+    v2_1.logger.warn(`Unrecognized date format: "${dateString}"`);
     return new Date(NaN);
 }
 /**
