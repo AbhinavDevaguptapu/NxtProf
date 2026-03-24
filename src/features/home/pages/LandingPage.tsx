@@ -18,24 +18,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ArrowRight,
-  BrainCircuit,
-  CheckSquare,
-  ShieldCheck,
-  KeyRound,
-  FileSpreadsheet,
   Sparkles,
-  Zap,
-  Users,
-  MessageSquare,
-  Calendar,
-  TrendingUp,
-  GraduationCap,
-  BarChart3,
-  Lock,
-  Flame,
   Menu,
   X,
   ChevronDown,
+  Users,
+  TrendingUp,
+  MessageSquare,
+  BrainCircuit,
+  Calendar,
+  GraduationCap,
+  Flame,
 } from "lucide-react";
 import { motion, easeOut, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -47,11 +40,6 @@ const sectionVariant = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: easeOut } },
 };
 
-const cardVariant = {
-  hidden: { opacity: 0, y: 50 },
-  visible: { opacity: 1, y: 0 },
-};
-
 const floatVariant = {
   animate: {
     y: [0, -10, 0],
@@ -61,6 +49,11 @@ const floatVariant = {
       ease: "easeInOut" as const,
     },
   },
+};
+
+const cardVariant = {
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0 },
 };
 
 const staggerContainer = {
@@ -90,7 +83,7 @@ function StickyHeader({ onNavigateToAuth }: { onNavigateToAuth: () => void }) {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         isScrolled
           ? "bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-sm"
-          : "bg-transparent"
+          : "bg-transparent",
       )}
       role="banner"
     >
@@ -111,32 +104,6 @@ function StickyHeader({ onNavigateToAuth }: { onNavigateToAuth: () => void }) {
               NxtProf
             </span>
           </a>
-
-          {/* Desktop Navigation */}
-          <nav
-            className="hidden md:flex items-center gap-8"
-            role="navigation"
-            aria-label="Main navigation"
-          >
-            <a
-              href="#features"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Features
-            </a>
-            <a
-              href="#admin"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              For Admins
-            </a>
-            <a
-              href="#architecture"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Architecture
-            </a>
-          </nav>
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
@@ -183,7 +150,7 @@ function StickyHeader({ onNavigateToAuth }: { onNavigateToAuth: () => void }) {
               role="navigation"
               aria-label="Mobile navigation"
             >
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 <a
                   href="#features"
                   className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
@@ -191,22 +158,7 @@ function StickyHeader({ onNavigateToAuth }: { onNavigateToAuth: () => void }) {
                 >
                   Features
                 </a>
-                <a
-                  href="#admin"
-                  className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  For Admins
-                </a>
-                <a
-                  href="#architecture"
-                  className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Architecture
-                </a>
-                <div className="pt-3 border-t border-border/50 flex flex-col gap-2">
-                  {/* [LOGIC PRESERVED] - onClick handler unchanged */}
+                <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
                   <Button
                     variant="outline"
                     className="w-full justify-center"
@@ -255,15 +207,6 @@ function ScrollIndicator() {
   );
 }
 
-// --- Section Divider ---
-function SectionDivider({ className }: { className?: string }) {
-  return (
-    <div className={cn("container mx-auto px-4", className)} aria-hidden="true">
-      <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-    </div>
-  );
-}
-
 // --- Main Landing Page Component ---
 export default function LandingPage() {
   // [LOGIC PRESERVED] - Navigation logic remains unchanged
@@ -279,88 +222,13 @@ export default function LandingPage() {
       {/* Sticky Header */}
       <StickyHeader onNavigateToAuth={handleNavigateToAuth} />
 
-      {/* Animated Wave Background */}
+      {/* Simple Background Elements */}
       <div
         className="fixed inset-0 pointer-events-none overflow-hidden"
         aria-hidden="true"
       >
-        {/* Gradient orbs for ambient lighting */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/[0.02] rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
-
-        {/* Top Wave */}
-        <div className="absolute top-0 left-0 right-0 h-[150px] opacity-25">
-          <svg
-            className="absolute w-[200%] h-full animate-wave-slow"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fill="currentColor"
-              className="text-primary/10"
-              d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,186.7C960,213,1056,235,1152,213.3C1248,192,1344,128,1392,96L1440,64L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"
-            />
-          </svg>
-          <svg
-            className="absolute w-[200%] h-full animate-wave-slower"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ animationDelay: "-5s" }}
-          >
-            <path
-              fill="currentColor"
-              className="text-secondary/20"
-              d="M0,96L48,112C96,128,192,160,288,165.3C384,171,480,149,576,149.3C672,149,768,171,864,165.3C960,160,1056,128,1152,122.7C1248,117,1344,139,1392,149.3L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"
-            />
-          </svg>
-        </div>
-
-        {/* Middle Wave - subtle */}
-        <div className="absolute top-1/2 left-0 right-0 h-[100px] opacity-15">
-          <svg
-            className="absolute w-[200%] h-full animate-wave-medium"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fill="currentColor"
-              className="text-border"
-              d="M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,234.7C672,235,768,181,864,165.3C960,149,1056,171,1152,186.7C1248,203,1344,213,1392,218.7L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-            />
-          </svg>
-        </div>
-
-        {/* Bottom Wave */}
-        <div className="absolute bottom-0 left-0 right-0 h-[150px] opacity-25">
-          <svg
-            className="absolute w-[200%] h-full animate-wave-slow"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fill="currentColor"
-              className="text-primary/10"
-              d="M0,64L48,80C96,96,192,128,288,128C384,128,480,96,576,106.7C672,117,768,171,864,197.3C960,224,1056,224,1152,197.3C1248,171,1344,117,1392,90.7L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-            />
-          </svg>
-          <svg
-            className="absolute w-[200%] h-full animate-wave-slower"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ animationDelay: "-3s" }}
-          >
-            <path
-              fill="currentColor"
-              className="text-secondary/20"
-              d="M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,197.3C672,213,768,203,864,176C960,149,1056,107,1152,101.3C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-            />
-          </svg>
-        </div>
       </div>
 
       <main className="flex-1 relative z-10" role="main">
@@ -423,7 +291,6 @@ export default function LandingPage() {
 
               {/* CTA Group */}
               <div className="mt-8 lg:mt-10 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-                {/* [LOGIC PRESERVED] - onClick handler unchanged */}
                 <Button
                   size="lg"
                   className="group px-8 py-6 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
@@ -436,51 +303,7 @@ export default function LandingPage() {
                     aria-hidden="true"
                   />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="px-8 py-6 text-base font-medium w-full sm:w-auto"
-                  onClick={handleNavigateToAuth}
-                  aria-label="Learn more about NxtProf features"
-                >
-                  Watch Demo
-                </Button>
               </div>
-
-              {/* Trust Indicators */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="mt-10 lg:mt-12"
-              >
-                <p className="text-xs text-muted-foreground/70 uppercase tracking-wider font-medium mb-4">
-                  Trusted by teams for
-                </p>
-                <div className="flex flex-wrap items-center gap-6 justify-center lg:justify-start">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50">
-                    <Flame
-                      className="h-5 w-5 text-orange-500"
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm font-medium">Streak Tracking</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50">
-                    <MessageSquare
-                      className="h-5 w-5 text-purple-500"
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm font-medium">Peer Feedback</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50">
-                    <BrainCircuit
-                      className="h-5 w-5 text-blue-500"
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm font-medium">AI Insights</span>
-                  </div>
-                </div>
-              </motion.div>
             </motion.div>
 
             {/* Hero Illustration */}
@@ -530,21 +353,21 @@ export default function LandingPage() {
           <ScrollIndicator />
         </section>
 
-        {/* Section 2: Team Member Features */}
+        {/* Section 2: Features */}
         <motion.section
           id="features"
           variants={sectionVariant}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
-          className="relative bg-secondary/30 py-20 sm:py-24 lg:py-32"
-          aria-labelledby="team-features-heading"
+          className="relative py-20 sm:py-24 lg:py-32 bg-secondary/20"
+          aria-labelledby="features-heading"
         >
           <div
             className="absolute inset-0 overflow-hidden pointer-events-none"
             aria-hidden="true"
           >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-background/50 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-secondary/50 rounded-full blur-3xl" />
           </div>
 
           <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
@@ -558,11 +381,11 @@ export default function LandingPage() {
               >
                 <Users className="h-4 w-4 text-primary" aria-hidden="true" />
                 <span className="text-sm font-semibold text-primary">
-                  For Team Members
+                  Key Capabilities
                 </span>
               </motion.div>
               <h2
-                id="team-features-heading"
+                id="features-heading"
                 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight"
               >
                 Everything You Need to{" "}
@@ -669,246 +492,7 @@ export default function LandingPage() {
           </div>
         </motion.section>
 
-        <SectionDivider />
-
-        {/* Section 3: Admin Features */}
-        <section
-          id="admin"
-          className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 lg:py-32"
-          aria-labelledby="admin-features-heading"
-        >
-          <div className="text-center max-w-3xl mx-auto mb-16 lg:mb-20">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary border border-border mb-4"
-            >
-              <ShieldCheck
-                className="h-4 w-4 text-primary"
-                aria-hidden="true"
-              />
-              <span className="text-sm font-semibold text-foreground">
-                For Admins
-              </span>
-            </motion.div>
-            <h2
-              id="admin-features-heading"
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight"
-            >
-              Powerful Tools for{" "}
-              <span className="text-gradient">Team Leaders</span>
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Complete visibility and control to drive team performance and
-              organizational growth.
-            </p>
-          </div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6"
-          >
-            <motion.div variants={cardVariant}>
-              <FeatureCard
-                icon={
-                  <BarChart3
-                    className="h-7 w-7 text-primary"
-                    aria-hidden="true"
-                  />
-                }
-                title="Central Admin Dashboard"
-                description="An at-a-glance summary of day's standups and learning hours with real-time attendance counts and employee metrics."
-                onButtonClick={handleNavigateToAuth}
-              />
-            </motion.div>
-
-            <motion.div variants={cardVariant}>
-              <FeatureCard
-                icon={
-                  <BrainCircuit
-                    className="h-7 w-7 text-primary"
-                    aria-hidden="true"
-                  />
-                }
-                title="AI Feedback Analysis"
-                description="Analyze employee feedback from Google Sheets using Gemini AI with insights, charts, and actionable suggestions."
-                onButtonClick={handleNavigateToAuth}
-              />
-            </motion.div>
-
-            <motion.div variants={cardVariant}>
-              <FeatureCard
-                icon={
-                  <Users className="h-7 w-7 text-primary" aria-hidden="true" />
-                }
-                title="Employee Management"
-                description="View, search, and inline-edit employee details. Securely manage roles with Firebase Custom Claims."
-                onButtonClick={handleNavigateToAuth}
-              />
-            </motion.div>
-
-            <motion.div variants={cardVariant}>
-              <FeatureCard
-                icon={
-                  <CheckSquare
-                    className="h-7 w-7 text-primary"
-                    aria-hidden="true"
-                  />
-                }
-                title="Session Management"
-                description="Schedule standups and learning hours. Monitor real-time attendance and manually edit records."
-                onButtonClick={handleNavigateToAuth}
-              />
-            </motion.div>
-
-            <motion.div variants={cardVariant}>
-              <FeatureCard
-                icon={
-                  <ShieldCheck
-                    className="h-7 w-7 text-primary"
-                    aria-hidden="true"
-                  />
-                }
-                title="Feedback Transparency"
-                description="Real-time audit trail of all peer feedback across the organization with employee filtering."
-                onButtonClick={handleNavigateToAuth}
-              />
-            </motion.div>
-
-            <motion.div variants={cardVariant}>
-              <FeatureCard
-                icon={
-                  <FileSpreadsheet
-                    className="h-7 w-7 text-primary"
-                    aria-hidden="true"
-                  />
-                }
-                title="Google Sheets Sync"
-                description="Sync all attendance data to a master Google Sheet with one click for record-keeping."
-                onButtonClick={handleNavigateToAuth}
-              />
-            </motion.div>
-          </motion.div>
-        </section>
-
-        {/* Section 4: Architecture / Built on Firebase */}
-        <motion.section
-          id="architecture"
-          variants={sectionVariant}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          className="relative bg-secondary/30 py-20 sm:py-24 lg:py-32"
-          aria-labelledby="architecture-heading"
-        >
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-12 lg:gap-16">
-              {/* Illustration */}
-              <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="lg:col-span-5 flex items-center justify-center lg:order-2"
-              >
-                <div className="relative w-full max-w-md">
-                  <div
-                    className="absolute inset-0 bg-gradient-to-br from-secondary to-muted rounded-3xl transform rotate-3 scale-105"
-                    aria-hidden="true"
-                  />
-                  <div className="relative bg-card border border-border rounded-2xl p-8 lg:p-10 shadow-xl">
-                    <StandOutIllustration
-                      className="w-full text-primary"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Content */}
-              <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="lg:col-span-7 lg:order-1"
-              >
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-4">
-                  <Lock className="h-4 w-4 text-primary" aria-hidden="true" />
-                  <span className="text-sm font-semibold text-primary">
-                    Built on Firebase
-                  </span>
-                </div>
-                <h2
-                  id="architecture-heading"
-                  className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight"
-                >
-                  Enterprise-Grade{" "}
-                  <span className="text-gradient">Architecture</span>
-                </h2>
-                <p className="mt-4 lg:mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
-                  A secure and scalable architecture with clear separation
-                  between the React frontend and Firebase Cloud Functions
-                  backend.
-                </p>
-
-                {/* Benefits */}
-                <div className="mt-8 lg:mt-10 space-y-4">
-                  <BenefitItem
-                    icon={
-                      <Lock
-                        className="h-6 w-6 text-primary"
-                        aria-hidden="true"
-                      />
-                    }
-                    title="Role-Based Access Control"
-                    description="Distinct roles for Team Members and Admins enforced with Firebase Custom Claims. Users only see what they need to."
-                    index={1}
-                  />
-                  <BenefitItem
-                    icon={
-                      <FileSpreadsheet
-                        className="h-6 w-6 text-primary"
-                        aria-hidden="true"
-                      />
-                    }
-                    title="Seamless Google Integration"
-                    description="Connect directly to private Google Sheets for feedback analysis and attendance syncing via secure service account authentication."
-                    index={2}
-                  />
-                  <BenefitItem
-                    icon={
-                      <BrainCircuit
-                        className="h-6 w-6 text-primary"
-                        aria-hidden="true"
-                      />
-                    }
-                    title="Gemini AI-Powered Analysis"
-                    description="Transform raw feedback into structured, actionable intelligence with Google's Gemini 2.5 Flash Lite model."
-                    index={3}
-                  />
-                  <BenefitItem
-                    icon={
-                      <Zap
-                        className="h-6 w-6 text-primary"
-                        aria-hidden="true"
-                      />
-                    }
-                    title="Real-Time Everything"
-                    description="Firestore's real-time listeners power instant updates across attendance tracking, feedback, and session management."
-                    index={4}
-                  />
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Section 5: Final CTA */}
+        {/* Section 3: Final CTA */}
         <section
           className="relative py-20 sm:py-24 lg:py-32 overflow-hidden"
           aria-labelledby="cta-heading"
@@ -1004,39 +588,6 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Quick Links */}
-            <div>
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-4">
-                Product
-              </h3>
-              <ul className="space-y-3">
-                <li>
-                  <a
-                    href="#features"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#admin"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    For Admins
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#architecture"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Architecture
-                  </a>
-                </li>
-              </ul>
-            </div>
-
             {/* Company Links */}
             <div>
               <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-4">
@@ -1095,7 +646,7 @@ interface FeatureCardProps {
   title: string;
   description: string;
   isDark?: boolean;
-  onButtonClick: () => void; // [LOGIC PRESERVED] - Prop type unchanged
+  onButtonClick: () => void;
   size?: "default" | "large" | "wide";
 }
 
@@ -1124,7 +675,6 @@ function FeatureCard({
   };
 
   return (
-    // [LOGIC PRESERVED] - onClick handler unchanged
     <Card
       className={cn(
         "group h-full flex flex-col cursor-pointer",
@@ -1133,7 +683,7 @@ function FeatureCard({
         "transition-all duration-300 ease-out",
         "hover:-translate-y-1",
         sizeClasses[size],
-        cardClasses
+        cardClasses,
       )}
       onClick={onButtonClick}
       role="article"
@@ -1147,7 +697,7 @@ function FeatureCard({
           "transition-all duration-300 group-hover:scale-110 group-hover:shadow-md",
           isDark
             ? "bg-primary-foreground/10"
-            : "bg-secondary border border-border/50"
+            : "bg-secondary border border-border/50",
         )}
       >
         {icon}
@@ -1160,7 +710,7 @@ function FeatureCard({
       <p
         className={cn(
           "mt-3 text-sm lg:text-base leading-relaxed flex-grow",
-          descriptionClasses
+          descriptionClasses,
         )}
       >
         {description}
@@ -1171,7 +721,7 @@ function FeatureCard({
         className={cn(
           "mt-6 flex items-center gap-2 text-sm font-medium",
           "opacity-60 group-hover:opacity-100 transition-opacity",
-          isDark ? "text-primary-foreground" : "text-primary"
+          isDark ? "text-primary-foreground" : "text-primary",
         )}
       >
         <span>{isDark ? "Learn More" : "Get Started"}</span>
@@ -1181,41 +731,6 @@ function FeatureCard({
         />
       </div>
     </Card>
-  );
-}
-
-interface BenefitItemProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  index?: number;
-}
-
-function BenefitItem({
-  icon,
-  title,
-  description,
-  index = 0,
-}: BenefitItemProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group flex items-start gap-4 p-5 rounded-xl bg-card border border-border/50 hover:border-border hover:shadow-lg transition-all duration-300"
-      role="article"
-    >
-      <div className="flex-shrink-0 w-12 h-12 bg-secondary border border-border/50 rounded-xl flex items-center justify-center group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="font-semibold text-lg text-card-foreground">{title}</h4>
-        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
-          {description}
-        </p>
-      </div>
-    </motion.div>
   );
 }
 
@@ -1272,36 +787,6 @@ function HeroIllustration(props: React.SVGProps<SVGSVGElement>) {
           fill="currentColor"
           fillOpacity="0.1"
         />
-      </g>
-    </svg>
-  );
-}
-
-function StandOutIllustration(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 450 350"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-      aria-label="Team collaboration illustration"
-    >
-      <g
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="100" cy="100" r="30" />
-        <path d="M100 130 C 100 180, 70 200, 50 220" />
-        <circle cx="200" cy="90" r="30" />
-        <path d="M200 120 C 200 170, 180 190, 150 210" />
-        <path d="M200 120 C 200 170, 220 190, 250 210" />
-        <circle cx="300" cy="100" r="30" />
-        <path d="M300 130 C 300 180, 330 200, 350 220" />
-        <path d="M130 140 C 180 120, 250 120, 270 140" />
-        <path d="M70 140 C 20 160, 40 200, 80 180" />
-        <path d="M330 140 C 380 160, 360 200, 320 180" />
       </g>
     </svg>
   );
