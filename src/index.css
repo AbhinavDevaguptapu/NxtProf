@@ -45,7 +45,7 @@
 
   .dark {
     /* ---------- Dark Theme ---------- */
-    --background: 0 0% 100%;
+    --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
 
     --card: 240 10% 3.9%;
@@ -93,11 +93,7 @@
   }
 }
 
-@keyframes spin-slow {
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* spin-slow reuses the spin keyframe with a slower duration (see .animate-spin-slow) */
 
 @keyframes pulse-slow {
   0%,
@@ -145,7 +141,7 @@
 }
 
 .animate-spin-slow {
-  animation: spin-slow 2s linear infinite;
+  animation: spin 2s linear infinite;
 }
 
 .animate-pulse-slow {

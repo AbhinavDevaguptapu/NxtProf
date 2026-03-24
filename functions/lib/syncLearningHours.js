@@ -40,6 +40,7 @@ const v2_1 = require("firebase-functions/v2");
 const googleapis_1 = require("googleapis");
 const admin = __importStar(require("firebase-admin"));
 const date_fns_1 = require("date-fns");
+const date_fns_tz_1 = require("date-fns-tz");
 const utils_1 = require("./utils");
 // Sheets client with service account
 function getSheetsClient() {
@@ -173,7 +174,7 @@ exports.syncLearningHoursByDate = (0, https_1.onCall)({
     region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "LEARNING_HOURS_SPREADSHEET_ID"],
     cors: true,
 }, async (request) => {
     // 1. Auth check
@@ -204,7 +205,7 @@ exports.syncLearningPointsToSheet = (0, https_1.onCall)({
     region: "asia-south1",
     timeoutSeconds: 300,
     memory: "512MiB",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "LEARNING_HOURS_SPREADSHEET_ID"],
     cors: true,
 }, async (request) => {
     // 1. Auth check
@@ -234,12 +235,11 @@ exports.autoSyncLearningPoints = (0, scheduler_1.onSchedule)({
     region: "asia-south1",
     schedule: "0 19 * * 1-6",
     timeZone: "Asia/Kolkata",
-    secrets: ["SHEETS_SA_KEY"],
+    secrets: ["SHEETS_SA_KEY", "LEARNING_HOURS_SPREADSHEET_ID"],
     timeoutSeconds: 540,
     memory: "512MiB",
 }, async () => {
-    const today = new Date();
-    const dateString = (0, date_fns_1.format)(today, "yyyy-MM-dd");
+    const dateString = (0, date_fns_tz_1.formatInTimeZone)(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
     v2_1.logger.info("Starting scheduled learning points sync", {
         date: dateString,
     });

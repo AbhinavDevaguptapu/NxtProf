@@ -8,6 +8,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { z } from "zod";
+import { formatInTimeZone } from "date-fns-tz";
 
 // --- Validation Schemas ---
 const observationSchema = z.object({
@@ -22,6 +23,12 @@ const updateObservationSchema = z.object({
     message: "Observation must be at least 10 characters long.",
   }),
 });
+
+const deleteObservationSchema = z.object({
+  id: z.string().min(1, { message: "Observation ID is required." }),
+});
+
+const IST_TIMEZONE = "Asia/Kolkata";
 
 // --- Helper Functions ---
 const ensureAuthenticated = (request: any) => {
@@ -52,12 +59,15 @@ const verifyObservationOwnership = async (id: string, uid: string) => {
     );
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const observationDate = observation.observationDate.toDate();
-  observationDate.setHours(0, 0, 0, 0);
+  // Compare dates in IST timezone to avoid UTC boundary issues
+  const todayIST = formatInTimeZone(new Date(), IST_TIMEZONE, "yyyy-MM-dd");
+  const observationDateIST = formatInTimeZone(
+    observation.observationDate.toDate(),
+    IST_TIMEZONE,
+    "yyyy-MM-dd",
+  );
 
-  if (today.getTime() !== observationDate.getTime()) {
+  if (todayIST !== observationDateIST) {
     throw new HttpsError(
       "permission-denied",
       "Observations can only be modified on the day they were created.",
@@ -91,8 +101,10 @@ export const addObservation = onCall(
     try {
       const user = await admin.auth().getUser(uid);
       const authorName = user.displayName || "Unknown User";
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+
+      // Create IST midnight timestamp for the observation date
+      const nowIST = formatInTimeZone(new Date(), IST_TIMEZONE, "yyyy-MM-dd");
+      const istMidnight = new Date(`${nowIST}T00:00:00+05:30`);
 
       await admin
         .firestore()
@@ -101,7 +113,7 @@ export const addObservation = onCall(
           userId: uid,
           authorName,
           observationText,
-          observationDate: admin.firestore.Timestamp.fromDate(today),
+          observationDate: admin.firestore.Timestamp.fromDate(istMidnight),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -180,7 +192,15 @@ export const deleteObservation = onCall(
   async (request) => {
     ensureAuthenticated(request);
 
-    const { id } = request.data;
+    const validation = deleteObservationSchema.safeParse(request.data);
+    if (!validation.success) {
+      const errorMessage = validation.error.errors
+        .map((e) => e.message)
+        .join(", ");
+      throw new HttpsError("invalid-argument", errorMessage);
+    }
+
+    const { id } = validation.data;
     const { uid } = request.auth!;
 
     try {

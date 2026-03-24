@@ -102,7 +102,7 @@ exports.startScheduledStandup = (0, scheduler_1.onSchedule)({
         const standupDoc = await standupRef.get();
         if (standupDoc.exists && ((_a = standupDoc.data()) === null || _a === void 0 ? void 0 : _a.status) === "scheduled") {
             // Fetch all employees to initialize tempAttendance
-            const employeesSnapshot = await db.collection("employees").get();
+            const employeesSnapshot = await db.collection("employees").where("archived", "!=", true).get();
             const initialTempAttendance = {};
             employeesSnapshot.forEach((empDoc) => {
                 initialTempAttendance[empDoc.id] = "Missed";
@@ -138,11 +138,18 @@ exports.endActiveStandup = (0, scheduler_1.onSchedule)({
     const todayDocId = (0, date_fns_tz_1.formatInTimeZone)(new Date(), TIME_ZONE, "yyyy-MM-dd");
     const standupRef = db.collection("standups").doc(todayDocId);
     try {
-        const standupDoc = await standupRef.get();
-        const standupData = standupDoc.data();
-        if (standupDoc.exists && (standupData === null || standupData === void 0 ? void 0 : standupData.status) === "active") {
-            const batch = db.batch();
-            const employeesSnapshot = await db.collection("employees").get();
+        // Use a transaction to atomically check status and end the standup
+        // This prevents a race condition with the frontend manual stop
+        await db.runTransaction(async (transaction) => {
+            const standupDoc = await transaction.get(standupRef);
+            const standupData = standupDoc.data();
+            if (!standupDoc.exists || (standupData === null || standupData === void 0 ? void 0 : standupData.status) !== "active") {
+                v2_1.logger.info("Standup already ended or does not exist, skipping", {
+                    date: todayDocId,
+                });
+                return;
+            }
+            const employeesSnapshot = await db.collection("employees").where("archived", "!=", true).get();
             const tempAttendance = standupData.tempAttendance || {};
             const absenceReasons = standupData.absenceReasons || {};
             employeesSnapshot.forEach((empDoc) => {
@@ -150,7 +157,7 @@ exports.endActiveStandup = (0, scheduler_1.onSchedule)({
                     .collection("attendance")
                     .doc(`${todayDocId}_${empDoc.id}`);
                 const employeeData = empDoc.data();
-                const status = tempAttendance[empDoc.id] || "Missed"; // Use temp status, default to Missed
+                const status = tempAttendance[empDoc.id] || "Missed";
                 const record = {
                     standup_id: todayDocId,
                     employee_id: empDoc.id,
@@ -164,10 +171,9 @@ exports.endActiveStandup = (0, scheduler_1.onSchedule)({
                 if (status === "Not Available") {
                     record.reason = absenceReasons[empDoc.id] || "No reason provided";
                 }
-                batch.set(attendanceDocRef, record, { merge: true });
+                transaction.set(attendanceDocRef, record, { merge: true });
             });
-            await batch.commit();
-            await standupRef.update({
+            transaction.update(standupRef, {
                 status: "ended",
                 endedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
@@ -176,7 +182,7 @@ exports.endActiveStandup = (0, scheduler_1.onSchedule)({
                 attendanceRecords: employeesSnapshot.size,
                 timestamp: new Date().toISOString(),
             });
-        }
+        });
     }
     catch (error) {
         v2_1.logger.error("Error ending standup", {

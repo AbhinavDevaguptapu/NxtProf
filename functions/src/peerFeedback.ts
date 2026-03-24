@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
+import { formatInTimeZone } from "date-fns-tz";
 
 interface GivenPeerFeedback {
   giverId: string;
@@ -133,7 +134,7 @@ export const togglePeerFeedbackLock = onCall<{ lock: boolean }>(
       await lockRef.set({ locked: request.data.lock });
       return { success: true, locked: request.data.lock };
     } catch (error) {
-      console.error("Error toggling peer feedback lock:", error);
+      logger.error("Error toggling peer feedback lock:", error);
       throw new HttpsError(
         "internal",
         "An unexpected error occurred while toggling the lock.",
@@ -159,7 +160,7 @@ export const getPeerFeedbackLockStatus = onCall(
       }
       return { locked: doc.data()?.locked || false };
     } catch (error) {
-      console.error("Error getting peer feedback lock status:", error);
+      logger.error("Error getting peer feedback lock status:", error);
       throw new HttpsError(
         "internal",
         "An unexpected error occurred while fetching lock status.",
@@ -248,11 +249,13 @@ export const givePeerFeedback = onCall<{
     }
 
     // Prevent race conditions with transaction-based duplicate check and creation
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Calculate month boundaries in IST to avoid UTC boundary issues
+    const nowIST = formatInTimeZone(new Date(), "Asia/Kolkata", "yyyy-MM-dd'T'HH:mm:ss");
+    const istDate = new Date(nowIST);
+    const startOfMonth = new Date(istDate.getFullYear(), istDate.getMonth(), 1);
     const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
+      istDate.getFullYear(),
+      istDate.getMonth() + 1,
       0,
       23,
       59,

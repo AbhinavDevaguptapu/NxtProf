@@ -75,6 +75,14 @@ const AppContent = () => {
         element={user ? <Navigate to="/index" /> : <Navigate to="/landing" />}
       />
       <Route
+        path="/daily-observations"
+        element={
+          <CoAdminProtectedRoute>
+            <DailyObservationsPage />
+          </CoAdminProtectedRoute>
+        }
+      />
+      <Route
         path="/*"
         element={
           user ? (
@@ -86,16 +94,8 @@ const AppContent = () => {
           )
         }
       />
-      <Route
-        path="/daily-observations"
-        element={
-          <CoAdminProtectedRoute>
-            <DailyObservationsPage />
-          </CoAdminProtectedRoute>
-        }
-      />
-      <Route path="*" element={<NotFound />} />
     </Routes>
+
   );
 };
 
